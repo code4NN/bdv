@@ -12,7 +12,7 @@ def user_login():
     st.header(":green[Please Login to Continue]")
     st.text_input("Enter Username",key='username')
     st.text_input("Enter Password",
-                    # type='password',
+                    type='password',
                     key='password')
     def login():
     # verify username
