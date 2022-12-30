@@ -1,8 +1,14 @@
 import streamlit as st
+import json
 import datetime
 
+from other_pages.googleapi import update_range
+from other_pages.googleapi import fetch_data_forced
 # ==================== Daily Filling page
 def show_daily_filling():
+
+    st.markdown('## Hare Krishna' )
+    st.markdown(f"### :green[{st.session_state['user']['name']} Pr]")
 
     filldate = st.date_input("Filling for ",label_visibility='hidden')    
     st.markdown(f"#### filling for {filldate.strftime('%d %b %a')}")
@@ -10,60 +16,63 @@ def show_daily_filling():
     # current_week_status 
 
     fill = {}
+    fill['date'] = filldate.strftime("%d/%m/%y")
     with st.expander("Morning Program",expanded=True):
         # waking up
-        fill['wakeup'] = st.time_input('wake up')
+        wakeup = st.time_input('wake up')
+        fill['wakeup']  = f'{wakeup.hour}:{wakeup.minute}'
         st.markdown("")
         
         # SA
         fill['SA'] = st.radio(label="SA Attendance",
-                            options=['not filled','PP','L0','L1','L2','L3','L4','L5','LL'],
-                            index=0,
+                            options=['PP','L0','L1','L2','L3','L4','L5','LL'],
+                            index=7,
                             horizontal=True)
         st.markdown("")
 
         # MC
         fill['MC'] = st.radio(label="Morning Class",
-                            options=['not filled','Full Present','Partially Present','Absent'],
-                            index=0,
+                            options=['Full Present','Partially Present','Absent'],
+                            index=2,
                             horizontal=True)
         st.markdown("")
 
         # MA
         fill['MA'] = st.radio(label="Mangal Aarti",
                             options=['not filled','Present','Absent'],
-                            index=0,
+                            index=2,
                             horizontal=True)
         st.markdown("")
 
         # Chanting
-        fill['chant'] = st.time_input("Chanting 📿")
+        chant = st.time_input("Chanting 📿")
+        fill['chant']  = f'{chant.hour}:{chant.minute}'
 
     # ---------------Reading and Hearing
     with st.expander("Sadhana 🔥",expanded=True):
         fill['Reading'] = st.number_input(label="Reading",
-                                            min_value=-1,
-                                            value=-1,
-                                            step=1
+                                            min_value=0,
+                                            value=0,
+                                            step=30
                                             )
         
         st.markdown("#### Hearings")
         fill['Hearing_SP'] = st.number_input(label="Srila Prabhupada",
-                                            min_value=-1,
-                                            value=-1,
-                                            step=1
+                                            min_value=0,
+                                            value=0,
+                                            step=30
                                             )
                 
         fill['Hearing_HHRNSM'] = st.number_input(label="HHRNSM",
-                                            min_value=-1,
-                                            value=-1,
-                                            step=1
+                                            min_value=0,
+                                            value=0,
+                                            step=30
                                             )
                 
-        fill['Hearing_SP'] = st.number_input(label="HG RSP",
-                                            min_value=-1,
-                                            value=-1,
-                                            step=1
+        fill['Hearing_RSP'] = st.number_input(label="HG RSP",
+                                            min_value=0,
+                                            value=0,
+                                            step=30
                                             )
         
         verse = st.radio(label="Shloka",options=['notdone','done'],horizontal=True)
@@ -82,20 +91,34 @@ def show_daily_filling():
         
         fill['college'] = st.radio(label='College Class',
                                 options=['notfilled','All Present','Missed 1','Missed 2', 'Missed 2+','no classes'],
-                                index=0,
+                                index=5,
                                 horizontal=True)
         st.markdown("")
 
         fill['self_study'] = st.number_input(label="Self Study",
-                                            min_value=-1,
-                                            value=-1,
+                                            min_value=0,
+                                            value=0,
                                             step=1
                                             )
+    fill['dayrest'] = st.number_input("Day Rest ",
+                                        min_value=0,
+                                        value=0)
+    tobed = st.time_input("To Bed")
+    fill['tobed']  = f'{tobed.hour}:{tobed.minute}'
 
 
     submit = st.button("done 👍")
-    if submit:
-        fill
+    if submit:        
+        sheetID = st.secrets['db_sadhana']['sheetID']
+        row = fetch_data_forced(sheetID,f"{st.session_state['user']['name']}!A3")[0][0]
+        row = json.loads(row)
+        row = row['first_blank_row']
+        range = f"{st.session_state['user']['name']}!B{row}:P{row}"
+        
+        response = update_range(sheetID,range,[list(fill.values())],input_type='USER_ENTERED')
+        if 'values' in response.keys():
+            st.write(":green[filled Successfully!!]")
+        
     st.markdown("---")
 
     st.markdown("### Other pages")

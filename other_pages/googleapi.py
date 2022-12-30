@@ -49,7 +49,7 @@ def fetch_data_forced(spreadsheet_id,ranges):
     except HttpError as err:
         st.write(err)
 
-def update_range(spreadsheet_id,range_name,value):
+def update_range(spreadsheet_id,range_name,value,input_type='RAW'):
     if creds.expired and creds.refresh_token:
             creds.refresh(Request())
     try:
@@ -61,7 +61,7 @@ def update_range(spreadsheet_id,range_name,value):
         }
         result = service.spreadsheets().values().update(
             spreadsheetId=spreadsheet_id, range=range_name,
-            valueInputOption='RAW', body=body,
+            valueInputOption=input_type, body=body,
             includeValuesInResponse=True).execute()
 
         return result['updatedData']

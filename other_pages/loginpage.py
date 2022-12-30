@@ -1,5 +1,6 @@
 import streamlit as st
 import json
+import time
 from other_pages.googleapi import fetch_data
 from other_pages.googleapi import fetch_data_forced
 from other_pages.googleapi import update_range
@@ -34,8 +35,12 @@ def user_login():
             if st.session_state['password'] == pswd:
                 # verified
                 st.session_state['state'] = 'feed'
+                st.session_state['user'] = usersinfo[st.session_state['username']]
+                
+                
             
     st.button("Login",on_click=login)
+    
 
 
 def registration():
