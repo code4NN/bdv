@@ -56,3 +56,6 @@ def show_feed():
     ":green[here]"
 
     st.markdown('---')
+    def logout():
+        st.session_state.pop('state')
+    st.button("logout",on_click=logout)
