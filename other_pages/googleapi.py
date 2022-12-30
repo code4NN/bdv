@@ -28,3 +28,23 @@ def fetch_data(spreadsheet_id,ranges):
         # return pd.DataFrame(values[1:],columns=values[0])
     except HttpError as err:
         st.write(err)
+
+def update_range(spreadsheet_id,range_name,value):
+    if creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+    try:
+        service = build('sheets', 'v4', credentials=creds)
+
+        # Call the Sheets API
+        body = {
+            'values': value
+        }
+        result = service.spreadsheets().values().update(
+            spreadsheetId=spreadsheet_id, range=range_name,
+            valueInputOption='RAW', body=body).execute()
+
+        values = result.get('values', [])
+        return result
+        # return pd.DataFrame(values[1:],columns=values[0])
+    except HttpError as err:
+        st.write(err)
