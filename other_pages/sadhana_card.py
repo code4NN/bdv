@@ -1,20 +1,24 @@
 import streamlit as st
 import json
 import datetime
-
+from streamlit import components
 from other_pages.googleapi import update_range
 from other_pages.googleapi import fetch_data_forced
 # ==================== Daily Filling page
-def show_daily_filling():
-
+def show_daily_filling():   
     st.markdown('## Hare Krishna' )
-    st.markdown(f"### :green[{st.session_state['user']['name']} Pr]")
+    devotee_name = st.session_state['user']['name']
+    st.markdown(f"### :green[{devotee_name} Pr]")
 
     filldate = st.date_input("Filling for ",label_visibility='hidden')    
     st.markdown(f"#### filling for {filldate.strftime('%d %b %a')}")
     
-    # current_week_status 
-
+    # current_week_status
+    this_week = fetch_data_forced(st.secrets['db_sadhana']['sheetID'],
+                                 f'{devotee_name}!R2:R',major_dimention='COLUMNS')[0]
+    this_week = [datetime.datetime.strptime(d,)]
+    st.write(this_week)
+    # st.write(filldate.strftime())
     fill = {}
     fill['date'] = filldate.strftime("%d/%m/%y")
     with st.expander("Morning Program",expanded=True):

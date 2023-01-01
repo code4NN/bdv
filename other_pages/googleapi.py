@@ -30,7 +30,7 @@ def fetch_data(spreadsheet_id,ranges):
         st.write(err)
 
 
-def fetch_data_forced(spreadsheet_id,ranges):
+def fetch_data_forced(spreadsheet_id,ranges,major_dimention='ROWS'):
     """Shows basic usage of the Sheets API.
     Prints values from a sample spreadsheet.
     """    
@@ -40,8 +40,8 @@ def fetch_data_forced(spreadsheet_id,ranges):
         service = build('sheets', 'v4', credentials=creds)
 
         # Call the Sheets API
-        result = service.spreadsheets().values() \
-        .get(spreadsheetId=spreadsheet_id, range=ranges,).execute()
+        result = service.spreadsheets().values().get(spreadsheetId=spreadsheet_id, range=ranges,
+        majorDimension=major_dimention).execute()
 
         values = result.get('values', [])
         return values

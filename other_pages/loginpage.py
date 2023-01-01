@@ -20,26 +20,25 @@ def user_login():
         usersinfo = json.loads(users)
     
     st.header(":green[Please Login to Continue]")
-    st.text_input("Enter Username",key='username')
-    st.text_input("Enter Password",
-                    type='password',
-                    key='password')
-    def login():
-    # verify username
-        if st.session_state['username'] == 'register' and \
-           st.session_state['password'] == 'gaur':
-           st.session_state['substate'] = 'register'
+    input_user = st.text_input("Enter Username",key='username')
+    input_password = st.text_input("Enter Password",
+                        type='password',
+                        key='password')
 
-        if st.session_state['username'] in usersinfo.keys():
-            pswd = usersinfo[st.session_state['username']]['password']
-            if st.session_state['password'] == pswd:
-                # verified
-                st.session_state['state'] = 'feed'
-                st.session_state['user'] = usersinfo[st.session_state['username']]
-                
-                
-            
-    st.button("Login",on_click=login)
+    def regme():
+        st.session_state['substate'] = 'register'
+    def takemein():
+        st.session_state['state'] = 'feed'
+        st.session_state['user'] = usersinfo[st.session_state['username']]
+    
+    if input_user == 'register' and input_password == 'gaur':           
+           st.button("Register me",on_click=regme)
+
+    elif input_user in usersinfo.keys():
+        pswd = usersinfo[input_user]['password']
+        if input_password == pswd:
+            # verified
+            st.button("Login",on_click=takemein)
     
 
 
