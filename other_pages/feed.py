@@ -1,8 +1,8 @@
 import streamlit as st
 import datetime
 
-def change_page():
-    st.session_state.state = 'Sadhana_Card'
+def change_page(pagename):
+    st.session_state.state = pagename
 
 def show_feed():
     st.header(':green[Barasana Dhaam]')
@@ -11,9 +11,9 @@ def show_feed():
 
     st.markdown('---') #------------------------ Forms
     st.subheader(":blue[Quick Forms]")    
-    st.button('Sadhana Card',on_click=change_page)
-    st.button('Settlement Form')
-    st.button('Suggession')
+    st.button('Sadhana Card',on_click=change_page,args=['Sadhana_Card'])
+    # st.button('Settlement Form')
+    # st.button('Suggession')
 
     st.markdown('---') #------------------------ Birthday
 
@@ -31,26 +31,27 @@ def show_feed():
 
     st.markdown('---') #------------------------ Sadhana
 
-    st.subheader(':blue[Sadhana]')
-    "some kind of overall progress summary "
-    ":green[here]"
-    st.button('Nakula Devotees')
-    st.button('Arjun Devotees')
-    st.button('Bhim Devotees')
-    st.button('Yudhisthir Devotees')
+    # st.subheader(':blue[Sadhana]')
+    # "some kind of overall progress summary "
+    # ":green[here]"
+    # st.button('Nakula Devotees')
+    # st.button('Arjun Devotees')
+    # st.button('Bhim Devotees')
+    # st.button('Yudhisthir Devotees')
 
-    st.markdown('---') #------------------------ Departments
+    # st.markdown('---') #------------------------ Departments
 
     st.subheader(":blue[Departments]")
 
-    st.button('Preaching 🔊')
-    st.button('Cleanliness 🧹')
-    st.button('Study 👨‍🎓')
-    st.button('Internal Management')
-    st.button("Kitchen 🔥")
-    st.button("Accounts 💸")
+    st.button("Structure",on_click=change_page,args=['dept_structure'])
+    # st.button('Preaching 🔊')
+    # st.button('Cleanliness 🧹')
+    # st.button('Study 👨‍🎓')
+    # st.button('Internal Management')
+    # st.button("Kitchen 🔥")
+    # st.button("Accounts 💸")
 
-    st.button('Deity Darshans')
+    # st.button('Deity Darshans')
 
     "A summary of all department and respective IC, VM etc"
     ":green[here]"

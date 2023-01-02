@@ -27,19 +27,23 @@ def user_login():
 
     def regme():
         st.session_state['substate'] = 'register'
-    def takemein():
-        st.session_state['state'] = 'feed'
+    def takemein(page):
+        st.session_state['state'] = page
         st.session_state['user'] = usersinfo[st.session_state['username']]
     
     if input_user == 'register' and input_password == 'gaur':           
-           st.button("Register me",on_click=regme)
-
+           st.button("Register me",on_click=regme,key='register')
+          
     elif input_user in usersinfo.keys():
         pswd = usersinfo[input_user]['password']
         if input_password == pswd:
             # verified
-            st.button("Login",on_click=takemein)
-    
+            st.button("Login",on_click=takemein,args=['feed'],key='feed')
+            st.markdown('---')
+            st.markdown('#### :green[Direct login to]')
+            st.button('Sadhana Card',on_click=takemein,args=['Sadhana_Card'],key='sc')
+            st.button('bdv departments',on_click=takemein,args=['dept_structure'],key='dept')
+
 
 
 def registration():
