@@ -40,17 +40,13 @@ def show_daily_filling():
     if 'sc_db' not in st.session_state:
         st.session_state['sc_db'] = fetch_data_forced(st.secrets['db_sadhana']['sheetID'],
                                  f'{devotee_name}!R2:R',major_dimention='COLUMNS')[0]
-        filled_dates = st.session_state['sc_db']
-    else :
-        filled_dates = st.session_state['sc_db']
     
 
     if reload_week :
         filled_dates = fetch_data_forced(st.secrets['db_sadhana']['sheetID'],
                                  f'{devotee_name}!R2:R',major_dimention='COLUMNS')[0]
     else:
-        filled_dates = fetch_data(st.secrets['db_sadhana']['sheetID'],
-                                 f'{devotee_name}!R2:R',major_dimention='COLUMNS')[0]
+        filled_dates = st.session_state['sc_db']
     st.markdown("---")
     last_monday = aajkadin - datetime.timedelta(days=aajkadin.weekday())
     last_week = []
@@ -82,15 +78,13 @@ def show_daily_filling():
             right.write(f':red[{day}]')
             # display_status += f':red[{day}]' + '\n'
     st.markdown('---')
-    st.radio(" hari",options=pending_days,label_visibility='hidden')
-    st.markdown(f"#### filling for :violet[{aajkadin.strftime('%d %b %a')}]")
-    
-    # current_week_status
-    
 
-    # st.write(filldate.strftime())
     fill = {}
-    fill['date'] = aajkadin.strftime("%d/%m/%y")
+    filldate = st.radio(" hari",options=pending_days,label_visibility='hidden',
+    format_func=lambda x: x.strftime('%d %b %a'))
+    fill['date'] = filldate.strftime('%d %b %a')
+    st.markdown(f"#### filling for :violet[{fill['date'].strftime('%d %b %a')}]")
+
     with st.expander("Morning Program",expanded=True):
         # waking up
         wakeup = st.time_input('wake up')
@@ -183,17 +177,20 @@ def show_daily_filling():
     fill['tobed']  = f'{tobed.hour}:{tobed.minute}'
 
 
-    submit = st.button("done 👍")
-    if submit:        
+    def submit(datasubmit):
         sheetID = st.secrets['db_sadhana']['sheetID']
         row = fetch_data_forced(sheetID,f"{st.session_state['user']['name']}!A3")[0][0]
         row = json.loads(row)
         row = row['first_blank_row']
         sheetrange = f"{st.session_state['user']['name']}!B{row}:P{row}"
-        
-        response = update_range(sheetID,sheetrange,[list(fill.values())],input_type='USER_ENTERED')
+
+        response = update_range(sheetID,sheetrange,[list(datasubmit.values())],input_type='USER_ENTERED')
         if 'values' in response.keys():
             st.write(":green[filled Successfully!!]")
+        
+    submit = st.button('submit 👍',on_click=submit,
+                        args=[fill])
+
         
     st.markdown("---")
 
