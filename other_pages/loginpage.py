@@ -71,16 +71,22 @@ def registration():
         
         def userapply(username):
             if 'applied' in st.session_state and username in st.session_state['applied'] :
-                st.markdown("# :red[Haribol Pr!!, You have already applied]")
+                st.session_state['resubmitform'] = "# :red[Haribol Pr!!, You have already applied]"
             else:
                 sheetid = usercreds['sheetID']
                 range = 'registration!A:A'
                 append_range(sheetid,range,[[username]])
                 st.session_state['applied'] = username
-                st.markdown(":green[Your request Submitted !!]")
+                st.session_state['confirm_submission'] =":green[Your request Submitted !!]"
+
 
         st.button('Submit',on_click=userapply,args=[username])
-
+        if 'resubmitform' in st.session_state:
+            st.markdown(st.session_state['resubmitform'])
+            st.session_state.pop('resubmitform')
+        if 'confirm_submission' in st.session_state:
+            st.markdown(st.session_state['confirm_submission'])
+            st.session_state.pop('confirm_submission')
     st.markdown('---')
     step2 = {'submitted':False}
     
