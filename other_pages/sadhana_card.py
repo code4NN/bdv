@@ -39,7 +39,7 @@ def show_daily_filling():
       
     if 'sc_db' not in st.session_state:
         st.session_state['sc_db'] = fetch_data_forced(st.secrets['db_sadhana']['sheetID'],
-                                 f'{devotee_name}!R2:R',major_dimention='COLUMNS')[0]
+                                 f'{devotee_name}!S2:S',major_dimention='COLUMNS')[0]
     my_sc_dates = st.session_state['sc_db']
 
     # ------------------Sadhana Card
