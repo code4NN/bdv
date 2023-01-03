@@ -1,11 +1,10 @@
 import streamlit as st
 import json
 import datetime
-from streamlit import components
+import pandas as pd
 from other_pages.googleapi import update_range
 from other_pages.googleapi import fetch_data_forced
-from other_pages.googleapi import fetch_data
-fetch_data
+
 def change_subpage(subpage):
     st.session_state['substate'] = subpage
 
@@ -175,8 +174,8 @@ def show_daily_filling():
         # st.markdown("### College")
         
         fill['college'] = st.radio(label='College Class',
-                                options=['notfilled','All Present','Missed 1','Missed 2', 'Missed 2+','no classes'],
-                                index=5,
+                                options=['All Present','Missed 1','Missed 2', 'Missed 2+','no classes'],
+                                index=3,
                                 horizontal=True)
         st.markdown("")
 
@@ -217,13 +216,79 @@ def show_daily_filling():
 
     st.markdown("---")
     st.markdown("### Other pages")
-    def run2feed():
-        st.session_state['substate'] = 'dashboard'
-    st.button("Dashboard",on_click=run2feed)
+    def changetab(subpage):
+        st.session_state['substate'] = subpage
+    def change_page(page):
+        st.session_state['state'] = page
+    st.button("Dashboard",on_click=changetab,args=['dashboard'])
+    st.button("Feed",on_click=change_page,args=['feed'])
 
 def show_sc_dashboard():
-    st.header("Dashboard")
+    if 'scfilling' not in st.session_state:
+        query_raw = fetch_data_forced(st.secrets['db_sadhana']['sheetID'],
+                                    'summary!B5:J19',major_dimention='COLUMNS')
+        filling_info = {}
+        for devotee in query_raw:
+            filling_info[devotee[0]] = devotee[1:]
+        st.session_state['scfilling'] = filling_info
+            
+    scfillinginfo = st.session_state['scfilling']
+    
+    # ------This week
+    st.header(":blue[Sadhana Card Dashboard]")        
+    st.markdown("### :violet[Daily Filling Status]")
+    st.markdown(':violet[current Week]')
+    aajkadin = datetime.datetime.today()
+    last_monday = aajkadin - datetime.timedelta(days=aajkadin.weekday())
+    last_week = []
+    for i in range(7):
+        weekday = last_monday + datetime.timedelta(days=i)
+        last_week.append(weekday.strftime('%d/%m/%Y'))
+
+    current_week_table = pd.DataFrame(last_week,columns=['dates_raw'])
+    current_week_table['date'] = pd.to_datetime(current_week_table['dates_raw'],format='%d/%m/%Y')
+    current_week_table['date'] = current_week_table['date'].apply(lambda x:x.strftime('%b %d %a'))
+    def daily_status(name,day):
+        if day in scfillinginfo[name]:
+            return 'filled'
+        else :
+            return '-'
+    for devotee in scfillinginfo:
+        current_week_table[f'{devotee} Pr'] = [daily_status(devotee,d) for d in current_week_table['dates_raw']]
+        
+    st.dataframe(current_week_table.drop(columns=['dates_raw']).copy())
+
+    def refresh_week():
+        st.session_state.pop('scfilling')
+    st.button("Refresh Week",on_click=refresh_week)
+    st.markdown('---')
+    # ------------------ last week
+    st.markdown(':violet[Previous Week]')
+    aajkadin = datetime.datetime.today() - datetime.timedelta(days=7)
+    last_monday = aajkadin - datetime.timedelta(days=aajkadin.weekday())
+    last_week = []
+    for i in range(7):
+        weekday = last_monday + datetime.timedelta(days=i)
+        last_week.append(weekday.strftime('%d/%m/%Y'))
+
+    current_week_table = pd.DataFrame(last_week,columns=['dates_raw'])
+    current_week_table['date'] = pd.to_datetime(current_week_table['dates_raw'],format='%d/%m/%Y')
+    current_week_table['date'] = current_week_table['date'].apply(lambda x:x.strftime('%b %d %a'))
+    def daily_status(name,day):
+        if day in scfillinginfo[name]:
+            return 'filled'
+        else :
+            return '-'
+    for devotee in scfillinginfo:
+        current_week_table[f'{devotee} Pr'] = [daily_status(devotee,d) for d in current_week_table['dates_raw']]
+        
+    st.dataframe(current_week_table.drop(columns=['dates_raw']))
+
+
+    st.markdown('---')
+
     st.button('Fill today',on_click=change_subpage,args=['show_page'])
+
 
 #--------------------- 
 sc_state_page = {'show_page':show_daily_filling,
