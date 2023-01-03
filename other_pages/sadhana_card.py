@@ -17,7 +17,7 @@ def convert_time(timestr):
         hh,mm = timestr.split(".")
         try:
             standardtime = datetime.time(hour=int(hh),minute=int(mm)).strftime('%H:%M %p')
-            return (-1,f' :violet[{standardtime}]')
+            return (1,f' :violet[{standardtime}]',standardtime)
         except:
             return (-1,"😔 :blue[Pr, could not convert]")
     else :
@@ -95,9 +95,9 @@ def show_daily_filling():
         wakeup = st.number_input("Wake Up 🌞",value=3.99,step=.01)
         st.caption(f':blue[wake up at {convert_time(wakeup)[1]}]')
         if convert_time(wakeup)[0] !=-1:
-            fill['wakeup'] = convert_time(wakeup)[1]
+            fill['wakeup'] = convert_time(wakeup)[2]
         else:
-            fill['wakeup'] = 'blank'
+            fill['wakeup'] = "error"
 
         
         # SA
@@ -125,9 +125,9 @@ def show_daily_filling():
         chant = st.number_input("Chanting 📿",value=8.99,step=.01)
         st.caption(f':blue[complete japa at {convert_time(chant)[1]}]')
         if convert_time(chant)[0] !=-1:
-            fill['chant'] = convert_time(chant)[1]
+            fill['chant'] = convert_time(chant)[2]
         else:
-            fill['chant'] = 'blank' 
+            fill['chant'] = 'error' 
 
 
     # ---------------Reading and Hearing
@@ -138,7 +138,10 @@ def show_daily_filling():
                                             step=30
                                             )
         if fill['Reading'] > 0:
-            st.text_input("Which Book")
+            bookname = st.text_input("Which Book")
+            fill['book'] = bookname
+        else:
+            fill['book'] = ""
         
         st.markdown("#### Hearings")
         fill['Hearing_SP'] = st.number_input(label="Srila Prabhupada",
@@ -159,15 +162,16 @@ def show_daily_filling():
                                             step=30
                                             )
         
-        verse = st.radio(label="Shloka",options=['notdone','done-1','done-2','done-2+'],horizontal=True)
+        verse = st.radio(label="Shloka",options=['notdone','done-1','done-2','done-3'],horizontal=True)
         if verse!='notdone':
             verse_number = st.text_input(label="Which one 😎")
             if verse_number =="":
-                fill['verse'] = 'done'
+                fill['verse'] = verse.split('-')[-1]
             else:
-                fill['verse'] = verse_number
+                fill['verse'] = f"{verse.split('-')[-1]} : {verse_number}"
         else :
-            fill['verse'] = 'notdone'
+            assert verse == 'notdone'
+            fill['verse'] = ''
 
     # --------------- College and Studies
     with st.expander('College and Studies',expanded=True):
@@ -189,18 +193,20 @@ def show_daily_filling():
                                         value=0)
 
     tobed = st.number_input("To Bed 💤",value=21.99,step=.01)
-    st.caption(f':blue[{convert_time(tobed)[1]}]')
+    st.caption(f':blue[took rest at] {convert_time(tobed)[1]}')
+    # st.write(convert_time(tobed)[0]
     if convert_time(tobed)[0] !=-1:
-        fill['tobed'] = convert_time(tobed)[1]
+        fill['tobed'] = convert_time(tobed)[2]
     else:
-        fill['tobed'] = 'blank'    
+        fill['tobed'] = 'error'
 
     def submit(datasubmit):
         sheetID = st.secrets['db_sadhana']['sheetID']
+        # st.write(datasubmit.keys())
         row = fetch_data_forced(sheetID,f"{st.session_state['user']['name']}!A3")[0][0]
         row = json.loads(row)
         row = row['first_blank_row']
-        sheetrange = f"{st.session_state['user']['name']}!B{row}:P{row}"
+        sheetrange = f"{st.session_state['user']['name']}!B{row}:Q{row}"
 
         response = update_range(sheetID,sheetrange,[list(datasubmit.values())],input_type='USER_ENTERED')
         if 'values' in response.keys():
