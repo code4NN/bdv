@@ -92,7 +92,7 @@ def show_daily_filling():
 
     with st.expander("Morning Program",expanded=True):
         # waking up
-        wakeup = st.number_input("Wake Up 🌞",value=3.99,step=.01)
+        wakeup = st.text_input("Wake Up 🌞",value=3.99,help=":blue[Please enter 3:30 am as 3.30]")
         st.caption(f':blue[wake up at {convert_time(wakeup)[1]}]')
         if convert_time(wakeup)[0] !=-1:
             fill['wakeup'] = convert_time(wakeup)[2]
@@ -122,7 +122,7 @@ def show_daily_filling():
         st.markdown("")
 
         # Chanting
-        chant = st.number_input("Chanting 📿",value=8.99,step=.01)
+        chant = st.text_input("Chanting 📿",value=8.99,help=":blue[Please enter 6:30 pm as 18.30]")
         st.caption(f':blue[complete japa at {convert_time(chant)[1]}]')
         if convert_time(chant)[0] !=-1:
             fill['chant'] = convert_time(chant)[2]
@@ -192,7 +192,7 @@ def show_daily_filling():
                                         min_value=0,
                                         value=0)
 
-    tobed = st.number_input("To Bed 💤",value=21.99,step=.01)
+    tobed = st.number_input("To Bed 💤",value=21.45,help=":blue[Please enter 9:30 pm as 121.30]")
     st.caption(f':blue[took rest at] {convert_time(tobed)[1]}')
     # st.write(convert_time(tobed)[0]
     if convert_time(tobed)[0] !=-1:
