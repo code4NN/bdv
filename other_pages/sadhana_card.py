@@ -64,7 +64,7 @@ def show_daily_filling():
     
     def reload_scdb():
         st.session_state['sc_db'] = fetch_data_forced(st.secrets['db_sadhana']['sheetID'],
-                                 f'{devotee_name}!R2:R',major_dimention='COLUMNS')[0]
+                                 f'{devotee_name}!S2:S',major_dimention='COLUMNS')[0]
 
     left,middle,right = st.columns(3)
     left.write(':green[filled]')
