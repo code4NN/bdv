@@ -29,10 +29,8 @@ if 'state' not in st.session_state:
     login_main()
 else :
     # directed behaviour
-    try:
-        state_page_map[st.session_state.state]()    
-    except:
-        st.error("Some error")
+    state_page_map[st.session_state.state]()    
+    
 
 #---
 # if st.session_state

@@ -8,16 +8,24 @@ from other_pages.googleapi import fetch_data
 fetch_data
 def change_subpage(subpage):
     st.session_state['substate'] = subpage
+
+def convert_time(timestr):
+    timestr = str(timestr)
+    if timestr =="":
+        return (-1,"please write 24h format like :blue[21:30]")
+    elif '.' in timestr:                        
+
+        hh,mm = timestr.split(".")
+        try:
+            standardtime = datetime.time(hour=int(hh),minute=int(mm)).strftime('%H:%M %p')
+            return (-1,f' :violet[{standardtime}]')
+        except:
+            return (-1,"😔 :blue[Pr, could not convert]")
+    else :
+        return (-1,'wrong time input')
 # ==================== Daily Filling page
 def show_daily_filling():
-    padding = 0
-    st.markdown(f""" <style>
-    .reportview-container.main.block-container{{
-        padding-top: {padding}rem;
-        padding-right: {padding}rem;
-        padding-left: {padding}rem;
-        padding-bottom: {padding}rem;
-    }} </style> """, unsafe_allow_html=True)
+
     st.markdown('## Hare Krishna' )
     devotee_name = st.session_state['user']['name']
     st.markdown(f"### :green[{devotee_name} Pr]")    
@@ -25,29 +33,19 @@ def show_daily_filling():
         def feed():
             st.session_state['state'] = 'feed'
         st.button('Main Menu',on_click=feed)
-        return -1
-    aajkadin = datetime.datetime.today()
-
-
-    st.caption("Current week status")
-    def reload_scdb():
-        st.session_state['sc_db'] = fetch_data_forced(st.secrets['db_sadhana']['sheetID'],
-                                 f'{devotee_name}!R2:R',major_dimention='COLUMNS')[0]
-
-    reload_week = st.button('reload status',on_click=reload_scdb)
     
-    filled_dates = None    
+
+
+    
+      
     if 'sc_db' not in st.session_state:
         st.session_state['sc_db'] = fetch_data_forced(st.secrets['db_sadhana']['sheetID'],
                                  f'{devotee_name}!R2:R',major_dimention='COLUMNS')[0]
-    
+    my_sc_dates = st.session_state['sc_db']
 
-    if reload_week :
-        filled_dates = fetch_data_forced(st.secrets['db_sadhana']['sheetID'],
-                                 f'{devotee_name}!R2:R',major_dimention='COLUMNS')[0]
-    else:
-        filled_dates = st.session_state['sc_db']
+    # ------------------Sadhana Card
     st.markdown("---")
+    aajkadin = datetime.datetime.today()
     last_monday = aajkadin - datetime.timedelta(days=aajkadin.weekday())
     last_week = []
     for i in range(7):
@@ -57,39 +55,51 @@ def show_daily_filling():
     current_week_status = {}
     pending_days = []
     for day in last_week:
-        if day in filled_dates:
+        if day in my_sc_dates:
             d = datetime.datetime.strptime(day,'%d/%m/%Y')
             current_week_status[d.strftime('%d %b %a')] = 'filled'
         else :
             d = datetime.datetime.strptime(day,'%d/%m/%Y')
             current_week_status[d.strftime('%d %b %a')] = 'pending'
             pending_days.append(d)
+    
+    def reload_scdb():
+        st.session_state['sc_db'] = fetch_data_forced(st.secrets['db_sadhana']['sheetID'],
+                                 f'{devotee_name}!R2:R',major_dimention='COLUMNS')[0]
 
-    # display_status = ""
-    left,right = st.columns(2)
+    left,middle,right = st.columns(3)
     left.write(':green[filled]')
-    right.write(':red[pending]')
+    middle.write(':red[pending]')
     for day in current_week_status.keys():
         if current_week_status[day] =='filled':
             left.write(f':green[{day}]')
             # display_status += f':green[{day}]' + '\n'
         else:
             assert current_week_status[day] =='pending'
-            right.write(f':red[{day}]')
+            middle.write(f':red[{day}]')
             # display_status += f':red[{day}]' + '\n'
-    st.markdown('---')
 
     fill = {}
-    filldate = st.radio(" hari",options=pending_days,label_visibility='hidden',
+
+    filldate_string = right.radio(" hari",options=pending_days,label_visibility='hidden',
     format_func=lambda x: x.strftime('%d %b %a'))
-    fill['date'] = filldate.strftime('%d %b %a')
-    st.markdown(f"#### filling for :violet[{fill['date'].strftime('%d %b %a')}]")
+    middle.button('refresh status',on_click=reload_scdb)
+    st.markdown('---')
+    filldate = datetime.date(year=filldate_string.year,
+                             month=filldate_string.month,
+                             day=filldate_string.day).strftime("%d %b %a")
+    fill['date'] = filldate
+    st.markdown(f"#### filling for :violet[{fill['date']}]")
 
     with st.expander("Morning Program",expanded=True):
         # waking up
-        wakeup = st.time_input('wake up')
-        fill['wakeup']  = f'{wakeup.hour}:{wakeup.minute}'
-        st.markdown("")
+        wakeup = st.number_input("Wake Up 🌞",value=3.99,step=.01)
+        st.caption(f':blue[wake up at {convert_time(wakeup)[1]}]')
+        if convert_time(wakeup)[0] !=-1:
+            fill['wakeup'] = convert_time(wakeup)[1]
+        else:
+            fill['wakeup'] = 'blank'
+
         
         # SA
         fill['SA'] = st.radio(label="SA Attendance",
@@ -113,8 +123,13 @@ def show_daily_filling():
         st.markdown("")
 
         # Chanting
-        chant = st.time_input("Chanting 📿")
-        fill['chant']  = f'{chant.hour}:{chant.minute}'
+        chant = st.number_input("Chanting 📿",value=8.99,step=.01)
+        st.caption(f':blue[complete japa at {convert_time(chant)[1]}]')
+        if convert_time(chant)[0] !=-1:
+            fill['chant'] = convert_time(chant)[1]
+        else:
+            fill['chant'] = 'blank' 
+
 
     # ---------------Reading and Hearing
     with st.expander("Sadhana 🔥",expanded=True):
@@ -145,8 +160,8 @@ def show_daily_filling():
                                             step=30
                                             )
         
-        verse = st.radio(label="Shloka",options=['notdone','done'],horizontal=True)
-        if verse=='done':
+        verse = st.radio(label="Shloka",options=['notdone','done-1','done-2','done-2+'],horizontal=True)
+        if verse!='notdone':
             verse_number = st.text_input(label="Which one 😎")
             if verse_number =="":
                 fill['verse'] = 'done'
@@ -173,9 +188,13 @@ def show_daily_filling():
     fill['dayrest'] = st.number_input("Day Rest ",
                                         min_value=0,
                                         value=0)
-    tobed = st.time_input("To Bed")
-    fill['tobed']  = f'{tobed.hour}:{tobed.minute}'
 
+    tobed = st.number_input("To Bed 💤",value=21.99,step=.01)
+    st.caption(f':blue[{convert_time(tobed)[1]}]')
+    if convert_time(tobed)[0] !=-1:
+        fill['tobed'] = convert_time(tobed)[1]
+    else:
+        fill['tobed'] = 'blank'    
 
     def submit(datasubmit):
         sheetID = st.secrets['db_sadhana']['sheetID']
@@ -186,27 +205,21 @@ def show_daily_filling():
 
         response = update_range(sheetID,sheetrange,[list(datasubmit.values())],input_type='USER_ENTERED')
         if 'values' in response.keys():
-            st.write(":green[filled Successfully!!]")
+            st.session_state['message'] = f":green[filled Successfully!!] for :violet[{datasubmit['date']}]"
         
     submit = st.button('submit 👍',on_click=submit,
                         args=[fill])
 
+    if 'message' in st.session_state:
+        st.caption(st.session_state['message'])
+        st.session_state.pop('message')
         
+
     st.markdown("---")
-
     st.markdown("### Other pages")
-
-
-
-
     def run2feed():
         st.session_state['substate'] = 'dashboard'
-    st.button("go 2 feed",on_click=run2feed)
-# ==================== Dashboard for all
-    st.markdown('---')
-    st.markdown('## Sadhana Card Dashboard')
-    st.markdown('[wa me](http://wa.me/917260869161?text=Hare%20Krishna%20Prabhuji)')
-    st.markdown('[wa me](tel:917260869161)')
+    st.button("Dashboard",on_click=run2feed)
 
 def show_sc_dashboard():
     st.header("Dashboard")
@@ -218,19 +231,11 @@ sc_state_page = {'show_page':show_daily_filling,
 
 def sc_main():
     if 'substate' not in st.session_state:
-        try:
-            show_daily_filling()
-        except:
-            pass
-    elif st.session_state['state'] in sc_state_page.keys():
+        show_daily_filling()
+    elif st.session_state['substate'] in sc_state_page.keys():
         # run the respective page
-        try:
-            sc_state_page[st.session_state.substate]()
-        except:
-            pass
+        sc_state_page[st.session_state.substate]()
     else :
-        try:
-            show_daily_filling()
-        except:
-            pass    
+        show_daily_filling()
+           
     
