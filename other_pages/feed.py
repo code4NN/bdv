@@ -6,8 +6,8 @@ def change_page(pagename):
 
 def show_feed():
     st.header(':green[Barasana Dhaam]')
-    st.subheader(':blue[Sri Sri Nimai Nitai Ki Jai]')
-    st.image('images/nn.jpg',width=500)
+    # st.subheader(':blue[Sri Sri Nimai Nitai Ki Jai]')
+    st.image('https://i.pinimg.com/550x/75/0d/ee/750dee9058de489b184e32b07d2a52d1.jpg')
 
     st.markdown('---') #------------------------ Forms
     st.subheader(":blue[Quick Forms]")    

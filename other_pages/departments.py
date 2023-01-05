@@ -2,23 +2,30 @@ import streamlit as st
 import pandas as pd
 import json
 import time
-from other_pages.googleapi import fetch_data
-from other_pages.googleapi import update_range
+from other_pages.googleapi import download_data
+from other_pages.googleapi import upload_data
 
-from other_pages.googleapi import append_range
+# from other_pages.googleapi import append_range
+#==================== some variables
+DEPT_DB = 'departments!A1:F57'
+DEPT_DB_VIEW_DEVOTEE = 'departments!A1:F57'
 
+
+#=====================
 def change_subpage(subpage):
     st.session_state['substate'] = subpage
 def change_page(page):
     st.session_state['state'] = page
+    st.session_state['substate'] = 'default'
 
-# ---------------------- some constants
-sheetID = st.secrets['credentials']['sheetID']
+
 # ---------------------- Functions
 def show_departments():
     st.subheader("VOICE Structure")
+    if 'dept_summary' not in st.session_state:
+        st.session_state['dept_summary'] = download_data(db_id=1,range_name=DEPT_DB)
     
-    df_raw = fetch_data(sheetID,'departments!A1:F57')
+    df_raw = st.session_state['dept_summary'] 
     df = pd.DataFrame(df_raw[1:],columns=df_raw[0])
 
     parent_depts = sorted(df.loc[:,'parent department'].unique().tolist())
@@ -50,7 +57,12 @@ def show_departments():
 def show_by_dev():
     st.subheader("VOICE Structure")
     st.button("Show by department",on_click=change_subpage,args=['default'])
-    df_raw = fetch_data(sheetID,'departments!A1:F57')
+    
+    if 'dept_db_v2' not in st.session_state:
+        st.session_state['dept_db_v2'] = download_data(db_id=1,
+        range_name=DEPT_DB_VIEW_DEVOTEE)
+    
+    df_raw = st.session_state['dept_db_v2']
     df = pd.DataFrame(df_raw[1:],columns=df_raw[0])
 
     branch1 = st.radio(" b1",options=['IC',"VMC",'BC'],label_visibility='hidden',
@@ -65,7 +77,18 @@ def show_by_dev():
         st.markdown(f'### :blue[{ic_selected}]')        
         st.write(df[df['IC']==ic_selected][['parent department','department','VMC','BC']].reset_index(drop=True))
 
+    elif branch1 == 'VMC':
+        IC_list = df['VMC'].dropna().unique().tolist()
+        # st.write(IC_list)
+        IC_list.sort()
+        IC_list.sort(key = lambda x: len(x))
+        ic_selected = st.radio("hi",options=IC_list,label_visibility='hidden')
+        st.markdown('---')
+        st.markdown(f'### :blue[{ic_selected}]')  
 
+        st.write(df[df['VMC']==ic_selected][['parent department','department','VMC','BC']].reset_index(drop=True))
+
+    st.button('Feed',on_click=change_page,args=['feed'])
 
 
 
