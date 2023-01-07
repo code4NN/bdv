@@ -25,8 +25,18 @@ def change_subpage(subpage):
     st.session_state['substate'] = subpage
     
 def convert_time(timestr):
+    hourdigit = -1
+    if 0<=timestr<=59:
+        hourdigit=0
+    elif 100<=timestr<=959:
+        hourdigit =1
+    else:
+        hourdigit =2
     timestr = str(timestr)
-
+    if hourdigit!=0:
+        timestr = f'{timestr[:hourdigit]}.{timestr[hourdigit:]}'
+    else:
+        timestr = f'0.{timestr}'
     if timestr =="":
         return (-1,"please write 24h format like :blue[21.30]")
     elif '.' in timestr:                        
@@ -35,7 +45,7 @@ def convert_time(timestr):
         try:
             standardtime = datetime.time(hour=int(hh),minute=int(mm)).strftime('%H:%M %p')
             timeforsheet = datetime.time(hour=int(hh),minute=int(mm)).strftime('%H:%M')
-            
+                
             return (1,f' :violet[{standardtime}]',timeforsheet)
         except:
             return (-1,"😔 :blue[Pr, could not convert]")
@@ -104,7 +114,8 @@ def show_daily_filling():
         else :
             d = datetime.datetime.strptime(day,'%d/%m/%Y')
             current_week_status[d.strftime('%d %b %a')] = 'pending'
-            pending_days.append(d)
+            if d <= datetime.datetime.today():
+                pending_days.append(d)
     
 
     left,middle,right = st.columns(3)
@@ -149,9 +160,9 @@ def show_daily_filling():
     st.markdown(f"#### filling for :violet[{fill['date']}]")
 
     with st.expander("Morning Program",expanded=False):
-        # waking up
-        wakeup = st.text_input("Wake Up 🌞",value='3.40',
-        help=""":blue[please write in 24 hour format 3.40 for 3:40 am""")                
+        wakeup = st.number_input("Wake Up 🌞",value=340,
+        help=""":blue[please write in 24 hour format without any delimiter]
+                :violet[345 for 3:45am]""",step=1)
         st.caption(f':blue[wake up at {convert_time(wakeup)[1]}]')
         if convert_time(wakeup)[0] !=-1:
             fill['wakeup'] = convert_time(wakeup)[2]
@@ -175,15 +186,15 @@ def show_daily_filling():
 
         # MA
         fill['MA'] = st.radio(label="Mangal Aarti",
-                            options=['not filled','Present','Absent'],
-                            index=2,
+                            options=['Present','Absent'],
+                            index=1,
                             horizontal=True)
         st.markdown("")
 
         # Chanting
-        chant = st.text_input("Chanting 📿",value='8.30',
+        chant = st.number_input("Chanting 📿",value=830,
                 help=""":blue[please write in 24 hour format]
-                        8.30 for 8:30 am""")
+                        830 for 8:30 am""",step=1)
 
         st.caption(f':blue[complete japa at {convert_time(chant)[1]}]')
         if convert_time(chant)[0] !=-1:
@@ -256,9 +267,9 @@ def show_daily_filling():
                                         value=0,
                                         step=30)
 
-    tobed = st.text_input("To Bed 💤",value='21.30',
+    tobed = st.number_input("To Bed 💤",value=2130,
             help=""":blue[please write in 24 hour format]
-                    21.30 for 9:30 pm""")
+                    2130 for 9:30 pm""",step=1)
     st.caption(f':blue[took rest at] {convert_time(tobed)[1]}')
 
     if convert_time(tobed)[0] !=-1:
@@ -295,6 +306,7 @@ def show_daily_filling():
 
     st.markdown("---")
     st.markdown('### :blue[Sadhana Card current status]')
+    # st.table(last_week_SC)
     st.dataframe(last_week_SC)
     st.markdown('---')
     st.markdown("### Other pages")
