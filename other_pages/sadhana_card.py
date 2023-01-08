@@ -83,7 +83,13 @@ def show_daily_filling():
         except :
             st.error("could not download sadhana card")
     
-    my_sc_dates = st.session_state['sc_filled_dates'][0]
+    try :
+        my_sc_dates = st.session_state['sc_filled_dates'][0]
+    except IndexError:
+        st.error("HK Prji, please contact to create your sadhana card")
+        st.markdown("[Ask to create](http://wa.me/917260869161?text=Hare%20Krishna%20Pr%20Please%20create%20my%20sadhana%20card%20sheet)")
+        st.button("Feed",on_click=change_page,args=['feed'])
+        return -1
     last_week_SC = list2def(st.session_state['sc_filled_dates'][1:])
 
 
