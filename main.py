@@ -31,7 +31,8 @@ else :
     # directed behaviour
     state_page_map[st.session_state.state]()    
     
-
+st.markdown('---')
+st.markdown("[have feedbacks??](http://wa.me/917260869161?text=Hare%20Krishna)")
 #---
 # if st.session_state
 
