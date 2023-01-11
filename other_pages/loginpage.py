@@ -26,6 +26,7 @@ def user_login():
             st.error("some problem in fetching data")
             st.write(":blue[ensure you are connected to internet]")
             st.write("please close the tab and open a new one")
+            st.button("retry",on_click=st.experimental_rerun)
             return None
     
     all_user_data = st.session_state['all_user_data']
@@ -53,9 +54,12 @@ def user_login():
             
             st.markdown('---')
             st.markdown('#### :green[Direct login to]')
-            st.button('Sadhana Card',on_click=takemein,args=['Sadhana_Card'],key='sc')
-            st.button('bdv departments',on_click=takemein,args=['dept_structure'],key='dept')
 
+            left,middle,right = st.columns(3)
+            left.button('Sadhana Card',on_click=takemein,args=['Sadhana_Card'],key='sc')
+            middle.button('💸 settlement',on_click=takemein,args=['settlement'],key='acc')
+            right.button('bdv departments',on_click=takemein,args=['dept_structure'],key='dept')
+    st.markdown("---")
     st.markdown("""<p><a href="http://wa.me/917260869161?text=Hare%20Krishna%20Pr%20I%20forgot%20my%20password%20please%20">
 <img src="https://icon-library.com/images/change-password-icon/change-password-icon-28.jpg" width="75" height="50">
 </a></p>""",unsafe_allow_html=True)

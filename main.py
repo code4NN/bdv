@@ -4,6 +4,7 @@ from other_pages.loginpage import login_main
 from other_pages.feed import show_feed
 from other_pages.sadhana_card import sc_main
 from other_pages.departments import structure_main
+from other_pages.settlement import settlement_main
 
 
 st.set_page_config(page_title="BDV",
@@ -21,9 +22,11 @@ st.markdown(hide_menu_style, unsafe_allow_html=True)
 # ======================================= 
 state_page_map = {'feed':show_feed,
                   'Sadhana_Card':sc_main,
-                  'dept_structure':structure_main
+                  'dept_structure':structure_main,
+                  'settlement':settlement_main
                     }
 
+# st.write(st.session_state)
 if 'state' not in st.session_state:
     # default behaviour
     login_main()

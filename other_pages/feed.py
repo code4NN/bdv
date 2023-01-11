@@ -12,7 +12,7 @@ def show_feed():
     st.markdown('---') #------------------------ Forms
     st.subheader(":blue[Quick Forms]")    
     st.button('Sadhana Card',on_click=change_page,args=['Sadhana_Card'])
-    # st.button('Settlement Form')
+    st.button('Settlement Form',on_click=change_page,args=['settlement'])
     # st.button('Suggession')
 
     st.markdown('---') #------------------------ Birthday

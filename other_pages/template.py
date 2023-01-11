@@ -1,26 +1,33 @@
 import streamlit as st
 import json
-import time
-from other_pages.googleapi import fetch_data
-from other_pages.googleapi import fetch_data_forced
-from other_pages.googleapi import update_range
 
-from other_pages.googleapi import append_range
+from other_pages.googleapi import download_data
+from other_pages.googleapi import upload_data
+
+# ============= some variables
+# ============= some variables end
+
+
+## ----------- call back functions
+def change_page(state,substate='default'):
+    st.session_state['state'] = state
+    st.session_state['substate'] = substate
 
 def change_subpage(subpage):
     st.session_state['substate'] = subpage
 
+## -------------
 # ---------------------- Wrapper
-# login_state_map = {'':}
+login_state_map = {}
 
-# def login_main():
-#     if 'substate' not in st.session_state:
-#         # default behaviour
-#         user_login()
+def login_main():
+    if 'substate' not in st.session_state:
+        # default behaviour
+        pass
 
-#     elif st.session_state['substate'] in login_state_map.keys():
-#         # directed behaviour
-#         login_state_map[st.session_state['substate']]()
-#     else:
-#         # exceptional
-#         user_login()        
+    elif st.session_state['substate'] in login_state_map.keys():
+        # directed behaviour
+        login_state_map[st.session_state['substate']]()
+    else:
+        # exceptional
+        pass 
