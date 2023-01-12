@@ -36,7 +36,7 @@ def settlement_form():
         st.button('Make settlement',on_click=change_subpage,args=['make_paymnt'])
     st.markdown('---')
     requestform = {'error':False}
-    with st.expander("fill a form",expanded=False):
+    with st.expander("fill a form",expanded=True):
 
         # timestamp
         requestform['timestamp'] = str(datetime.datetime.now())
@@ -59,20 +59,23 @@ def settlement_form():
         # payment for
         requestform['agenda'] = st.text_area(":green[Expense Agenda Details ]",max_chars=500,
                                 height=60)
-        if requestform['agenda'] =="":
+        if not requestform['agenda'].strip():
             st.caption(':red[agenda cannot be blank]')
             requestform['error'] = True
 
         # department
         requestform['department'] = st.text_input(":green[Department]",max_chars=100)
-        if requestform['department'] =="":
+        if not requestform['department'].strip():
             st.caption(':red[department cannot be blank]')
             requestform['error'] = True
 
         # any remark
 
         requestform['remark'] = st.text_area(":orange[any other remark]",height=50,max_chars=300)
-        
+        if not requestform['remark'].strip():
+            requestform['remark'] ='no comments'
+            st.caption(requestform['remark'])
+
         def submit(requestdict):
             request = []
             for value in REQUEST_FORM_ORDER:
@@ -80,9 +83,9 @@ def settlement_form():
             request.append('no')
             try:
                 response = append_data(db_id=1,range_name=REQUEST_FORM_RANGE,
-                        input_type='USER_ENTERED',value=[request])
+                    input_type='USER_ENTERED',value=[request])
                 if response:
-                    st.session_state['successful'] = ':green[successful]'
+                    st.session_state['successful'] = f':green[successfully filled form for ] :orange[{requestdict["amount"]}]'
                     st.session_state['user']['settlement_id'] = str(int(st.session_state['user']['settlement_id']) + 1)
             except:
                 st.session_state['error_upload'] = ':red[some error in uploading data]'
@@ -95,6 +98,11 @@ def settlement_form():
         elif 'successful' in st.session_state:
             st.caption(st.session_state['successful'])
             st.session_state.pop('successful')
+
+    
+
+
+    # other status
 
 
 def make_paymnt():
