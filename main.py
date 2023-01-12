@@ -26,7 +26,8 @@ state_page_map = {'feed':show_feed,
                   'settlement':settlement_main
                     }
 
-# st.write(st.session_state)
+# if 'user' in st.session_state:
+#     st.write(st.session_state['user'])
 if 'state' not in st.session_state:
     # default behaviour
     login_main()

@@ -74,6 +74,35 @@ def upload_data(db_id,range_name,value,input_type='RAW'):
         # st.write(err)
         pass
 
+
+def append_data(db_id,range_name,value,input_type='RAW'):
+    """
+    * for sheet choose value from
+    1. database
+    2. sadhana card    
+    """
+    if creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+    try:
+        service = build('sheets', 'v4', credentials=creds)
+
+        # Call the Sheets API
+        body = {
+            'values': value
+        }
+        spreadsheetID = db_list[db_id]
+        result = service.spreadsheets().values().append(
+            spreadsheetId=spreadsheetID, range=range_name,
+            valueInputOption=input_type, body=body,
+            insertDataOption = 'INSERT_ROWS',
+            includeValuesInResponse=True
+            ).execute()
+        
+        return result['updates']
+    except HttpError as err:
+        # st.write(err)
+        pass
+
 # def _append_range(spreadsheet_id,range_name,value):
 #     if creds.expired and creds.refresh_token:
 #             creds.refresh(Request())

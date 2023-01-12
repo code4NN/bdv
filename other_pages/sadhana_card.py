@@ -3,17 +3,37 @@ import datetime
 
 from other_pages.googleapi import download_data
 from other_pages.googleapi import upload_data
+from other_pages.googleapi import append_data
 import pandas as pd
 import json
 
 # ------------------------ some Constants
-SC_SCORE_DATE_COLUMN = '!S1:AI'
-SC_FIRST_BLANK_ROW = '!A3'
-SC_WRITE_RANGE = {'begin':'B','end':'Q'}
-WRITE_SEQ = ['date','wakeup','SA','MC','MA','chant','Reading','book',
-'Hearing_SP','Hearing_HHRNSM','Hearing_RSP','verse',
-'college','self_study','dayrest','tobed']
-FILLING_SUMMARY = 'summary!B5:J19'
+scdict = {'yud':
+                {"APPEND_RANGE": "!A:R",
+                "SC_CARD_INFO" : "!U:AM",
+                "FIELD_ORDER": ['date','wakeup','SA','MC','MA','chant','Reading','book',
+                                'Hearing_SP','Hearing_HHRNSM','Hearing_RSP','Hearing_Councellor',
+                                'verse','company','seva','dayrest','shayan_kirtan','tobed'
+                                ]
+                },
+          'bhim':
+                {"APPEND_RANGE": "!A:S",
+                "SC_CARD_INFO" : "!U:AN",
+                "FIELD_ORDER": ['date','wakeup','SA','MC','MA','chant','Reading','book',
+                                'Hearing_SP','Hearing_HHRNSM','Hearing_RSP','Hearing_Councellor',
+                                'verse','college','self_study','seva','dayrest','shayan_kirtan','tobed'
+                                ]
+                },
+          'nak':
+                {"APPEND_RANGE": "!A:S",
+                "SC_CARD_INFO" : "!U:AN",
+                "FIELD_ORDER": ['date','wakeup','SA','MC','MA','chant','Reading','book',
+                                'Hearing_SP','Hearing_HHRNSM','Hearing_RSP','Hearing_Councellor',
+                                'verse','college','self_study','seva','dayrest','shayan_kirtan','tobed'
+                                ]
+                }
+        }
+
 # ------------------------ some Constants end
 
 # ======================== some functions
@@ -75,25 +95,26 @@ def show_daily_filling():
 
     # get the database of user
     devotee = st.session_state['user']
-    if 'sc_filled_dates' not in st.session_state:
+    if 'sc_filled_info' not in st.session_state:
         try:
-            st.session_state['sc_filled_dates'] = download_data(db_id=2,
-                    range_name=f"{devotee['name']}{SC_SCORE_DATE_COLUMN}",
+            st.session_state['sc_filled_info'] = download_data(db_id=2,
+                    range_name=f"{devotee['name']}{scdict[devotee['group']]['SC_CARD_INFO']}",
                     major_dimention='COLUMNS')
         except :
             st.error("could not download sadhana card")
     
     try :
-        my_sc_dates = st.session_state['sc_filled_dates'][0]
+        my_sc_dates = st.session_state['sc_filled_info'][0]
     except IndexError:
         st.error("HK Prji, please contact to create your sadhana card")
         st.markdown("[Ask to create](http://wa.me/917260869161?text=Hare%20Krishna%20Pr%20Please%20create%20my%20sadhana%20card%20sheet)")
         st.button("Feed",on_click=change_page,args=['feed'])
         return -1
-    last_week_SC = list2def(st.session_state['sc_filled_dates'][1:])
+    last_week_SC = list2def(st.session_state['sc_filled_info'][1:])
 
 
 
+    st.markdown("<div id='linkto_top'></div>", unsafe_allow_html=True)
     st.markdown('## Hare Krishna' )
     st.markdown(f"### :green[{devotee['name']} Pr]")  
     if devotee['name'] =='guest':
@@ -139,7 +160,7 @@ def show_daily_filling():
     format_func=lambda x: x.strftime('%d %b %a'))
     
     def refresh_filled_dates():
-        st.session_state.pop('sc_filled_dates')
+        st.session_state.pop('sc_filled_info')
     def change_week(direction):
         if direction ==-1:
             st.session_state['filling_date'] = st.session_state['filling_date'] - datetime.timedelta(days=7)
@@ -160,13 +181,13 @@ def show_daily_filling():
                                 day=filldate_string.day).strftime("%d %b %a")
 
         fill['date'] = filldate
-    except AttributeError:
-        fill['date'] = 'patanahi'
+    except :
+        fill['date'] = '-'
         st.success('all day filled')
     st.markdown(f"#### filling for :violet[{fill['date']}]")
 
     with st.expander("Morning Program",expanded=False):
-        wakeup = st.number_input("Wake Up 🌞",value=340,
+        wakeup = st.number_input(":green[Wake Up] 🌞",value=340,
         help=""":blue[please write in 24 hour format without any delimiter]
                 :violet[345 for 3:45am]""",step=1)
         st.caption(f':blue[wake up at {convert_time(wakeup)[1]}]')
@@ -177,28 +198,28 @@ def show_daily_filling():
 
         
         # SA
-        fill['SA'] = st.radio(label="SA Attendance",
+        fill['SA'] = st.radio(label=":green[SA Attendance]",
                             options=['PP','L0','L1','L2','L3','L4','L5','LL'],
                             index=7,
                             horizontal=True)
         st.markdown("")
 
         # MC
-        fill['MC'] = st.radio(label="Morning Class",
+        fill['MC'] = st.radio(label=":green[Morning Class]",
                             options=['Full Present','Partially Present','Absent'],
                             index=2,
                             horizontal=True)
         st.markdown("")
 
         # MA
-        fill['MA'] = st.radio(label="Mangal Aarti",
+        fill['MA'] = st.radio(label=":green[Mangal Aarti]",
                             options=['Present','Absent'],
                             index=1,
                             horizontal=True)
         st.markdown("")
 
         # Chanting
-        chant = st.number_input("Chanting 📿",value=830,
+        chant = st.number_input(":green[Chanting] 📿",value=830,
                 help=""":blue[please write in 24 hour format]
                         830 for 8:30 am""",step=1)
 
@@ -206,45 +227,54 @@ def show_daily_filling():
         if convert_time(chant)[0] !=-1:
             fill['chant'] = convert_time(chant)[2]
         else:
-            fill['chant'] = ''
+            fill['chant'] = '-'
 
 
     # ---------------Reading and Hearing
     with st.expander("Sadhana 🔥",expanded=False):
-        fill['Reading'] = st.number_input(label="Reading",
+        fill['Reading'] = st.number_input(label=":green[Reading]",
                                             min_value=0,
                                             value=0,
                                             step=30
                                             )
         if fill['Reading'] > 0:
             bookname = st.text_input("Which Book")
-            fill['book'] = bookname
+            if bookname.strip():
+                fill['book'] = bookname
+            else:
+                fill['book']  = f"-{bookname}"
         else:
             fill['book'] = "-"
         
         st.markdown("#### Hearings")
-        fill['Hearing_SP'] = st.number_input(label="Srila Prabhupada",
+        fill['Hearing_SP'] = st.number_input(label=":green[Srila Prabhupada]",
                                             min_value=0,
                                             value=0,
                                             step=30
                                             )
                 
-        fill['Hearing_HHRNSM'] = st.number_input(label="HHRNSM",
+        fill['Hearing_HHRNSM'] = st.number_input(label=":green[HHRNSM]",
                                             min_value=0,
                                             value=0,
                                             step=30
                                             )
                 
-        fill['Hearing_RSP'] = st.number_input(label="HG RSP",
+        fill['Hearing_RSP'] = st.number_input(label=":green[HG RSP]",
                                             min_value=0,
                                             value=0,
                                             step=30
                                             )
+        if st.session_state['user']['group'] not in ['sah']:
+            fill['Hearing_Councellor']=st.number_input(label=":green[Councellor Hearing]",
+                                                min_value=0,
+                                                value=0,
+                                                step=30
+                                                )
         
-        verse = st.radio(label="Shloka",options=['notdone','done-1','done-2','done-3'],horizontal=True,
+        verse = st.radio(label=":green[Shloka]",options=['notdone','done-1','done-2','done-3'],horizontal=True,
         help=""":blue[since marks do not change after 3, so for verse above 3 please fill done-3]""")
         if verse!='notdone':
-            verse_number = st.text_input(label="Which one 😎")
+            verse_number = st.text_input(label=":green[Which one] 😎")
             if verse_number =="":
                 fill['verse'] = verse.split('-')[-1]
             else:
@@ -254,26 +284,39 @@ def show_daily_filling():
             fill['verse'] = '-'
 
     # --------------- College and Studies
-    with st.expander('College and Studies',expanded=False):
-        # st.markdown("### College")
-        
-        fill['college'] = st.radio(label='College Class',
-                                options=['All Present','Missed 1','Missed 2', 'Missed 2+','no classes'],
-                                index=3,
-                                horizontal=True)
+    if st.session_state['user']['group'] not in ['yud']:
+        fill['college'] = st.radio(label=':green[College Class]',
+                                    options=['All Present','Missed 1','Missed 2', 'Missed 2+','no classes'],
+                                    index=3,
+                                    horizontal=True)
         st.markdown("")
 
-        fill['self_study'] = st.number_input(label="Self Study",
+        fill['self_study'] = st.number_input(label=":green[Self Study]",
                                             min_value=0,
                                             value=0,
                                             step=30
                                             )
-    fill['dayrest'] = st.number_input("Day Rest ",
+    else:
+        st.markdown("")
+        fill['company'] = st.number_input(":orange[Company work (mins)]",
+                                           min_value=0,value=540,step=60)
+        st.caption(f":blue[:orange[{round((fill['company']/60),1)}] hours of company work]")
+        st.markdown("")
+    
+    fill['seva'] = st.number_input(':green[seva (duration in min)]',min_value=0,step=30,
+                    help=":blue[includes IM, Preaching, department seva, adhoc seva]")
+    st.markdown("")
+    st.markdown("")
+    st.markdown("")
+
+    fill['dayrest'] = st.number_input(":green[Day Rest]",
                                         min_value=0,
                                         value=0,
                                         step=30)
+    fill['shayan_kirtan'] = st.radio(":green[Shayan Kirtan]",options=['done','notdone'],
+                                    index=1,key='sk',horizontal=True)
 
-    tobed = st.number_input("To Bed 💤",value=2130,
+    tobed = st.number_input(":green[To Bed] 💤",value=2130,
             help=""":blue[please write in 24 hour format]
                     2130 for 9:30 pm""",step=1)
     st.caption(f':blue[took rest at] {convert_time(tobed)[1]}')
@@ -281,27 +324,26 @@ def show_daily_filling():
     if convert_time(tobed)[0] !=-1:
         fill['tobed'] = convert_time(tobed)[2]
     else:
-        fill['tobed'] = ''
+        fill['tobed'] = '-'
 
     def submit(datasubmit):
-        row = download_data(db_id=2,range_name=f"{devotee['name']}{SC_FIRST_BLANK_ROW}")[0][0]
-        row = json.loads(row)
-        row = row['first_blank_row']
-
-        write_range = f"{devotee['name']}!{SC_WRITE_RANGE['begin']}{row}:{SC_WRITE_RANGE['end']}{row}"
+       
+        write_range = f"{devotee['name']}{scdict[devotee['group']]['APPEND_RANGE']}"
         write_value = []
-        for field in WRITE_SEQ:
+        for field in scdict[devotee['group']]['FIELD_ORDER']:
             write_value.append(datasubmit[field])
         
-        try:
-            response = upload_data(db_id=2,range_name=write_range,value=[write_value],
-                                    input_type='USER_ENTERED')        
-            if 'values' in response.keys():
-                st.session_state['message'] = f":green[filled Successfully!!] for :violet[{datasubmit['date']}]"
-                st.session_state.pop('sc_filled_dates')
-        except :
-            st.error('could not upload scores')
-    if fill['date'] !='patanahi':
+        st.write(write_range[:])
+        st.write(write_value)
+        response = append_data(db_id=2,range_name=write_range,value=[write_value],
+                                input_type='USER_ENTERED')        
+        st.write(response)
+        if response:
+            st.session_state['message'] = f":green[filled Successfully!!] for :violet[{datasubmit['date']}]"
+            st.session_state.pop('sc_filled_info')
+        # except :
+        #     st.error('could not upload scores')
+    if fill['date'] !='-':
         submit = st.button('submit 👍',on_click=submit,
                         args=[fill])
 
@@ -312,12 +354,13 @@ def show_daily_filling():
 
     st.markdown("---")
     st.markdown('### :blue[Sadhana Card current status]')
-    # st.table(last_week_SC)
+
     st.dataframe(last_week_SC)
+    st.markdown("<a href='#linkto_top'>Link to top</a>", unsafe_allow_html=True)
     st.markdown('---')
     st.markdown("### Other pages")
     left,right = st.columns(2)
-    left.button("Dashboard",on_click=change_subpage,args=['dashboard'])
+    # left.button("Dashboard",on_click=change_subpage,args=['dashboard'])
     right.button("Feed",on_click=change_page,args=['feed'])
 
 def show_sc_dashboard():

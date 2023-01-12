@@ -36,6 +36,8 @@ def user_login():
     # -------------------------------LOGIN PAGE
     st.header(":green[Please Login to Continue]")
     input_user = st.text_input("Enter Username",key='username')
+    if input_user.__contains__(" "):
+        st.caption(':red[Haribol, remove space from username]')
     input_password = st.text_input("Enter Password",
                         type='password',
                         key='password')
@@ -49,6 +51,7 @@ def user_login():
             def takemein(page):
                 st.session_state['state'] = page
                 st.session_state['user'] = all_user_data[input_user]
+                st.session_state['user']['roles'] = st.session_state['user']['roles'].split(",")
             
             st.button("Login",on_click=takemein,args=['feed'],key='feed')
             
