@@ -333,11 +333,8 @@ def show_daily_filling():
         for field in scdict[devotee['group']]['FIELD_ORDER']:
             write_value.append(datasubmit[field])
         
-        st.write(write_range[:])
-        st.write(write_value)
         response = append_data(db_id=2,range_name=write_range,value=[write_value],
                                 input_type='USER_ENTERED')        
-        st.write(response)
         if response:
             st.session_state['message'] = f":green[filled Successfully!!] for :violet[{datasubmit['date']}]"
             st.session_state.pop('sc_filled_info')
