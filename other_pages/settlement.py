@@ -1,6 +1,7 @@
 import streamlit as st
 import datetime
 import json
+import pandas as pd
 
 from other_pages.googleapi import download_data
 from other_pages.googleapi import upload_data
@@ -10,10 +11,12 @@ from other_pages.googleapi import append_data
 REQUEST_FORM_ORDER = ['timestamp','date_of_paymnt','name','request_id','amount',
                     'department','agenda','remark']
 REQUEST_FORM_RANGE = 'settlement_request!A:H'
+SETTLEMENT_INFO = 'settlement_request!A2:M'
 
 PAYMENT_ORDER = ['timestamp','date_of_paymnt','amount',
                 'paymnt_info','remakr','request_ids']
 PAYMENT_RANGE = 'settlement_paymnt!B:G'
+
 # ============= some variables end
 
 
@@ -85,7 +88,7 @@ def settlement_form():
                 response = append_data(db_id=1,range_name=REQUEST_FORM_RANGE,
                     input_type='USER_ENTERED',value=[request])
                 if response:
-                    st.session_state['successful'] = f':green[successfully filled form for ] :orange[{requestdict["amount"]}]'
+                    st.session_state['successful'] = f':green[successfully filled form for ] :orange[₹ {requestdict["amount"]}]'
                     st.session_state['user']['settlement_id'] = str(int(st.session_state['user']['settlement_id']) + 1)
             except:
                 st.session_state['error_upload'] = ':red[some error in uploading data]'
@@ -99,7 +102,36 @@ def settlement_form():
             st.caption(st.session_state['successful'])
             st.session_state.pop('successful')
 
+    st.markdown('---')
+    st.markdown("## :blue[my forms]")
+
+
+    # download the data
+    if 'settlement_info' not in st.session_state:
+    # if True not in st.session_state:
+        settlement_info = download_data(db_id=1,range_name=SETTLEMENT_INFO)
+        temp = pd.DataFrame(settlement_info[1:],columns=settlement_info[0])
+        temp = temp[temp['devotee name']==st.session_state['user']['name']]
+        st.session_state['settlement_info'] = temp.copy()
     
+    settlement_info = st.session_state['settlement_info']
+    st.dataframe(settlement_info)
+    
+    
+
+
+
+
+
+
+
+
+
+
+
+    st.markdown('---')
+    st.button("feed",on_click=change_page,args=['feed'])
+
 
 
     # other status
