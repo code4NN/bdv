@@ -112,6 +112,7 @@ def settlement_form():
         settlement_info = download_data(db_id=1,range_name=SETTLEMENT_INFO)
         temp = pd.DataFrame(settlement_info[1:],columns=settlement_info[0])
         temp = temp[temp['devotee name']==st.session_state['user']['name']]
+        # temp = temp[['timestamp'	actual paymnt date	devotee name	uniqueid	amount	dept	details	any comments	noted_in_expense_sheet		2	settlement_id	status]]
         st.session_state['settlement_info'] = temp.copy()
     
     settlement_info = st.session_state['settlement_info']

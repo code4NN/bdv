@@ -44,8 +44,8 @@ def download_data(db_id,range_name,major_dimention='ROWS'):
         values = result.get('values', [])
         return values
     except HttpError as err:
-        st.write(err)
-        # pass
+        # st.write(err)
+        pass
 
 def upload_data(db_id,range_name,value,input_type='RAW'):
     """

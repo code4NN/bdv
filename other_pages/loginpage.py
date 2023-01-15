@@ -24,9 +24,13 @@ def user_login():
             st.session_state['all_user_data'] = json.loads(raw_data)
         except:
             st.error("some problem in fetching data")
+            def rerun():
+                st.session_state['exp_rerun'] = True
+                
+            st.image(image='./images/baby_Krishna_Crying.jpg',width=150)
+            st.button("retry",on_click=rerun)
             st.write(":blue[ensure you are connected to internet]")
-            st.write("please close the tab and open a new one")
-            st.button("retry",on_click=st.experimental_rerun)
+            st.write("please close the tab and open a new one")            
             return None
     
     all_user_data = st.session_state['all_user_data']
