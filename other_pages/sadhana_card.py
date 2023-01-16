@@ -231,7 +231,7 @@ def show_daily_filling():
 
 
     # ---------------Reading and Hearing
-    with st.expander("Sadhana 🔥",expanded=False):
+    with st.expander("Sadhana 🔥",expanded=True):
         fill['Reading'] = st.number_input(label=":green[Reading]",
                                             min_value=0,
                                             value=0,
