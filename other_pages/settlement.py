@@ -187,7 +187,7 @@ def settlement_form():
                         :violet[info: :orange[{info['paymnt_info']}].]
                         :violet[remark: :orange[{info['remark']}]]""")
             elif status =="red":
-                right.write(":orange[settlement progress yet to begin]")
+                right.write(":orange[settlement process yet to begin]")
             elif status =='orange':
                 right.write(":orange[expense has been noted. Payment will be done soon]")
 
