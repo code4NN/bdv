@@ -46,6 +46,13 @@ def change_subpage(subpage):
     
 def convert_time(timestr):
     hourdigit = -1
+
+    # try to convert to number
+    try :
+        timestr = int(timestr)
+    except:
+        return (-1,"please write 24h format like :blue[21.30]")
+
     if 0<=timestr<=59:
         hourdigit=0
     elif 100<=timestr<=959:
@@ -57,6 +64,8 @@ def convert_time(timestr):
         timestr = f'{timestr[:hourdigit]}.{timestr[hourdigit:]}'
     else:
         timestr = f'0.{timestr}'
+
+
     if timestr =="":
         return (-1,"please write 24h format like :blue[21.30]")
     elif '.' in timestr:                        
@@ -111,6 +120,9 @@ def show_daily_filling():
         st.button("Feed",on_click=change_page,args=['feed'])
         return -1
     last_week_SC = list2def(st.session_state['sc_filled_info'][1:])
+    last_week_SC['wakeup'] = last_week_SC['wakeup'].apply(lambda x: convert_time(x)[2] if convert_time(x)[0]==1 else '-' )
+    last_week_SC['chant'] = last_week_SC['chant'].apply(lambda x: convert_time(x)[2] if convert_time(x)[0]==1 else '-' )
+    last_week_SC['tobed'] = last_week_SC['tobed'].apply(lambda x: convert_time(x)[2] if convert_time(x)[0]==1 else '-' )
 
 
 
@@ -184,6 +196,8 @@ def show_daily_filling():
     except :
         fill['date'] = '-'
         st.success('all day filled')
+
+
     st.markdown(f"#### filling for :violet[{fill['date']}]")
 
     with st.expander("Morning Program",expanded=False):
@@ -192,7 +206,7 @@ def show_daily_filling():
                 :violet[345 for 3:45am]""",step=1)
         st.caption(f':blue[wake up at {convert_time(wakeup)[1]}]')
         if convert_time(wakeup)[0] !=-1:
-            fill['wakeup'] = convert_time(wakeup)[2]
+            fill['wakeup'] = wakeup
         else:
             fill['wakeup'] = "-"
 
@@ -225,7 +239,7 @@ def show_daily_filling():
 
         st.caption(f':blue[complete japa at {convert_time(chant)[1]}]')
         if convert_time(chant)[0] !=-1:
-            fill['chant'] = convert_time(chant)[2]
+            fill['chant'] = chant
         else:
             fill['chant'] = '-'
 
@@ -322,7 +336,7 @@ def show_daily_filling():
     st.caption(f':blue[took rest at] {convert_time(tobed)[1]}')
 
     if convert_time(tobed)[0] !=-1:
-        fill['tobed'] = convert_time(tobed)[2]
+        fill['tobed'] = tobed
     else:
         fill['tobed'] = '-'
 

@@ -69,9 +69,9 @@ def upload_data(db_id,range_name,value,input_type='RAW'):
             includeValuesInResponse=True
             ).execute()
         
-        return result['updatedData']
+        return result#['updatedData']
     except HttpError as err:
-        # st.write(err)
+        st.write(err)
         pass
 
 
@@ -100,7 +100,7 @@ def append_data(db_id,range_name,value,input_type='RAW'):
         
         return result['updates']
     except HttpError as err:
-        # st.write(err)
+        st.write(err)
         pass
 
 # def _append_range(spreadsheet_id,range_name,value):
