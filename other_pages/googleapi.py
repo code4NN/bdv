@@ -46,6 +46,29 @@ def download_data(db_id,range_name,major_dimention='ROWS'):
     except HttpError as err:
         # st.write(err)
         pass
+def download_data_in_batch(db_id,range_list):
+    """
+    * for sheet choose value from
+    1. database
+    2. sadhana card
+    """    
+    if creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+    try:
+        service = build('sheets', 'v4', credentials=creds)
+
+        # Call the Sheets API
+        spreadsheetID = db_list[db_id]
+        result = service.spreadsheets().values().batchGet(
+            spreadsheetId=spreadsheetID,
+            ranges=range_list
+            ).execute()
+
+        # values = result.get('values', [])
+        return result
+    except HttpError as err:
+        # st.write(err)
+        pass
 
 def upload_data(db_id,range_name,value,input_type='RAW'):
     """

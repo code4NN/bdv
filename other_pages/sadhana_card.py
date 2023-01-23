@@ -2,8 +2,11 @@ import streamlit as st
 import datetime
 
 from other_pages.googleapi import download_data
+from other_pages.googleapi import download_data_in_batch
 from other_pages.googleapi import upload_data
 from other_pages.googleapi import append_data
+
+import other_pages.sc_helper as scutils
 import pandas as pd
 import json
 
@@ -26,11 +29,11 @@ scdict = {'yud':
                 },
           'nak':
                 {"APPEND_RANGE": "!A:S",
-                "SC_CARD_INFO" : "!U:AN",
-                "FIELD_ORDER": ['date','wakeup','SA','MC','MA','chant','Reading','book',
-                                'Hearing_SP','Hearing_HHRNSM','Hearing_RSP','Hearing_Councellor',
-                                'verse','college','self_study','seva','dayrest','shayan_kirtan','tobed'
-                                ]
+                "SC_CARD_INFO" : "!V:AO",
+                "FIELD_ORDER": {'date':object,'wakeup':int,'SA':str,'MC':str,'MA':str,'chant':int,'Reading':int,'book':str,
+                                'Hearing_SP':int,'Hearing_HHRNSM':int,'Hearing_RSP':int,'Hearing_Councellor':int,
+                                'verse':str,'college':str,'self_study':int,'seva':int,'dayrest':int,'shayan_kirtan':str,'tobed':int
+                                },
                 }
         }
 
@@ -86,16 +89,31 @@ def get_current_week(aajkadin):
     current_week = []
     for i in range(7):
         weekday = last_monday + datetime.timedelta(days=i)
-        current_week.append(weekday.strftime('%d/%m/%Y'))
+        current_week.append(weekday.strftime("%d/%m/%Y"))
     
     return current_week
 
-def list2def(rawdata):
-    df = {}
-    for col in rawdata:
-        df[col[0]] = col[1:]
-    df = pd.DataFrame(df)
-    return df
+def process_filled_sadhana_card(rawdata,datatypedict):
+    """
+    rawdata: the two d array 
+    datatypedict: for converting columns to teheir type
+    
+    returns pandas dataframe
+    """
+    df_my_sadhana_card = None
+    if len(rawdata) ==1 :
+                df_my_sadhana_card = pd.DataFrame(columns=rawdata[0])
+    else :
+        df_my_sadhana_card = pd.DataFrame(rawdata[1:],columns=rawdata[0])
+
+    dtype_dict = {**datatypedict,'dbindex':int}
+
+    df_my_sadhana_card = df_my_sadhana_card.astype(dtype_dict)
+
+    df_my_sadhana_card['date'] = pd.to_datetime(df_my_sadhana_card['date'], format="%d/%m/%Y")
+    df_my_sadhana_card['strdate'] = df_my_sadhana_card['date'].apply(lambda x: x.strftime("%d/%m/%Y"))
+
+    return df_my_sadhana_card
 # ======================== some functions end
 
 
@@ -106,29 +124,25 @@ def show_daily_filling():
     devotee = st.session_state['user']
     if 'sc_filled_info' not in st.session_state:
         try:
-            st.session_state['sc_filled_info'] = download_data(db_id=2,
-                    range_name=f"{devotee['name']}{scdict[devotee['group']]['SC_CARD_INFO']}",
-                    major_dimention='COLUMNS')
-        except :
+            rawdata = download_data(db_id=2,
+                    range_name=f"{devotee['name']}{scdict[devotee['group']]['SC_CARD_INFO']}")
+            st.session_state['sc_filled_info'] = process_filled_sadhana_card(rawdata,
+            datatypedict=scdict[devotee['group']]['FIELD_ORDER'])
+        except Exception as e:
             st.error("could not download sadhana card")
+            show = st.checkbox('Show errors')
+            if show:
+                st.write(e)
     
-    try :
-        my_sc_dates = st.session_state['sc_filled_info'][0]
-    except IndexError:
-        st.error("HK Prji, please contact to create your sadhana card")
-        st.markdown("[Ask to create](http://wa.me/917260869161?text=Hare%20Krishna%20Pr%20Please%20create%20my%20sadhana%20card%20sheet)")
-        st.button("Feed",on_click=change_page,args=['feed'])
-        return -1
-    last_week_SC = list2def(st.session_state['sc_filled_info'][1:])
-    last_week_SC['wakeup'] = last_week_SC['wakeup'].apply(lambda x: convert_time(x)[2] if convert_time(x)[0]==1 else '-' )
-    last_week_SC['chant'] = last_week_SC['chant'].apply(lambda x: convert_time(x)[2] if convert_time(x)[0]==1 else '-' )
-    last_week_SC['tobed'] = last_week_SC['tobed'].apply(lambda x: convert_time(x)[2] if convert_time(x)[0]==1 else '-' )
+    
+    df_my_sadhana_card = st.session_state['sc_filled_info']    
 
 
 
     st.markdown("<div id='linkto_top'></div>", unsafe_allow_html=True)
     st.markdown('## Hare Krishna' )
-    st.markdown(f"### :green[{devotee['name']} Pr]")  
+    st.markdown(f"### :green[{devotee['name']} Pr]")
+
     if devotee['name'] =='guest':
         st.button('Main Menu',on_click=change_page,args=['feed'])
     
@@ -138,28 +152,48 @@ def show_daily_filling():
       
 
     # ------------------Sadhana Card
+    
+    # set the reference day to decide which week to fill
     st.markdown("---")
     if 'filling_date' not in st.session_state:
         st.session_state['filling_date'] = datetime.datetime.today()
     
     aajkadin = st.session_state['filling_date']
+
+    # get the current week
+    # also next
+    # get the current week status for each day. Filled or pending    
     current_week = get_current_week(aajkadin)
     current_week_status = {}
     pending_days = []
+    completed_days = []
+
     for day in current_week:
-        if day in my_sc_dates:
+        if day in df_my_sadhana_card['strdate'].tolist():
             d = datetime.datetime.strptime(day,'%d/%m/%Y')
             current_week_status[d.strftime('%d %b %a')] = 'filled'
+            completed_days.append(d)
         else :
             d = datetime.datetime.strptime(day,'%d/%m/%Y')
             current_week_status[d.strftime('%d %b %a')] = 'pending'
-            if d <= datetime.datetime.today():
-                pending_days.append(d)
+            # if day <= datetime.datetime.today():
+            pending_days.append(d)
     
+    
+    # Two take aways
+    # current_week_status = {string: either 'filled' or 'pending'} fixed length 7
+    # pending_days [date object] variable length 0 - 7
+    # completed_days [date object] variable length 0 - 7
 
+    # draw the canvass
+    filltype  = st.radio("choice",options=['fill','refill'],index=0,key='filloption',horizontal=True)
+    
     left,middle,right = st.columns(3)
-    left.write(':green[filled]')
-    middle.write(':red[pending]')
+    left.write(':green[FILLED]')
+    middle.write(':red[PENDING]')
+
+    # display the status of filled and pending 
+    # uses current_week_status (dict)
     for day in current_week_status.keys():
         if current_week_status[day] =='filled':
             left.write(f':green[{day}]')
@@ -167,10 +201,39 @@ def show_daily_filling():
             assert current_week_status[day] =='pending'
             middle.write(f':red[{day}]')    
 
-    filldate_string = right.radio("hari",options=pending_days,
-    label_visibility='hidden',
-    format_func=lambda x: x.strftime('%d %b %a'))
+    # choose a date to fill / edit
+
+    #
+    sc_fill_date_option = None
+    if filltype =='fill':
+        sc_fill_date_option = [pending_days,':blue[date to :orange[FILL]]']
+    else :
+        assert filltype =='refill'
+        sc_fill_date_option  = [completed_days,':blue[date to :orange[REFILL]]']
     
+    date_choose_option = False
+    if len(sc_fill_date_option[0]) >0:
+        selected_filldate = right.radio(
+            label=sc_fill_date_option[1],
+        options=sc_fill_date_option[0],
+        format_func=lambda x: x.strftime('%d %b %a'))
+
+        date_choose_option = True
+    else:
+        st.success("No days to select from")
+
+    if filltype =='refill':
+        try:
+            editrow = df_my_sadhana_card[df_my_sadhana_card.strdate ==selected_filldate.strftime("%d/%m/%Y")].dbindex.tolist()[0]
+            refill_begin, refill_end = scdict[devotee['group']]['APPEND_RANGE'].split(":")
+            refill_range = f"{devotee['name']}{refill_begin}{editrow}:{refill_end}{editrow}"
+        except Exception as e:
+            st.error("Some error happened")
+            def show_error(e):
+                st.write(e)
+            st.button("show error",on_click=show_error,args=[e])
+
+    # some UX
     def refresh_filled_dates():
         st.session_state.pop('sc_filled_info')
     def change_week(direction):
@@ -178,6 +241,7 @@ def show_daily_filling():
             st.session_state['filling_date'] = st.session_state['filling_date'] - datetime.timedelta(days=7)
         elif direction ==0:
             st.session_state['filling_date'] = datetime.datetime.today()
+
     middle.button('refresh status',on_click=refresh_filled_dates)
     right.button('previous week',on_click=change_week,args=[-1])
     right.button('Go to today',on_click=change_week,args=[0])
@@ -186,19 +250,17 @@ def show_daily_filling():
 
     # ----------------------filling begins
     st.markdown('---')
-    fill = {}
-    try:
-        filldate = datetime.date(year=filldate_string.year,
-                                month=filldate_string.month,
-                                day=filldate_string.day).strftime("%d %b %a")
+    fill = {'valid':1}
 
-        fill['date'] = filldate
-    except :
-        fill['date'] = '-'
-        st.success('all day filled')
+    if date_choose_option:
+        fill['date'] = selected_filldate.strftime("%d/%m/%Y")
+        fill['show_date'] = selected_filldate.strftime("%d %b %a")
+    else :
+        fill['valid'] = fill['valid'] * 0    
 
 
-    st.markdown(f"#### filling for :violet[{fill['date']}]")
+    if fill['valid'] !=0:
+        st.markdown(f"#### filling for :violet[{fill['show_date']}]")
 
     with st.expander("Morning Program",expanded=False):
         wakeup = st.number_input(":green[Wake Up] 🌞",value=340,
@@ -340,109 +402,86 @@ def show_daily_filling():
     else:
         fill['tobed'] = '-'
 
-    def submit(datasubmit):
+
+
+
+
+
+
+    # submission codes
+    def submit(datasubmit,upload_append,refill_range):
        
-        write_range = f"{devotee['name']}{scdict[devotee['group']]['APPEND_RANGE']}"
-        write_value = []
-        for field in scdict[devotee['group']]['FIELD_ORDER']:
-            write_value.append(datasubmit[field])
+        if upload_append =='fill':
+            write_range = f"{devotee['name']}{scdict[devotee['group']]['APPEND_RANGE']}"
+            write_value = []
+            for field in scdict[devotee['group']]['FIELD_ORDER'].keys():
+                write_value.append(datasubmit[field])
+            
+            response = append_data(db_id=2,range_name=write_range,value=[write_value],
+                                    input_type='USER_ENTERED')        
+            if response:
+                st.session_state['message'] = f":green[filled Successfully!!] for :violet[{datasubmit['show_date']}]"
+                st.session_state.pop('sc_filled_info')
+                
         
-        response = append_data(db_id=2,range_name=write_range,value=[write_value],
-                                input_type='USER_ENTERED')        
-        if response:
-            st.session_state['message'] = f":green[filled Successfully!!] for :violet[{datasubmit['date']}]"
-            st.session_state.pop('sc_filled_info')
-        # except :
-        #     st.error('could not upload scores')
-    if fill['date'] !='-':
-        submit = st.button('submit 👍',on_click=submit,
-                        args=[fill])
+        elif upload_append =='refill':
+            write_value = []
+            for field in scdict[devotee['group']]['FIELD_ORDER'].keys():
+                write_value.append(datasubmit[field])
+            
+            response = upload_data(db_id=2,range_name=refill_range,
+            value=[write_value],input_type='USER_ENTERED')
+            # append_data(db_id=2,range_name=write_range,value=[write_value],
+            #                         input_type='USER_ENTERED')        
+            if response:
+                st.session_state['message'] = f":green[filled Successfully!!] for :violet[{datasubmit['show_date']}]"
+                st.session_state.pop('sc_filled_info')
+                
+        
+
+    
+    # if valid then show the submit button
+    if fill['valid']!=0:
+        if filltype =='fill':
+            st.button('submit 👍',on_click=submit,
+                        args=[fill,'fill',None])
+        elif filltype =='refill':
+            st.button('submit 👍',on_click=submit,
+                        args=[fill,'refill',refill_range])
+
 
     if 'message' in st.session_state:
         st.caption(st.session_state['message'])
-        st.session_state.pop('message')
+        st.session_state.pop('message')        
+
         
+
+
+
+    # score card
 
     st.markdown("---")
-    st.markdown('### :blue[Sadhana Card current status]')
+    st.markdown('### :blue[Sadhana Card Various metrices]')
 
-    st.dataframe(last_week_SC)
-    st.markdown("<a href='#linkto_top'>Link to top</a>", unsafe_allow_html=True)
-    st.markdown('---')
-    st.markdown("### Other pages")
-    left,right = st.columns(2)
-    # left.button("Dashboard",on_click=change_subpage,args=['dashboard'])
-    right.button("Feed",on_click=change_page,args=['feed'])
+    
+
+    
+    current_week_values = df_my_sadhana_card[df_my_sadhana_card.date.isin([*pending_days,*completed_days])].copy()    
+    current_week_scores = scutils.get_scores(devotee['group'],current_week_values)
+
+    mysc,mygroup,fillingpage = st.tabs(["my Sadhana card",'My group',"Filling Status"])
+
+    with mysc:
+        current_week_values.drop(columns=['strdate','dbindex'],inplace=True)  
+        current_week_values['date'] = [d.strftime('%d %b %a') for d in current_week_values['date']]
+
+        st.dataframe(current_week_values)
+        st.dataframe(current_week_scores)
+
+    
 
 def show_sc_dashboard():
-    if 'scfilling' not in st.session_state:
-        # query_raw = fetch_data_forced(st.secrets['db_sadhana']['sheetID'],
-        #                             'summary!B5:J19',major_dimention='COLUMNS')
-        query_raw = download_data(db_id=2,range_name=FILLING_SUMMARY,
-                        major_dimention='COLUMNS')
-        filling_info = {}
-        for devotee in query_raw:
-            filling_info[devotee[0]] = devotee[1:]
-        st.session_state['scfilling'] = filling_info
-            
-    scfillinginfo = st.session_state['scfilling']
-    # ------This week
-    st.header(":blue[Sadhana Card Dashboard]")        
-    st.markdown("### :violet[Daily Filling Status]")
-    st.markdown(':violet[current Week]')
-
-    aajkadin = datetime.datetime.today()
-    last_monday = aajkadin - datetime.timedelta(days=aajkadin.weekday())
-    last_week = get_current_week(aajkadin)
-
-    current_week_table = pd.DataFrame(last_week,columns=['dates_raw'])
-    current_week_table['date'] = pd.to_datetime(current_week_table['dates_raw'],format='%d/%m/%Y')
-    current_week_table['date'] = current_week_table['date'].apply(lambda x:x.strftime('%b %d %a'))
-    
-
-    def daily_status(name,day):
-        if day in scfillinginfo[name]:
-            return 'filled'
-        else :
-            return '-'
-    
-    for devotee in scfillinginfo:
-        current_week_table[f'{devotee} Pr'] = [daily_status(devotee,d) for d in current_week_table['dates_raw']]
-        
-    st.dataframe(current_week_table.drop(columns=['dates_raw']).copy())
-
-    def refresh_week():
-        st.session_state.pop('scfilling')
-
-    st.button("Refresh Week",on_click=refresh_week)
-    st.markdown('---')
-    # ------------------ last week
-    st.markdown(':violet[Previous Week]')
-    aajkadin = datetime.datetime.today() - datetime.timedelta(days=7)
-    last_monday = aajkadin - datetime.timedelta(days=aajkadin.weekday())
-    last_week = []
-    for i in range(7):
-        weekday = last_monday + datetime.timedelta(days=i)
-        last_week.append(weekday.strftime('%d/%m/%Y'))
-
-    current_week_table = pd.DataFrame(last_week,columns=['dates_raw'])
-    current_week_table['date'] = pd.to_datetime(current_week_table['dates_raw'],format='%d/%m/%Y')
-    current_week_table['date'] = current_week_table['date'].apply(lambda x:x.strftime('%b %d %a'))
-    def daily_status(name,day):
-        if day in scfillinginfo[name]:
-            return 'filled'
-        else :
-            return '-'
-    for devotee in scfillinginfo:
-        current_week_table[f'{devotee} Pr'] = [daily_status(devotee,d) for d in current_week_table['dates_raw']]
-        
-    st.dataframe(current_week_table.drop(columns=['dates_raw']))
-
-
-    st.markdown('---')
-
-    st.button('Fill today',on_click=change_subpage,args=['show_page'])
-
+    return -1
 
 #------------------------------ Wrapper
 view_dict= {'default':show_daily_filling,
