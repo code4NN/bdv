@@ -7,7 +7,7 @@ from other_pages.googleapi import download_data
 
 def get_standard(groupname):
     # if f'standard_{groupname}'  in st.session_state:
-    # st.session_state.pop(f'standard_{groupname}')
+    #     st.session_state.pop(f'standard_{groupname}')
     if f'standard_{groupname}' not in st.session_state:
         raw_array = download_data(db_id=2,
         range_name=f'standard_{groupname}')
@@ -22,7 +22,7 @@ def get_standard(groupname):
         temp = temp.astype({'index':int,'value':int,'Marks':int})
         temp.sort_values(by='index',inplace=True)
         temp.reset_index(inplace=True,drop=True)
-        temp.reset_index(inplace=True,drop=True)
+
         standard['wakeup'] = temp.copy()
         del temp
 
@@ -56,7 +56,7 @@ def get_standard(groupname):
         standard['chant'] = temp.copy()
         del temp
         
-        if groupname =='nak':
+        if 'college' in alldf['filter'].tolist():
             temp = alldf[alldf['filter']=='college']
             temp = temp.astype({'index':int,'value':str,'Marks':int})
             temp.sort_values(by='index',inplace=True)
@@ -83,15 +83,18 @@ def get_standard(groupname):
         temp = alldf[alldf['filter']=='targets']
         temp = temp.astype({'index':str,'value':int,'Marks':int})
         temp.reset_index(inplace=True,drop=True)
+        # tempdict = {}
+        # for i in range(len(temp)):
+        #     tempdict[temp.loc[i,'index']] = {"target":temp.loc[i,'value'],"mark":temp.loc[i,'Marks']}
         standard['targets'] = temp.copy()
-        del temp                      
+        del temp             
 
         # dayrest
         temp = alldf[alldf['filter']=='tobed']
         temp = temp.astype({'index':int,'value':int,'Marks':int})
         temp.sort_values(by='index',inplace=True)
         temp.reset_index(inplace=True,drop=True)
-        temp.reset_index(inplace=True,drop=True)
+
         standard['tobed'] = temp.copy()
         del temp
         st.session_state[f'standard_{groupname}'] = standard
@@ -131,13 +134,17 @@ def get_scores(group,card):
     score['Reading'] = card['Reading'].apply(lambda x: int(x))
     score['SP'] = card['Hearing_SP'].apply(lambda x: int(x))
     score['HHRNSM'] = card['Hearing_HHRNSM'].apply(lambda x: int(x))    
-    score['HGRSP'] = card['Hearing_RSP'].apply(lambda x: int(x))    
-    score['Councellor'] = card['Hearing_Councellor'].apply(lambda x: int(x))
+    score['HGRSP'] = card['Hearing_RSP'].apply(lambda x: int(x))
+    
+    councellor_hearing = 0
+    if 'Councellor' in card.columns.tolist():
+        score['Councellor'] = card['Hearing_Councellor'].apply(lambda x: int(x))
+        councellor_hearing = score['Councellor'].sum()
     
     
     score['verse'] = card['verse'].apply(lambda x: int(x) if x !='-' else 0)
 
-    if group =='nak':
+    if 'college' in card.columns.tolist():
         score['college'] = card['college'].apply(lambda x: standard['college'][x])
         score['study'] = card['self_study'].apply(lambda x: int(x))
     
@@ -159,4 +166,12 @@ def get_scores(group,card):
     score['tobed'] = card['tobed'].apply(lambda x: _tobed(x))
     # st.dataframe(score)
     # st.write(standard['ma'])
-    return score
+    return {"table":score,
+            'study': score['study'].sum() if 'college' in card.columns.tolist() else None,
+            'hearing': score['HGRSP'].sum() + score['HHRNSM'].sum() + score['SP'].sum() + councellor_hearing,
+            'reading': score['Reading'].sum(),
+            'hearing_info':{'HGRSP': score['HGRSP'].sum(),
+                            'HHRNSM': score['HHRNSM'].sum(),
+                            'SP': score['SP'].sum()},
+            'verse': score['verse'].sum()            
+            }

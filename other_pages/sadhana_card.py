@@ -417,8 +417,7 @@ def show_daily_filling():
             for field in scdict[devotee['group']]['FIELD_ORDER'].keys():
                 write_value.append(datasubmit[field])
             
-            response = append_data(db_id=2,range_name=write_range,value=[write_value],
-                                    input_type='USER_ENTERED')        
+            response = append_data(db_id=2,range_name=write_range,value=[write_value])        
             if response:
                 st.session_state['message'] = f":green[filled Successfully!!] for :violet[{datasubmit['show_date']}]"
                 st.session_state.pop('sc_filled_info')
@@ -430,7 +429,7 @@ def show_daily_filling():
                 write_value.append(datasubmit[field])
             
             response = upload_data(db_id=2,range_name=refill_range,
-            value=[write_value],input_type='USER_ENTERED')
+            value=[write_value])
             # append_data(db_id=2,range_name=write_range,value=[write_value],
             #                         input_type='USER_ENTERED')        
             if response:
@@ -467,16 +466,51 @@ def show_daily_filling():
 
     
     current_week_values = df_my_sadhana_card[df_my_sadhana_card.date.isin([*pending_days,*completed_days])].copy()    
-    current_week_scores = scutils.get_scores(devotee['group'],current_week_values)
+    current_week_evaluation = scutils.get_scores(devotee['group'],current_week_values)
+    current_week_table = current_week_evaluation['table']
+    mytarget = scutils.get_standard(devotee['group'])['targets']
+    mytarget = dict(zip(mytarget['index'],mytarget['value']))
 
-    mysc,mygroup,fillingpage = st.tabs(["my Sadhana card",'My group',"Filling Status"])
+    st.markdown(
+    """
+    <style>
+        .stProgress > div > div > div > div {
+            background-image: linear-gradient(to right, #FA350B , #8DFA0B);
+        }
+    </style>""",
+    unsafe_allow_html=True,
+    )
+    
+    # Reading status
+    reading_completed = current_week_evaluation['reading']
+    st.markdown(f':blue[SP Readinga Completed: :orange[{reading_completed} min] Target: :orange[{mytarget["Reading"]} min]]')
+    st.progress(float(1) if reading_completed>=mytarget['Reading'] else float(reading_completed/mytarget['Reading']))
+    
+    # # Hearing status
+    hearing_completed = current_week_evaluation['hearing']
+    st.markdown(f':blue[Hearing Completed: :orange[{hearing_completed} min] Target: :orange[{mytarget["Hearing"]} min]]')
+    st.progress(float(1) if hearing_completed>=mytarget['Hearing'] else float(hearing_completed/mytarget['Hearing']))
+
+    # verse
+    verses_completed = current_week_evaluation['verse']
+    st.markdown(f':blue[Verse: :orange[{verses_completed}] completed Target: :orange[{mytarget["shloka"]}]]')
+    st.progress(float(1) if verses_completed>=mytarget['shloka'] else float(verses_completed/mytarget['shloka']))
+
+    # study
+    if current_week_evaluation['study']!= None:
+        study_completed = current_week_evaluation['study']
+        st.markdown(f':blue[Studies: :orange[{study_completed} min] completed Target: :orange[{mytarget["Study"]} min]]')
+        st.progress(float(1) if study_completed>=mytarget['Study'] else float(study_completed/mytarget['Study']))
+    
+
+    mysc,mygroup,fillingpage = st.tabs(["my Sadhana card",'All Devotees',"Sadhana Card Report"])
 
     with mysc:
         current_week_values.drop(columns=['strdate','dbindex'],inplace=True)  
         current_week_values['date'] = [d.strftime('%d %b %a') for d in current_week_values['date']]
 
         st.dataframe(current_week_values)
-        st.dataframe(current_week_scores)
+        st.dataframe(current_week_table)
 
     
 

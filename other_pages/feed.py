@@ -22,7 +22,7 @@ def show_feed():
     ':green[Parth Pr]'
     "Upcoming"
     ':red[Vivek Pr] Tuesday'
-
+    
     st.markdown('---') #------------------------Quote and verse
 
     st.subheader(":blue[Quote of the day]")
