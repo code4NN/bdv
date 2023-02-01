@@ -49,7 +49,6 @@ def settlement_form():
         # date of paymnt
         paymnt_date = st.date_input(":green[Date of Payment]")
         requestform['date_of_paymnt'] = str(paymnt_date)
-
         # name
         st.write(f":blue[Name: {st.session_state['user']['name']}]")
         requestform['name'] = st.session_state['user']['name']
@@ -93,7 +92,8 @@ def settlement_form():
                     st.session_state['successful'] = f':green[successfully filled form for ] :orange[₹ {requestdict["amount"]}]'
                     st.session_state['user']['settlement_id'] = str(int(st.session_state['user']['settlement_id']) + 1)
                     st.session_state.pop('settlement_info')
-            except:
+            except Exception as e:
+                st.write(e)
                 st.session_state['error_upload'] = ':red[some error in uploading data]'
         if not requestform['error']:
             st.button("Submit",on_click=submit,args=[requestform])

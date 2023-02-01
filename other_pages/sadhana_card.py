@@ -422,7 +422,7 @@ def show_daily_filling():
                 write_value.append(datasubmit[field])
             
             response = append_data(db_id=2,range_name=write_range,value=[write_value])        
-            if response:
+            if response and 'sc_filled_info' in st.session_state:
                 st.session_state['message'] = f":green[filled Successfully!!] for :violet[{datasubmit['show_date']}]"
                 st.session_state.pop('sc_filled_info')
                 
@@ -475,36 +475,36 @@ def show_daily_filling():
     mytarget = scutils.get_standard(devotee['group'])['targets']
     mytarget = dict(zip(mytarget['index'],mytarget['value']))
 
-    st.markdown(
-    """
-    <style>
-        .stProgress > div > div > div > div {
-            background-image: linear-gradient(to right, #FA350B , #8DFA0B);
-        }
-    </style>""",
-    unsafe_allow_html=True,
-    )
+    # st.markdown(
+    # """
+    # <style>
+    #     .stProgress > div > div > div > div {
+    #         background-image: linear-gradient(to right, #FA350B , #8DFA0B);
+    #     }
+    # </style>""",
+    # unsafe_allow_html=True,
+    # )
     
-    # Reading status
-    reading_completed = current_week_evaluation['reading']
-    st.markdown(f':blue[SP Readinga Completed: :orange[{reading_completed} min] Target: :orange[{mytarget["Reading"]} min]]')
-    st.progress(float(1) if reading_completed>=mytarget['Reading'] else float(reading_completed/mytarget['Reading']))
+    # # Reading status
+    # reading_completed = current_week_evaluation['reading']
+    # st.markdown(f':blue[SP Readinga Completed: :orange[{reading_completed} min] Target: :orange[{mytarget["Reading"]} min]]')
+    # st.progress(float(1) if reading_completed>=mytarget['Reading'] else float(reading_completed/mytarget['Reading']))
     
-    # # Hearing status
-    hearing_completed = current_week_evaluation['hearing']
-    st.markdown(f':blue[Hearing Completed: :orange[{hearing_completed} min] Target: :orange[{mytarget["Hearing"]} min]]')
-    st.progress(float(1) if hearing_completed>=mytarget['Hearing'] else float(hearing_completed/mytarget['Hearing']))
+    # # # Hearing status
+    # hearing_completed = current_week_evaluation['hearing']
+    # st.markdown(f':blue[Hearing Completed: :orange[{hearing_completed} min] Target: :orange[{mytarget["Hearing"]} min]]')
+    # st.progress(float(1) if hearing_completed>=mytarget['Hearing'] else float(hearing_completed/mytarget['Hearing']))
 
-    # verse
-    verses_completed = current_week_evaluation['verse']
-    st.markdown(f':blue[Verse: :orange[{verses_completed}] completed Target: :orange[{mytarget["shloka"]}]]')
-    st.progress(float(1) if verses_completed>=mytarget['shloka'] else float(verses_completed/mytarget['shloka']))
+    # # verse
+    # verses_completed = current_week_evaluation['verse']
+    # st.markdown(f':blue[Verse: :orange[{verses_completed}] completed Target: :orange[{mytarget["shloka"]}]]')
+    # st.progress(float(1) if verses_completed>=mytarget['shloka'] else float(verses_completed/mytarget['shloka']))
 
     # study
-    if current_week_evaluation['study']!= None:
-        study_completed = current_week_evaluation['study']
-        st.markdown(f':blue[Studies: :orange[{study_completed} min] completed Target: :orange[{mytarget["Study"]} min]]')
-        st.progress(float(1) if study_completed>=mytarget['Study'] else float(study_completed/mytarget['Study']))
+    # if current_week_evaluation['study']!= None:
+    #     study_completed = current_week_evaluation['study']
+    #     st.markdown(f':blue[Studies: :orange[{study_completed} min] completed Target: :orange[{mytarget["Study"]} min]]')
+    #     st.progress(float(1) if study_completed>=mytarget['Study'] else float(study_completed/mytarget['Study']))
     
 
     mysc,mygroup,fillingpage = st.tabs(["my Sadhana card",'All Devotees',"Sadhana Card Report"])
