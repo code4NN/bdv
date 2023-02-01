@@ -28,10 +28,10 @@ scdict = {'yud':
                                 ]
                 },
           'nak':
-                {"APPEND_RANGE": "!A:S",
-                "SC_CARD_INFO" : "!V:AO",
+                {"APPEND_RANGE": "!A:T",
+                "SC_CARD_INFO" : "!W:AQ",
                 "FIELD_ORDER": {'date':object,'wakeup':int,'SA':str,'MC':str,'MA':str,'chant':int,'Reading':int,'book':str,
-                                'Hearing_SP':int,'Hearing_HHRNSM':int,'Hearing_RSP':int,'Hearing_Councellor':int,
+                                'Hearing_SP':int,'Hearing_HHRNSM':int,'Hearing_RSP':int,'Hearing_Councellor':int,'Hearing_Other':int,
                                 'verse':str,'college':str,'self_study':int,'seva':int,'dayrest':int,'shayan_kirtan':str,'tobed':int
                                 },
                 }
@@ -127,7 +127,7 @@ def show_daily_filling():
             rawdata = download_data(db_id=2,
                     range_name=f"{devotee['name']}{scdict[devotee['group']]['SC_CARD_INFO']}")
             st.session_state['sc_filled_info'] = process_filled_sadhana_card(rawdata,
-            datatypedict=scdict[devotee['group']]['FIELD_ORDER'])
+                                            datatypedict=scdict[devotee['group']]['FIELD_ORDER'])
         except Exception as e:
             st.error("could not download sadhana card")
             show = st.checkbox('Show errors')
@@ -346,7 +346,11 @@ def show_daily_filling():
                                                 value=0,
                                                 step=30
                                                 )
-        
+        fill['Hearing_Other'] = st.number_input(label=":green[Other]",
+                                            min_value=0,
+                                            value=0,
+                                            step=30
+                                            )
         verse = st.radio(label=":green[Shloka]",options=['notdone','done-1','done-2','done-3'],horizontal=True,
         help=""":blue[since marks do not change after 3, so for verse above 3 please fill done-3]""")
         if verse!='notdone':

@@ -37,9 +37,12 @@ def download_data(db_id,range_name):
     """
     try:            
         workbook = _get_wb(db_id)
-        sheetname, rangename = range_name.split("!")
-        response = workbook.worksheet(sheetname).get_values(rangename)        
-        return response
+        if '!' in range_name:
+            sheetname, rangename = range_name.split("!")
+            response = workbook.worksheet(sheetname).get_values(rangename)        
+            return response
+        return -1
+
     except Exception as e:
         st.write(e)
 

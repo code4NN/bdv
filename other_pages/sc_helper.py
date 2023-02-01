@@ -3,14 +3,13 @@ import streamlit as st
 
 from other_pages.googleapi import download_data
 
+standard_range = {'nak': "standards!B3:E90"}
 
 
 def get_standard(groupname):
-    # if f'standard_{groupname}'  in st.session_state:
-    #     st.session_state.pop(f'standard_{groupname}')
     if f'standard_{groupname}' not in st.session_state:
         raw_array = download_data(db_id=2,
-        range_name=f'standard_{groupname}')
+        range_name=standard_range[groupname])
 
         alldf  = pd.DataFrame(raw_array[1:],columns=raw_array[0])
         alldf.dropna(inplace=True)
@@ -24,28 +23,24 @@ def get_standard(groupname):
         temp.reset_index(inplace=True,drop=True)
 
         standard['wakeup'] = temp.copy()
-        del temp
 
         # SA
         temp = alldf[alldf['filter']=='sa']
         temp = temp.astype({'index':int,'value':str,'Marks':int})
         temp.sort_values(by='index',inplace=True)        
         standard['sa'] = dict(zip(temp['value'],temp['Marks']))        
-        del temp
         
         # MC
         temp = alldf[alldf['filter']=='mc']
         temp = temp.astype({'index':int,'value':str,'Marks':int})
         temp.sort_values(by='index',inplace=True)
         standard['mc'] = dict(zip(temp['value'],temp['Marks']))
-        del temp
        
         # Ma
         temp = alldf[alldf['filter']=='ma']
         temp = temp.astype({'index':int,'value':str,'Marks':int})
         temp.sort_values(by='index',inplace=True)
         standard['ma'] = dict(zip(temp['value'],temp['Marks']))
-        del temp
 
         # chanting
         temp = alldf[alldf['filter']=='chant']
@@ -54,14 +49,12 @@ def get_standard(groupname):
         temp.reset_index(inplace=True,drop=True)
         temp.reset_index(inplace=True,drop=True)
         standard['chant'] = temp.copy()
-        del temp
         
         if 'college' in alldf['filter'].tolist():
             temp = alldf[alldf['filter']=='college']
             temp = temp.astype({'index':int,'value':str,'Marks':int})
             temp.sort_values(by='index',inplace=True)
             standard['college'] = dict(zip(temp['value'],temp['Marks']))
-            del temp
         
         # dayrest
         temp = alldf[alldf['filter']=='dayrest']
@@ -70,14 +63,12 @@ def get_standard(groupname):
         temp.reset_index(inplace=True,drop=True)
         temp.reset_index(inplace=True,drop=True)
         standard['dayrest'] = temp.copy()
-        del temp
 
         # shayan kirtan
         temp = alldf[alldf['filter']=='sk']
         temp = temp.astype({'index':int,'value':str,'Marks':int})
         temp.sort_values(by='index',inplace=True)
         standard['sk'] = dict(zip(temp['value'],temp['Marks']))
-        del temp
 
         # targets
         temp = alldf[alldf['filter']=='targets']
@@ -86,8 +77,7 @@ def get_standard(groupname):
         # tempdict = {}
         # for i in range(len(temp)):
         #     tempdict[temp.loc[i,'index']] = {"target":temp.loc[i,'value'],"mark":temp.loc[i,'Marks']}
-        standard['targets'] = temp.copy()
-        del temp             
+        standard['targets'] = temp.copy()          
 
         # dayrest
         temp = alldf[alldf['filter']=='tobed']
@@ -96,12 +86,9 @@ def get_standard(groupname):
         temp.reset_index(inplace=True,drop=True)
 
         standard['tobed'] = temp.copy()
-        del temp
         st.session_state[f'standard_{groupname}'] = standard
             
     return st.session_state[f"standard_{groupname}"]
-
-
 
 
 def get_scores(group,card):
@@ -131,11 +118,13 @@ def get_scores(group,card):
                 return standard['chant'].loc[i,'Marks']
         return -1
     score['chant'] = card['chant'].apply(lambda x: _chant(x))
+
     score['Reading'] = card['Reading'].apply(lambda x: int(x))
     score['SP'] = card['Hearing_SP'].apply(lambda x: int(x))
     score['HHRNSM'] = card['Hearing_HHRNSM'].apply(lambda x: int(x))    
     score['HGRSP'] = card['Hearing_RSP'].apply(lambda x: int(x))
-    
+    score['Other'] = card['Hearing_Other'].apply(lambda x: int(x))
+
     councellor_hearing = 0
     if 'Councellor' in card.columns.tolist():
         score['Councellor'] = card['Hearing_Councellor'].apply(lambda x: int(x))
@@ -155,23 +144,50 @@ def get_scores(group,card):
                 return standard['dayrest'].loc[i,'Marks']
         return -1
     score['dayrest'] = card['dayrest'].apply(lambda x: _dayrest(x))
+
     score['SK'] = card['shayan_kirtan'].apply(lambda x: standard['sk'][x])
+
     def _tobed(query):
         value = int(query)
         for i in range(len(standard['tobed'])):
             if value < standard['tobed'].loc[i,'value']:
                 return standard['tobed'].loc[i,'Marks']
         return -1
-    
     score['tobed'] = card['tobed'].apply(lambda x: _tobed(x))
     # st.dataframe(score)
     # st.write(standard['ma'])
+
+    # calculating body soul study
+    
+    # SOUL
+    # sa, mc, ma Chanting
+    ndays = len(score)
+
+    max_sa =  max(list(standard['sa'].values()))
+    sa_score = round(score['SA'].sum()/(ndays*max_sa),2)
+    # hearing, Reading 
+    # sa
+    # shloka
+    
+
+    # body
+    # tobed
+    # wakeup
+    # dayrest
+
+
+    # study
+    # college
+
+
+    
     return {"table":score,
             'study': score['study'].sum() if 'college' in card.columns.tolist() else None,
-            'hearing': score['HGRSP'].sum() + score['HHRNSM'].sum() + score['SP'].sum() + councellor_hearing,
+            'hearing': score['HGRSP'].sum() + score['HHRNSM'].sum() + score['SP'].sum() + councellor_hearing + score['Other'].sum(),
             'reading': score['Reading'].sum(),
             'hearing_info':{'HGRSP': score['HGRSP'].sum(),
                             'HHRNSM': score['HHRNSM'].sum(),
                             'SP': score['SP'].sum()},
-            'verse': score['verse'].sum()            
+            'verse': score['verse'].sum(),
+            'ndays': len(score)
             }
