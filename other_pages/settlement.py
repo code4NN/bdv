@@ -88,7 +88,7 @@ def settlement_form():
             request.append('no')
             try:
                 response = append_data(db_id=1,range_name=REQUEST_FORM_RANGE,
-                    input_type='USER_ENTERED',value=[request])
+                            value=[request])
                 if response:
                     st.session_state['successful'] = f':green[successfully filled form for ] :orange[₹ {requestdict["amount"]}]'
                     st.session_state['user']['settlement_id'] = str(int(st.session_state['user']['settlement_id']) + 1)
@@ -357,7 +357,7 @@ def make_paymnt():
                 for k in PAYMENT_ORDER:
                     write_value.append(finaldict[k])
                 response = append_data(db_id=1,range_name=PAYMENT_RANGE,
-                value=[write_value],input_type='USER_ENTERED')
+                value=[write_value])
                 # st.write(response)
                 if response:
                     collection_dict['amount'] = 0
