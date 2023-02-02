@@ -2,7 +2,6 @@ import streamlit as st
 import datetime
 
 from other_pages.googleapi import download_data
-from other_pages.googleapi import download_data_in_batch
 from other_pages.googleapi import upload_data
 from other_pages.googleapi import append_data
 
