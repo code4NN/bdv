@@ -249,10 +249,33 @@ def get_scores(group,card):
     # st.write(report)
     # st.write(report_score)
     # st.write(report3)
+    # st.write(hearingscore,target_zip['Hearing'])
+    report4 = {'reading':[score['Reading'].sum(),min(1,readingscore/target_zip['Reading'][1]),target_zip['Reading'][0]],
+                'hearing':[councellor_hearing + score['HGRSP'].sum() + score['HHRNSM'].sum() + score['Other'].sum() + score['SP'].sum()
+                ,min(1,hearingscore/target_zip['Hearing'][1]),target_zip['Hearing'][0]]}
 
     return {"table":score,                                               
             'report1': report,
             'report2': report_score,
             'report3': report3,
+            'report4':report4,
             'ndays': len(score)
             }
+
+
+
+# -------------
+def gradient(t):
+    r = int(255 * (1 - t))
+    g = int(255 * t)
+    b = 0
+    return '#{:02x}{:02x}{:02x}'.format(r, g, b)
+
+def get_progressbar(status):
+    html = f"""
+<div style="width: 100%; height: 20px; background-color: #ddd;">
+  <div id="progress-bar" style="width: {status*100}%; height: 100%; background-color: {gradient(status)};">
+  </div>
+</div>
+"""
+    return html
