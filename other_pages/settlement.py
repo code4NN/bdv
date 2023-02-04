@@ -221,13 +221,15 @@ def make_paymnt():
     workbook = st.session_state['all_settlements']
 
     # create the total amount summary
+    # st.dataframe(workbook)
     workbook['amount'] = workbook['amount'].apply(lambda x: round(float(x),2))
-    grouped_summary = workbook[['devotee name','amount']]\
+    grouped_summary = workbook[workbook.settlement_id=='-1'][['devotee name','amount']]\
                     .groupby(by='devotee name').agg('sum').reset_index()
     grouped_summary.sort_values(by='amount',ascending=False,inplace=True)
     grouped_summary.index = range(1,1+len(grouped_summary))
     
     left,right = st.columns(2)
+    # st.dataframe(grouped_summary)
     left.dataframe(grouped_summary)
     if grouped_summary.amount.sum() >5000:
         right.markdown(f'### :red[Total: {grouped_summary.amount.sum()} ₹]')
