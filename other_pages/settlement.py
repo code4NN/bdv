@@ -337,7 +337,7 @@ def make_paymnt():
         paymnt_dict['timestamp'] = str(datetime.datetime.now())
 
         paymnt_dict['request_ids'] = st.text_input(":orange[unique_ids]",
-        value=collection_dict['ids'][:-1],disabled=True)
+        value=collection_dict['ids'],disabled=True)
 
         # date of paymnt
         paymnt_date = st.date_input(":green[Date of Payment]")

@@ -11,20 +11,20 @@ import json
 
 # ------------------------ some Constants
 scdict = {'yud':
-                {"APPEND_RANGE": "!A:R",
-                "SC_CARD_INFO" : "!U:AM",
-                "FIELD_ORDER": ['date','wakeup','SA','MC','MA','chant','Reading','book',
-                                'Hearing_SP','Hearing_HHRNSM','Hearing_RSP','Hearing_Councellor',
-                                'verse','company','seva','dayrest','shayan_kirtan','tobed'
-                                ]
+                {"APPEND_RANGE": "!A:S",
+                "SC_CARD_INFO" : "!V:AO",
+                "FIELD_ORDER": {'date':object,'wakeup':int,'SA':str,'MC':str,'MA':str,'chant':int,'Reading':int,'book':str,
+                                'Hearing_SP':int,'Hearing_HHRNSM':int,'Hearing_RSP':int,'Hearing_Councellor':int,'Hearing_Other':int,
+                                'verse':str,'company':int,'seva':int,'dayrest':int,'shayan_kirtan':str,'tobed':int
+                                }
                 },
           'bhim':
-                {"APPEND_RANGE": "!A:S",
-                "SC_CARD_INFO" : "!U:AN",
-                "FIELD_ORDER": ['date','wakeup','SA','MC','MA','chant','Reading','book',
-                                'Hearing_SP','Hearing_HHRNSM','Hearing_RSP','Hearing_Councellor',
-                                'verse','college','self_study','seva','dayrest','shayan_kirtan','tobed'
-                                ]
+                {"APPEND_RANGE": "!A:T",
+                "SC_CARD_INFO" : "!W:AQ",
+                "FIELD_ORDER": {'date':object,'wakeup':int,'SA':str,'MC':str,'MA':str,'chant':int,'Reading':int,'book':str,
+                                'Hearing_SP':int,'Hearing_HHRNSM':int,'Hearing_RSP':int,'Hearing_Councellor':int,'Hearing_Other':int,
+                                'verse':str,'college':str,'self_study':int,'seva':int,'dayrest':int,'shayan_kirtan':str,'tobed':int
+                                }
                 },
           'nak':
                 {"APPEND_RANGE": "!A:T",
@@ -470,13 +470,13 @@ def show_daily_filling():
     
     current_week_values = df_my_sadhana_card[df_my_sadhana_card.date.isin([*pending_days,*completed_days])].copy()    
     current_week_evaluation = scutils.get_scores(devotee['group'],current_week_values)
-    st.write(current_week_evaluation['report4'])
+    # st.write(current_week_evaluation['report4'])
     st.markdown(f":blue[Reading status: :orange[{current_week_evaluation['report4']['reading'][0]} min] target :orange[{current_week_evaluation['report4']['reading'][2]} min]]")
     st.markdown(scutils.get_progressbar(current_week_evaluation['report4']['reading'][1]), unsafe_allow_html=True)  
 
     st.markdown(f":blue[Hearing status: :orange[{current_week_evaluation['report4']['hearing'][0]} min] target :orange[{current_week_evaluation['report4']['hearing'][2]} min]]")
     st.markdown(scutils.get_progressbar(current_week_evaluation['report4']['hearing'][1]), unsafe_allow_html=True)  
-    st.markdown(scutils.get_progressbar(.8), unsafe_allow_html=True)  
+    # st.markdown(scutils.get_progressbar(.8), unsafe_allow_html=True)  
 
     mysc,other_devotees,report_copy = st.tabs(["my Sadhana card",'All Devotees',"Sadhana Card Report"])
 
@@ -487,26 +487,27 @@ def show_daily_filling():
         st.dataframe(current_week_values)
         st.dataframe(current_week_evaluation['table'])
 
-    with other_devotees:
-        # st.write(st.session_state['all_user_data'])
-        inspire_users = {'Sample':'nak',
-                         'Sample2':'nak'}
-        # for k in st.session_state['all_user_data'].keys():
-        #     inspire_users[st.session_state['all_user_data'][k]['name']] =\
-        #     st.session_state['all_user_data'][k]['group']
-
-        if 'inspire_cards' not in st.session_state:
-            try:
-                rawdata = download_data(db_id=2,
-                        range_name=f"{devotee['name']}{scdict[devotee['group']]['SC_CARD_INFO']}")
-                st.session_state['sc_filled_info'] = process_filled_sadhana_card(rawdata,
-                                                datatypedict=scdict[devotee['group']]['FIELD_ORDER'])
-            except Exception as e:
-                st.error("could not download sadhana card")
-                show = st.checkbox('Show errors')
-                if show:
-                    st.write(e)
+    # with other_devotees:
+    #     # st.write(st.session_state['all_user_data'])
+    #     inspire_users = {}
+    #     for k in st.session_state['all_user_data'].keys():
+    #         inspire_users[st.session_state['all_user_data'][k]['name']] =\
+    #         st.session_state['all_user_data'][k]['group']
+    #     st.write(inspire_users)
+    #     if True:
+    #     # if 'inspire_cards' not in st.session_state:
+    #         try:
+    #             rawdata = download_data(db_id=2,
+    #                     range_name=f"summary-1!A:V")
+    #             st.session_state['inspire_cards'] = pd.DataFrame(rawdata[1:],columns=rawdata[0])
+    #         except Exception as e:
+    #             st.write(e)
+    #     nak_bhim_df = st.session_state['inspire_cards']
+    #     dev = st.radio("devotee",options=sorted(list(nak_bhim_df['name'].unique())),horizontal=True)
         
+    #     # devotee_choices = 
+    #     st.dataframe(nak_bhim_df[nak_bhim_df['name']==dev])
+    #     st.dataframe(scutils.get_scores('nak',process_filled_sadhana_card(nak_bhim_df[nak_bhim_df['name']==dev]),)['table'])
     
 
 def show_sc_dashboard():

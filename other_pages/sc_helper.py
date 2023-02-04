@@ -3,7 +3,9 @@ import streamlit as st
 
 from other_pages.googleapi import download_data
 
-standard_range = {'nak': "standards!B3:E90"}
+standard_range = {'nak': "standards!B3:E90",
+                  'bhim':"standards!G3:J90",
+                  'yud': "standards!L3:O90"}
 
 
 def get_standard(groupname):
