@@ -160,7 +160,7 @@ def settlement_form():
 
     
     dworkbook.reset_index(drop=True,inplace=True)
-    st.dataframe(dworkbook)
+    # st.dataframe(dworkbook)
 
     # Filter for detals
     with st.expander("Filters",expanded=True):
