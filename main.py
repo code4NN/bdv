@@ -11,9 +11,9 @@ st.set_page_config(page_title="BDV",
                     page_icon='📖',
                     layout='centered'
                     )
+# #MainMenu {visibility: hidden;}
 hide_menu_style = """
         <style>
-        #MainMenu {visibility: hidden;}
         # footer {visibility: hidden;}
         </style>
         """

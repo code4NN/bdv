@@ -10,6 +10,7 @@ sheets_dict = st.secrets['database']
 
 db_primary = sheets_dict['base']
 db_sadhana_card = sheets_dict['sadhana_card']
+
 db_list = {1:db_primary,
             2:db_sadhana_card
             }
@@ -36,6 +37,7 @@ def download_data(db_id,range_name):
     * for sheet choose value from
     1. database
     2. sadhana card
+    sheet!range in A1 notation
     """
     try:            
         workbook = _get_wb(db_id)
