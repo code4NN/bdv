@@ -10,6 +10,34 @@ import pandas as pd
 import json
 
 # ------------------------ some Constants
+APPEND_RANGE = "!A:S"
+SC_CARD_DATA = "!V:AO"
+SC_INPUTS = {
+            'date':object,
+            
+            'wakeup':int,
+            'SA':str,'MC':str,'MA':str,
+            'chant':int,
+
+            'Reading':int,'book':str,
+            'Hearing_SP':int,'Hearing_HHRNSM':int,'Hearing_RSP':int,
+            'Hearing_Councellor':int,'Hearing_Other':int,
+            'verse':str,
+
+            'company':int,
+            'self_study': int,
+            
+            'seva':int,
+            'dayrest':int,
+            'shayan_kirtan':str,
+            'tobed':int
+             }
+ignorethis = {'yud':['self_study'],
+              'bhim':['company'],
+              'arj':['company'],
+              'nak':['company','Hearing_Councellor']
+              }
+
 scdict = {'yud':
                 {"APPEND_RANGE": "!A:S",
                 "SC_CARD_INFO" : "!V:AO",
@@ -18,22 +46,22 @@ scdict = {'yud':
                                 'verse':str,'company':int,'seva':int,'dayrest':int,'shayan_kirtan':str,'tobed':int
                                 }
                 },
-          'bhim':
-                {"APPEND_RANGE": "!A:T",
-                "SC_CARD_INFO" : "!W:AQ",
-                "FIELD_ORDER": {'date':object,'wakeup':int,'SA':str,'MC':str,'MA':str,'chant':int,'Reading':int,'book':str,
-                                'Hearing_SP':int,'Hearing_HHRNSM':int,'Hearing_RSP':int,'Hearing_Councellor':int,'Hearing_Other':int,
-                                'verse':str,'college':str,'self_study':int,'seva':int,'dayrest':int,'shayan_kirtan':str,'tobed':int
-                                }
-                },
-          'nak':
-                {"APPEND_RANGE": "!A:T",
-                "SC_CARD_INFO" : "!W:AQ",
-                "FIELD_ORDER": {'date':object,'wakeup':int,'SA':str,'MC':str,'MA':str,'chant':int,'Reading':int,'book':str,
-                                'Hearing_SP':int,'Hearing_HHRNSM':int,'Hearing_RSP':int,'Hearing_Councellor':int,'Hearing_Other':int,
-                                'verse':str,'college':str,'self_study':int,'seva':int,'dayrest':int,'shayan_kirtan':str,'tobed':int
-                                },
-                }
+        #   'bhim':
+        #         {"APPEND_RANGE": "!A:T",
+        #         "SC_CARD_INFO" : "!W:AQ",
+        #         "FIELD_ORDER": {'date':object,'wakeup':int,'SA':str,'MC':str,'MA':str,'chant':int,'Reading':int,'book':str,
+        #                         'Hearing_SP':int,'Hearing_HHRNSM':int,'Hearing_RSP':int,'Hearing_Councellor':int,'Hearing_Other':int,
+        #                         'verse':str,'college':str,'self_study':int,'seva':int,'dayrest':int,'shayan_kirtan':str,'tobed':int
+        #                         }
+        #         },
+        #   'nak':
+        #         {"APPEND_RANGE": "!A:T",
+        #         "SC_CARD_INFO" : "!W:AQ",
+        #         "FIELD_ORDER": {'date':object,'wakeup':int,'SA':str,'MC':str,'MA':str,'chant':int,'Reading':int,'book':str,
+        #                         'Hearing_SP':int,'Hearing_HHRNSM':int,'Hearing_RSP':int,'Hearing_Councellor':int,'Hearing_Other':int,
+        #                         'verse':str,'college':str,'self_study':int,'seva':int,'dayrest':int,'shayan_kirtan':str,'tobed':int
+        #                         },
+        #         }
         }
 
 # ------------------------ some Constants end
