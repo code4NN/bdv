@@ -48,7 +48,9 @@ def download_data(db_id,range_name):
         return -1
 
     except Exception as e:
-        st.write(e)
+        st.error("Something Went Wrong")
+        if st.session_state.DEBUG_ERROR:
+            st.write(e)
 
 def upload_data(db_id,range_name,value):
 #     """
@@ -64,7 +66,9 @@ def upload_data(db_id,range_name,value):
                                     value_input_option='USER_ENTERED')
         return response
     except Exception as e:
-        st.write(e)
+        st.error("Something went wrong")
+        if st.session_state.DEBUG_ERROR:
+            st.write(e)
 
 
 
@@ -82,4 +86,6 @@ def append_data(db_id,range_name,value):
                                             table_range=rangename)
         return response
     except Exception as e:
-        st.write(e)
+        st.error("Something went Wrong")
+        if st.session_state.DEBUG_ERROR:
+            st.write(e)
