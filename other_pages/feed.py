@@ -44,6 +44,7 @@ def show_feed():
     st.subheader(":blue[Departments]")
 
     st.button("Structure",on_click=change_page,args=['dept_structure'])
+    st.button("Japa Talk",on_click=change_page,args=['japa_talk'],key='japa_talk')
     # st.button('Preaching 🔊')
     # st.button('Cleanliness 🧹')
     # st.button('Study 👨‍🎓')
