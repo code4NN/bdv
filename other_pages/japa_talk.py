@@ -20,7 +20,7 @@ def change_subpage(subpage):
 ## -------------
 
 def japa_talk_home():
-    st.session_state.pop('jt_db')
+    # st.session_state.pop('jt_db')
     if "jt_db" not in st.session_state:
         array = download_data(db_id=1,range_name=JAPA_TALK_RANGE)
         df = pd.DataFrame(array[1:],columns=array[0])

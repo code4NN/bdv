@@ -30,6 +30,9 @@ def home():
     database = st.session_state.article_collection['database']
     st.header(":green[Get the right article]")
     st.dataframe(database)
+
+    st.markdown('---')
+    st.button('home',key='home',on_click=change_page,args=['feed','default'])
 # ---------------------- Wrapper
 pagestate_map = {
     'default':home
