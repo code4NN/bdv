@@ -71,7 +71,11 @@ def japa_talk_home():
                                                     #   viewdf.loc[i]['Date'],
                                                     #   i])
 
-    # st.dataframe(jt_db[jt_db.index.isin(range((pageindex-1)*show_at_a_time,((pageindex-1)*show_at_a_time)+show_at_a_time+1))])
+    st.markdown("---")
+    st.button('home',key='home',on_click=change_page,args=['feed','default'])
+    # st.dataframe(jt_db[
+    # jt_db.index.isin(range((pageindex-1)*show_at_a_time,((pageindex-1)*show_at_a_time)+show_at_a_time+1))])
+
 
 
 def playing():

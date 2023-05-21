@@ -6,6 +6,7 @@ from other_pages.sadhana_card import sc_main
 from other_pages.departments import structure_main
 from other_pages.settlement import settlement_main
 from other_pages.japa_talk import jt_main
+from other_pages.article_collection import get_article_main
 
 
 st.set_page_config(page_title="BDV",
@@ -26,7 +27,8 @@ state_page_map = {'feed':show_feed,
                   'Sadhana_Card':sc_main,
                   'dept_structure':structure_main,
                   'settlement':settlement_main,
-                  'japa_talk':jt_main
+                  'japa_talk':jt_main,
+                  'article_collection': get_article_main
                     }
 
 if 'state' not in st.session_state:

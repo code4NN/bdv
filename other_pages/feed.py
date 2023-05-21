@@ -45,7 +45,7 @@ def show_feed():
 
     st.button("Structure",on_click=change_page,args=['dept_structure'])
     st.button("Japa Talk",on_click=change_page,args=['japa_talk'],key='japa_talk')
-    # st.button('Preaching 🔊')
+    st.button('Search ++',on_click=change_page,args=['article_collection'],key='search++')
     # st.button('Cleanliness 🧹')
     # st.button('Study 👨‍🎓')
     # st.button('Internal Management')
