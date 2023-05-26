@@ -10,9 +10,11 @@ sheets_dict = st.secrets['database']
 
 db_primary = sheets_dict['base']
 db_sadhana_card = sheets_dict['sadhana_card']
+db_article_tagging = sheets_dict['article_tagging']
 
 db_list = {1:db_primary,
-           2:db_sadhana_card
+           2:db_sadhana_card,
+           3:db_article_tagging
             }
 
 # credentials
