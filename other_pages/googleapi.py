@@ -39,6 +39,7 @@ def download_data(db_id,range_name):
     * for sheet choose value from
     1. database
     2. sadhana card
+    3. article database
     sheet!range in A1 notation
     """
     try:            

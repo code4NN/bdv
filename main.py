@@ -9,9 +9,14 @@ from other_pages.japa_talk import jt_main
 from other_pages.article_collection import get_article_main
 
 
+if 'LAYOUT' not in st.session_state:
+    st.session_state['LAYOUT'] = 'centered'
+elif st.session_state.state == 'article_collection':
+    st.session_state.LAYOUT = 'wide'
+
 st.set_page_config(page_title="BDV",
                     page_icon='📖',
-                    layout='centered'
+                    layout=st.session_state.LAYOUT
                     )
 # #MainMenu {visibility: hidden;}
 hide_menu_style = """
