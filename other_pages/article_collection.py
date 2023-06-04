@@ -26,7 +26,6 @@ def change_subpage(subpage):
 
 def home():
 
-    st.session_state.article_collection.pop('database')
     if 'database' not in st.session_state.article_collection:
         array = download_data(db_id=3,range_name=TAGGING_DATABASE)
         df = pd.DataFrame(array[1:],columns=array[0])
