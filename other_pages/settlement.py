@@ -50,7 +50,6 @@ def settlement_form():
         requestform['timestamp'] = str(datetime.datetime.now())
 
         # -------new codes
-        st.session_state.pop('request_array')
         if 'request_array' not in st.session_state:
             st.session_state['request_array'] = [['id','date_of_payment','---------amount','dept','details'],
                     ['1',   '',                '',       '',    ''],
