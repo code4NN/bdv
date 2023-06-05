@@ -2,6 +2,7 @@ import streamlit as st
 import datetime
 import json
 import pandas as pd
+from st_aggrid import AgGrid, GridOptionsBuilder,ColumnsAutoSizeMode
 
 from other_pages.googleapi import download_data
 from other_pages.googleapi import upload_data
@@ -47,6 +48,29 @@ def settlement_form():
 
         # timestamp
         requestform['timestamp'] = str(datetime.datetime.now())
+
+        # -------new codes
+        st.session_state.pop('request_array')
+        if 'request_array' not in st.session_state:
+            st.session_state['request_array'] = [['id','date_of_payment','---------amount','dept','details'],
+                    ['1',   '',                '',       '',    ''],
+                    ]
+        request_array = st.session_state['request_array']
+        input_df = pd.DataFrame(request_array[1:],columns=request_array[0])
+
+        # grid builder
+        gb = GridOptionsBuilder.from_dataframe(input_df)
+        gb.configure_default_column(groupable=True, value=True, enableRowGroup=True, aggFunc='sum', editable=True)
+        gb.configure_column("header_name", editable=False)
+        gridOptions = gb.build()
+
+        grid_result = AgGrid(input_df,gridOptions=gridOptions,
+                             columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS)
+
+
+
+
+
 
         # date of paymnt
         paymnt_date = st.date_input(":green[Date of Payment]")
