@@ -77,33 +77,27 @@ def settlement_form():
             st.session_state['no_of_requests'] = 1
         no_of_requests = st.session_state['no_of_requests']
 
-        col_day,col_amount,col_dept,col_details = st.columns([1,1,3,4])
-        col_day.markdown(":orange[Day]")
-        col_amount.markdown(":orange[Amount]")
-        col_dept.markdown(":orange[Dept]")
-        col_details.markdown(":orange[Details]")
-
         entry_table = []
         for i in range(no_of_requests):
             one_entry = {}
             col_day,col_amount,col_dept,col_details = st.columns([1,1,3,4])
             
-            one_entry['day'] = col_day.number_input("day",label_visibility='hidden',step=1,
+            one_entry['day'] = col_day.number_input("day",step=1,
                                  min_value=1,max_value=max_month_day,
                                  key=f'input_table_day{i}')
             col_day.caption(datetime.datetime(current_year,request_month,one_entry['day']).strftime("%b %d %a"))
             one_entry['day'] = datetime.datetime(current_year,request_month,one_entry['day']).strftime("%b %d %a")
             
-            one_entry['amount'] = col_amount.number_input("amount",label_visibility='hidden',
+            one_entry['amount'] = col_amount.number_input("amount",
                                     step=100,min_value=1,max_value=15000,
                                  key=f'input_table_amount{i}')
-            one_entry['dept'] =  col_dept.text_input("dept",label_visibility='hidden',
+            one_entry['dept'] =  col_dept.text_input("dept",
                                  key=f'input_table_dept{i}')
             if not one_entry['dept'].strip():
                 col_dept.markdown(":red[cannot be blank]")
                 requestform['error'] = True
             
-            one_entry['details'] = col_details.text_area("details",label_visibility='hidden',
+            one_entry['details'] = col_details.text_area("details",
                                  key=f'input_table_details{i}',height=10)
             if not one_entry['details'].strip():
                 col_details.markdown(":red[cannot be blank]")
