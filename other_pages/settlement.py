@@ -2,6 +2,7 @@ import streamlit as st
 import datetime
 import json
 import pandas as pd
+import calendar
 from st_aggrid import AgGrid, GridOptionsBuilder,ColumnsAutoSizeMode
 
 from other_pages.googleapi import download_data
@@ -9,7 +10,7 @@ from other_pages.googleapi import upload_data
 from other_pages.googleapi import append_data
 
 # ============= some variables
-REQUEST_FORM_ORDER = ['timestamp','date_of_paymnt','name','request_id','amount','department','agenda','remark']
+REQUEST_FORM_ORDER = ['timestamp','date_of_paymnt','name','request_id','amount','department','table_entry','remark']
 REQUEST_FORM_RANGE = 'settlement_request!A:H'
 SETTLEMENT_INFO = 'settlement_request!A2:M'
 REQUEST_SHEET = 'settlement_request!'
@@ -32,7 +33,19 @@ def change_subpage(subpage):
 
 ## -------------
 def settlement_form():
-    # fetch the relevant data
+    st.session_state.LAYOUT = 'wide'
+    st.markdown(
+    """
+    <style>
+    .step-up,
+    .step-down {
+        display: none;
+    }
+    </style>
+    </style>
+    """,
+    unsafe_allow_html=True
+    )
 
     # --------------- page
     st.header(" :green[settlement form]")
@@ -46,28 +59,140 @@ def settlement_form():
     requestform = {'error':False}
     with st.expander("fill a form",expanded=True):
 
+       
+
+        # get the month of payment
+        current_month = datetime.datetime.now().month
+        current_year = datetime.datetime.now().year
+        previous_month = current_month - 1 if current_month !=1 else 12
+        st.header(f":violet[request-id-{st.session_state['user']['settlement_id']}]")
+        request_month = st.radio("Enter month",
+                                 options=[previous_month,current_month],
+                                format_func=lambda x: calendar.month_name[x],
+                                horizontal=True)
+        max_month_day = calendar.monthrange(current_year,request_month)[1]
+        
+        # -------new codes
+        if 'no_of_requests' not in st.session_state:
+            st.session_state['no_of_requests'] = 1
+        no_of_requests = st.session_state['no_of_requests']
+
+        col_day,col_amount,col_dept,col_details = st.columns([1,1,3,4])
+        col_day.markdown(":orange[Day]")
+        col_amount.markdown(":orange[Amount]")
+        col_dept.markdown(":orange[Dept]")
+        col_details.markdown(":orange[Details]")
+
+        entry_table = []
+        for i in range(no_of_requests):
+            one_entry = {}
+            col_day,col_amount,col_dept,col_details = st.columns([1,1,3,4])
+            
+            one_entry['day'] = col_day.number_input("day",label_visibility='hidden',step=1,
+                                 min_value=1,max_value=max_month_day,
+                                 key=f'input_table_day{i}')
+            col_day.caption(datetime.datetime(current_year,request_month,one_entry['day']).strftime("%b %d %a"))
+            one_entry['day'] = datetime.datetime(current_year,request_month,one_entry['day']).strftime("%b %d %a")
+            
+            one_entry['amount'] = col_amount.number_input("amount",label_visibility='hidden',
+                                    step=100,min_value=1,max_value=15000,
+                                 key=f'input_table_amount{i}')
+            one_entry['dept'] =  col_dept.text_input("dept",label_visibility='hidden',
+                                 key=f'input_table_dept{i}')
+            if not one_entry['dept'].strip():
+                col_dept.markdown(":red[cannot be blank]")
+                requestform['error'] = True
+            
+            one_entry['details'] = col_details.text_area("details",label_visibility='hidden',
+                                 key=f'input_table_details{i}',height=10)
+            if not one_entry['details'].strip():
+                col_details.markdown(":red[cannot be blank]")
+                requestform['error'] = True
+            entry_table.append(one_entry)
+            st.markdown('---')
+        
+        # -------to add or remove more entries
+        def modify_no_of_fields(to_increment):
+            if to_increment:
+                st.session_state.no_of_requests +=1
+            elif st.session_state.no_of_requests ==1:
+                pass
+            else:
+                st.session_state.no_of_requests -=1
+        left,right = st.columns(2)
+        left.button("Add one more entry",on_click=modify_no_of_fields,
+                    key='increase_input_fields',args=[True])
+        if st.session_state.no_of_requests >1:
+            right.button("Drop last entry",on_click=modify_no_of_fields,
+                        key='decrease_input_fields',args=[False])
+        
+        # collect other fields
+        requestform['table_entry'] = entry_table
+        requestform['remark'] = st.text_area("Any other remark",
+                                             height=60,key='additional_remark')
+
         # timestamp
         requestform['timestamp'] = str(datetime.datetime.now())
+        # name
+        requestform['name'] = st.session_state['user']['name']
+        # request ID
+        requestform['request_id'] = f"{requestform['name']}-{st.session_state['user']['settlement_id']}"
 
-        # -------new codes
-        if 'request_array' not in st.session_state:
-            st.session_state['request_array'] = [['id','date_of_payment','---------amount','dept','details'],
-                    ['1',   '',                '',       '',    ''],
-                    ]
-        request_array = st.session_state['request_array']
-        input_df = pd.DataFrame(request_array[1:],columns=request_array[0])
+        # submit
+        def request_form_submit(request_dict):
+            final_entry_table = [['day','amount','dept','details']]
+            total_amount = 0
+            for one_entry in request_dict['table_entry']:
+                final_entry_table.append([one_entry['day'],
+                                        one_entry['amount'],
+                                        one_entry['dept'],
+                                        one_entry['details']])
+                total_amount += int(one_entry['amount'])
+            request_dict['table_entry'] = json.dumps(final_entry_table)
+            # other changes
+            request_dict['date_of_paymnt'] = '-'
+            request_dict['department'] = '-'
+            request_dict['amount'] =  total_amount
 
-        # grid builder
-        gb = GridOptionsBuilder.from_dataframe(input_df)
-        gb.configure_default_column(groupable=True, value=True, enableRowGroup=True, aggFunc='sum', editable=True)
-        gb.configure_column("header_name", editable=False)
-        gridOptions = gb.build()
+            # submit
+            request_to_sheet = []
+            for value in REQUEST_FORM_ORDER:
+                request_to_sheet.append(request_dict[value])
+            request_to_sheet.append("no")
+            try:
+                response  = append_data(db_id=1,range_name=REQUEST_FORM_RANGE,
+                            value=[request_to_sheet])
+                
+                if response:
+                    st.session_state.pop('settlement_info')
+                    st.session_state.pop('no_of_requests')
+                    st.session_state.pop('no_of_requests')
+                    st.session_state.input_table_details0 = ""
+                    st.session_state.input_table_dept0 = ""
 
-        grid_result = AgGrid(input_df,gridOptions=gridOptions,
-                             columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS)
+                    st.session_state['request_state'] = "success"
+            except Exception as e :
+                if st.session_state.DEBUG_ERROR:
+                    st.write(e)
+                else :
+                    st.session_state['request_state'] = 'error'
 
+            
+        st.error("Work in progress!!")
+        return 
 
+        if not requestform['error']:
+            st.button("Submit 👍",on_click=request_form_submit,key='submit_button',
+                      args=[requestform])
+        
+        if 'request_state' in st.session_state:
+            status = st.session_state['request_state']
+            if status =='success':
+                st.success("Successfully submitted")
+            else :
+                st.error("Some error occurred")
 
+        """
 
 
 
@@ -136,6 +261,7 @@ def settlement_form():
             st.session_state.pop('successful')
 
     st.markdown('---')
+    """
     st.markdown("## :blue[my forms]")
 
 

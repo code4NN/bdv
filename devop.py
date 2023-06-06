@@ -5,11 +5,14 @@ from other_pages.feed import show_feed
 from other_pages.sadhana_card import sc_main
 from other_pages.departments import structure_main
 from other_pages.settlement import settlement_main
+from other_pages.article_collection import get_article_main
 
+if 'LAYOUT' not in st.session_state:
+    st.session_state['LAYOUT'] = 'centered'
 
-st.set_page_config(page_title="BDV-development",
+st.set_page_config(page_title="testing",
                     page_icon='📖',
-                    layout='centered'
+                    layout=st.session_state.LAYOUT
                     )
 # #MainMenu {visibility: hidden;}
 hide_menu_style = """
@@ -25,7 +28,8 @@ USER = {"password":"trinadapi","name":"Shivendra","roles":"acc_ic","group":"yud"
 state_page_map = {'feed':show_feed,
                   'Sadhana_Card':sc_main,
                   'dept_structure':structure_main,
-                  'settlement':settlement_main
+                  'settlement':settlement_main,
+                  'article_collection':get_article_main
                     }
 
 if 'state' not in st.session_state:
