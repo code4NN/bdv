@@ -3,8 +3,8 @@ import datetime
 import json
 import pandas as pd
 import calendar
-import locale
-locale.setlocale(locale.LC_ALL, 'en_IN')
+# import locale
+# locale.setlocale(locale.LC_ALL, 'en_IN')
 from st_aggrid import AgGrid, GridOptionsBuilder,ColumnsAutoSizeMode
 
 from other_pages.googleapi import download_data
@@ -276,8 +276,8 @@ def settlement_form():
         array = download_data(db_id=1,range_name=SETTLEMENT_INFO)
         temp = pd.DataFrame(array[1:],columns=array[0])
         temp = temp[temp['devotee name']==st.session_state['user']['name']]
-        temp = temp[['timestamp','devotee name','uniqueid','amount','details','any comments','noted_in_expense_sheet','2','settlement_id','status']]
-        
+        temp = temp[['dept','timestamp','devotee name','uniqueid','amount','details','any comments','noted_in_expense_sheet','2','settlement_id','status']]
+        temp.query("dept=='-'",inplace=True)
         temp['amount'] = temp['amount'].apply(lambda x: int(x))
         st.session_state['settlement_info'] = temp.copy()
     
@@ -340,7 +340,7 @@ def settlement_form():
     timelinedf.insert(1,"balance",balance[1:])
     timeline_view.dataframe(timelinedf)
     
-    dueamount=locale.currency(balance[-1], grouping=True)
+    dueamount= f'₹ {balance[-1]:,}'
     if balance[-1] > 0:
         st.markdown(f"## :green[You will receive :orange[{dueamount}] from VOICE]")
     elif balance[-1]==0:
@@ -554,10 +554,16 @@ def make_paymnt():
             st.markdown('---')
             st.write(f"#### :{status}[{title}]")
             
-            left,middle,right = st.columns(3)
-            left.markdown(f""":violet[Department: :orange[{dworkbook.loc[r,'dept']}].]
-                        :violet[info: :orange[{dworkbook.loc[r,'details']}]]
-            """)
+            left,middle,right = st.columns([2,1,1])
+            tableinfo = dworkbook.loc[r,'details']
+            try :
+                tablearray = json.loads(tableinfo)
+                tabledf = pd.DataFrame(tablearray[1:],columns=tablearray[0])
+                left.dataframe(tabledf)
+            except:
+                left.markdown(f""":violet[Department: :orange[{dworkbook.loc[r,'dept']}].]
+                            :violet[info: :orange[{dworkbook.loc[r,'details']}]]
+                """)
 
             middle.markdown(f":violet[comments: :orange[{dworkbook.loc[r,'any comments']}]]")
             
