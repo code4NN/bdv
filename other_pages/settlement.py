@@ -3,6 +3,8 @@ import datetime
 import json
 import pandas as pd
 import calendar
+import locale
+locale.setlocale(locale.LC_ALL, 'en_IN')
 from st_aggrid import AgGrid, GridOptionsBuilder,ColumnsAutoSizeMode
 
 from other_pages.googleapi import download_data
@@ -85,9 +87,13 @@ def settlement_form():
             one_entry['day'] = col_day.number_input("day",step=1,
                                  min_value=1,max_value=max_month_day,
                                  key=f'input_table_day{i}')
+            spent_date = datetime.datetime(current_year,request_month,one_entry['day'])
+            if (datetime.datetime.now() -spent_date).days > 8:
+                requestform['error'] = True
+                col_day.markdown(":red[Older than 7 days not accepted]")
             col_day.caption(datetime.datetime(current_year,request_month,one_entry['day']).strftime("%b %d %a"))
-            one_entry['day'] = datetime.datetime(current_year,request_month,one_entry['day']).strftime("%b %d %a")
-            
+            one_entry['day'] = datetime.datetime(current_year,request_month,one_entry['day']).strftime("%b-%d, %a")
+                
             one_entry['amount'] = col_amount.number_input("amount",
                                     step=100,min_value=1,max_value=15000,
                                  key=f'input_table_amount{i}')
@@ -122,6 +128,7 @@ def settlement_form():
         
         # collect other fields
         requestform['table_entry'] = entry_table
+        # st.write(json.dumps(entry_table))
         requestform['remark'] = st.text_area("Any other remark",
                                              height=60,key='additional_remark')
 
@@ -136,6 +143,7 @@ def settlement_form():
         def request_form_submit(request_dict):
             final_entry_table = [['day','amount','dept','details']]
             total_amount = 0
+
             for one_entry in request_dict['table_entry']:
                 final_entry_table.append([one_entry['day'],
                                         one_entry['amount'],
@@ -160,9 +168,9 @@ def settlement_form():
                 if response:
                     st.session_state.pop('settlement_info')
                     st.session_state.pop('no_of_requests')
-                    st.session_state.pop('no_of_requests')
                     st.session_state.input_table_details0 = ""
                     st.session_state.input_table_dept0 = ""
+                    st.session_state['user']['settlement_id'] = str(int(st.session_state['user']['settlement_id']) + 1)
 
                     st.session_state['request_state'] = "success"
             except Exception as e :
@@ -172,8 +180,6 @@ def settlement_form():
                     st.session_state['request_state'] = 'error'
 
             
-        st.error("Work in progress!!")
-        return 
 
         if not requestform['error']:
             st.button("Submit 👍",on_click=request_form_submit,key='submit_button',
@@ -185,6 +191,7 @@ def settlement_form():
                 st.success("Successfully submitted")
             else :
                 st.error("Some error occurred")
+            st.session_state.pop('request_state')
 
         """
 
@@ -269,101 +276,165 @@ def settlement_form():
         array = download_data(db_id=1,range_name=SETTLEMENT_INFO)
         temp = pd.DataFrame(array[1:],columns=array[0])
         temp = temp[temp['devotee name']==st.session_state['user']['name']]
-        temp = temp[['actual paymnt date','devotee name','uniqueid','amount','dept','details','any comments','noted_in_expense_sheet','2','settlement_id','status']]
+        temp = temp[['timestamp','devotee name','uniqueid','amount','details','any comments','noted_in_expense_sheet','2','settlement_id','status']]
+        
         temp['amount'] = temp['amount'].apply(lambda x: int(x))
         st.session_state['settlement_info'] = temp.copy()
     
-    dworkbook = st.session_state['settlement_info']
+    dworkbook = st.session_state['settlement_info'].copy()
     dworkbook.reset_index(inplace=True,drop=True)
-    dworkbook['status1'] = dworkbook['settlement_id'].apply(lambda x: "done" if x!='-1' else "pending")
-    
-    dfsummary = dworkbook.copy()
-    dfsummary = dfsummary[['actual paymnt date','uniqueid','amount','dept','details','any comments','settlement_id']]
-    dfsummary.rename(columns={'actual paymnt date':'payment date','settlement_id':'status'},inplace=True)
-    dfsummary['status'] = dfsummary['status'].apply(lambda x: "done" if x!='-1' else "pending")
-
-    status = st.radio("Showing", options=['done','pending'],horizontal=True,index=1)
-    if status=='done':
-        dfsummary = dfsummary[dfsummary.status =='done']
-        dworkbook = dworkbook[dworkbook.status1=='done']
-    else:
-        # pending
-        dfsummary = dfsummary[dfsummary.status =='pending']
-        dworkbook = dworkbook[dworkbook.status1=='pending']
-
-    st.dataframe(dfsummary.drop(columns='status').reset_index(drop=True))
-    total_sum = dfsummary.amount.sum()
-    # Show total lakshmi 
-    if status=='done':
-        st.markdown(f":green[Total Settled: ₹ {total_sum}]")
-    elif total_sum >4000:
-        st.markdown(f":red[Total Pending: ₹ {total_sum}]")
-    else:
-        st.markdown(f":green[Total Pending: ₹ {total_sum}]")
-
-    
-    dworkbook.reset_index(drop=True,inplace=True)
     # st.dataframe(dworkbook)
 
-    # Filter for detals
-    with st.expander("Filters",expanded=True):
-        show_list = []  
-        filter_status = st.radio("status",options=['pending','completed','all'],horizontal=True,index=0)
-        if filter_status =='pending':
-            show_list[:] = ['red','orange']
-        elif filter_status =='completed':
-            show_list[:] = ['green']
-        elif filter_status =='all':
-            show_list[:] = ['red','orange','green']        
+    request_view, timeline_view= st.tabs(["Request View",
+                                                          "Chronological Order",
+                                                        #   "Detailed Chronological order"
+                                                          ])
+    # for request date wise view
+    view1df = dworkbook.copy()
+    view1df = view1df[['timestamp','uniqueid','amount','status']]
+    
+    def process_status(status_raw):
+        statusdict = json.loads(status_raw)
+        if statusdict['status'] == 'pending':
+            return 'pending'
+        else :
+            return f'settled on {statusdict["date_of_paymnt"]}'
         
-        filter_count = st.slider("show option",min_value=1,
-                            max_value=max(2,len(dworkbook)),step=1,value=max(1,len(dworkbook)))
+    view1df['status'] = view1df['status'].apply(lambda x:process_status(x))
+    request_view.dataframe(view1df)
+    
+    # Chronological view calculations (both)
+    timeline_array = [['date','amount','department','details','formfilldate','requestid','is_settlement']]
+    for _,one_request in dworkbook.iterrows():
+
+        formfilled_time = one_request['timestamp']
+        request_id = one_request['uniqueid']
+        
+        # enter individual payments
+        infotable = json.loads(one_request['details'])
+        infotable = infotable[1:]
+        for one_item in infotable:
+            timeline_array.append([*one_item,formfilled_time,request_id,False])
+        
+        # check for settlement status an add if payment one
+        settlement_status = json.loads(one_request['status'])
+        # st.write(settlement_status)
+        if settlement_status['status'] =='done':
+            timeline_array.append([settlement_status['date_of_paymnt'],
+                                -int(settlement_status['amount_of_paymnt']),
+                                'settlement',
+                                settlement_status['paymnt_info'],
+                                settlement_status['date_of_paymnt'],
+                                settlement_status['remark'],
+                                True
+                                ])
+    
+    timelinedf = pd.DataFrame(timeline_array[1:],columns=timeline_array[0])
+
+    timelinedf.sort_values(by='date',ascending=True,inplace=True)
+    timelinedf.index=timelinedf['date']
+    timelinedf.drop(columns=['date'],inplace=True)
+    balance = [0]
+    for amount,is_settlement in zip(timelinedf.amount.tolist(),timelinedf.is_settlement.tolist()):
+            balance.append(balance[-1]+int(amount))
+    timelinedf.insert(1,"balance",balance[1:])
+    timeline_view.dataframe(timelinedf)
+    
+    dueamount=locale.currency(balance[-1], grouping=True)
+    if balance[-1] > 0:
+        st.markdown(f"## :green[You will receive :orange[{dueamount}] from VOICE]")
+    elif balance[-1]==0:
+        st.markdown("## :green[All Accounts Clear!!!]")
+    else :
+        st.markdown(f"## :green[Payment of :orange[{dueamount}] is due to VOICE]")
+
+    # dfsummary = dworkbook.copy()
+    # dfsummary = dfsummary[['actual paymnt date','uniqueid','amount','dept','details','any comments','settlement_id']]
+    # dfsummary.rename(columns={'actual paymnt date':'payment date','settlement_id':'status'},inplace=True)
+    # dfsummary['status'] = dfsummary['status'].apply(lambda x: "done" if x!='-1' else "pending")
+
+    # status = st.radio("Showing", options=['done','pending'],horizontal=True,index=1)
+    # if status=='done':
+    #     dfsummary = dfsummary[dfsummary.status =='done']
+    #     dworkbook = dworkbook[dworkbook.status1=='done']
+    # else:
+    #     # pending
+    #     dfsummary = dfsummary[dfsummary.status =='pending']
+    #     dworkbook = dworkbook[dworkbook.status1=='pending']
+
+    # st.dataframe(dfsummary.drop(columns='status').reset_index(drop=True))
+    # total_sum = dfsummary.amount.sum()
+    # # Show total lakshmi 
+    # if status=='done':
+    #     st.markdown(f":green[Total Settled: ₹ {total_sum}]")
+    # elif total_sum >4000:
+    #     st.markdown(f":red[Total Pending: ₹ {total_sum}]")
+    # else:
+    #     st.markdown(f":green[Total Pending: ₹ {total_sum}]")
+
+    
+    # dworkbook.reset_index(drop=True,inplace=True)
+    # # st.dataframe(dworkbook)
+
+    # # Filter for detals
+    # with st.expander("Filters",expanded=True):
+    #     show_list = []  
+    #     filter_status = st.radio("status",options=['pending','completed','all'],horizontal=True,index=0)
+    #     if filter_status =='pending':
+    #         show_list[:] = ['red','orange']
+    #     elif filter_status =='completed':
+    #         show_list[:] = ['green']
+    #     elif filter_status =='all':
+    #         show_list[:] = ['red','orange','green']        
+        
+    #     filter_count = st.slider("show option",min_value=1,
+    #                         max_value=max(2,len(dworkbook)),step=1,value=max(1,len(dworkbook)))
         
 
 
 
     
-    for r in range(filter_count):
-        title = f"[{1+r}/{len(dworkbook)}] → ₹ :orange[{dworkbook.loc[r,'amount']}] _spent on_ {dworkbook.loc[r,'actual paymnt date']}"
-        status = "purple"
-        if int(dworkbook.loc[r,'settlement_id']) ==-1:
-            if dworkbook.loc[r,'noted_in_expense_sheet'] =='no':
-                status = 'red'
-            else:
-                # noted_in_expense_sheet is 'yes
-                status = 'orange'
-        else:
-            # payment done
-            status = 'green'
+    # for r in range(filter_count):
+    #     title = f"[{1+r}/{len(dworkbook)}] → ₹ :orange[{dworkbook.loc[r,'amount']}] _spent on_ {dworkbook.loc[r,'actual paymnt date']}"
+    #     status = "purple"
+    #     if int(dworkbook.loc[r,'settlement_id']) ==-1:
+    #         if dworkbook.loc[r,'noted_in_expense_sheet'] =='no':
+    #             status = 'red'
+    #         else:
+    #             # noted_in_expense_sheet is 'yes
+    #             status = 'orange'
+    #     else:
+    #         # payment done
+    #         status = 'green'
 
-        if status in show_list:
-            st.markdown('---')
-            st.write(f"#### :{status}[{title}]")
+    #     if status in show_list:
+    #         st.markdown('---')
+    #         st.write(f"#### :{status}[{title}]")
             
-            left,middle,right = st.columns(3)
-            left.markdown(f""":violet[Department: :orange[{dworkbook.loc[r,'dept']}].]
-                        :violet[info: :orange[{dworkbook.loc[r,'details']}]]
-            """)
+    #         left,middle,right = st.columns(3)
+    #         left.markdown(f""":violet[Department: :orange[{dworkbook.loc[r,'dept']}].]
+    #                     :violet[info: :orange[{dworkbook.loc[r,'details']}]]
+    #         """)
 
-            middle.markdown(f":violet[comments: :orange[{dworkbook.loc[r,'any comments']}]]")
+    #         middle.markdown(f":violet[comments: :orange[{dworkbook.loc[r,'any comments']}]]")
             
-            # making button for noting in account sheet        
-            if status=='green':
-                content = "".join(l for l in dworkbook.loc[r,'status'].splitlines())
-                print(content)
-                info = json.loads(content)
-                # right.write(info)
-                right.write(f""":violet[settled on :orange[{info["date_of_paymnt"]}].]
-                        :violet[had sent total of ₹ :orange[{info["amount_of_paymnt"]}].]
-                        :violet[info: :orange[{info['paymnt_info']}].]
-                        :violet[remark: :orange[{info['remark']}]]""")
-            elif status =="red":
-                right.write(":orange[settlement process yet to begin]")
-            elif status =='orange':
-                right.write(":orange[expense has been noted. Payment will be done soon]")
+    #         # making button for noting in account sheet        
+    #         if status=='green':
+    #             content = "".join(l for l in dworkbook.loc[r,'status'].splitlines())
+    #             print(content)
+    #             info = json.loads(content)
+    #             # right.write(info)
+    #             right.write(f""":violet[settled on :orange[{info["date_of_paymnt"]}].]
+    #                     :violet[had sent total of ₹ :orange[{info["amount_of_paymnt"]}].]
+    #                     :violet[info: :orange[{info['paymnt_info']}].]
+    #                     :violet[remark: :orange[{info['remark']}]]""")
+    #         elif status =="red":
+    #             right.write(":orange[settlement process yet to begin]")
+    #         elif status =='orange':
+    #             right.write(":orange[expense has been noted. Payment will be done soon]")
 
-    st.markdown('---')
-    st.button("feed",on_click=change_page,args=['feed'])
+    # st.markdown('---')
+    # st.button("feed",on_click=change_page,args=['feed'])
 
 
 
