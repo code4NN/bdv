@@ -127,43 +127,55 @@ def tagging_activity():
     # get the not-done list
     not_done_db = database.query("status =='FALSE' ").iloc[0,:]
     # st.dataframe(not_done_db)
-    
+
+    def verify_allowed_characters(text):
+        allowed_characters = set(" abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789(){}[]-+_+=|?@!")
+        for char in text:
+            if char not in allowed_characters:
+                return False
+        return True
     # display and collect input
     st.markdown("---")
     columns = st.columns(3)
     columns[0].markdown(f":green[Issue - {not_done_db['ID']}]")
-    columns[1].markdown(f"[Click to Open]({not_done_db['URL']})")
-
-    a,b,c,d,e = st.columns([1,2,1,2,1])
+    columns[1].markdown(f"[Click to Open]({not_done_db['URL']})")    
 
     collection_dictionary = []
     valid_inputs = True
-    e.markdown("")
-    e.markdown("")
-    e.markdown("")
     for i,input_dict in enumerate(st.session_state.article_collection['sales_man']):
+        aa,bb,cc,ee = st.columns([2,2,2,1])
+        ee.markdown("")
+        ee.markdown("")
+        ee.markdown("")
         current_title = {}
         if input_dict['Author'] :
-            a.text_input(label='Author',value=input_dict['Author'],key=f'tag_info_prefill_{i}_a',
-                         disabled=True
+            aa.text_area(label='Author',value=input_dict['Author'],key=f'tag_info_prefill_{i}_a',
+                         disabled=True,height=40
                          )
             current_title['Author'] =input_dict['Author']
         else :
-            current_title['Author'] = a.text_input(label='Author',key=f'tag_info_input_{i}_a')
-        current_title['Title'] = b.text_input(label='Title',key=f'tag_info_input_{i}_b')
-        current_title['Source'] = c.text_input(label='Source',key=f'tag_info_input_{i}_c')
-        current_title['Raw_Text'] = d.text_input(label='Text',key=f'tag_info_input_{i}_d')
-        current_title['consider'] = e.checkbox("Done",key=f'tag_info_checkbox_{i}_e')
-        e.markdown("")
-        e.markdown("")
-        e.markdown("")
+            current_title['Author'] = aa.text_area(label='Author',key=f'tag_info_input_{i}_a',height=40)
+        current_title['Title'] = bb.text_area(label='Title',key=f'tag_info_input_{i}_b',height=40)
+        current_title['Source'] = cc.text_area(label='Source',key=f'tag_info_input_{i}_c',height=40)
+        # current_title['Raw_Text'] = dd.text_input(label='Text',key=f'tag_info_input_{i}_d')
+        current_title['consider'] = ee.checkbox("Done",key=f'tag_info_checkbox_{i}_e')
+        # e.markdown("")
+        # e.markdown("")
+        # e.markdown("")
         if not current_title['Title'].strip() and current_title['consider']:
             valid_inputs = False
-            b.markdown(":red[it is blank]")
-            a.markdown("")
-            c.markdown("")
-            d.markdown("")
-            e.markdown("")
+            bb.markdown(":red[it is blank]")
+            aa.markdown("")
+            cc.markdown("")
+            # dd.markdown("")
+            ee.markdown("")
+        # Verification
+        if not verify_allowed_characters(current_title['Title']):
+            bb.markdown(":red[some invalid character]")
+        if not verify_allowed_characters(current_title['Author']):
+            bb.markdown(":red[some invalid character]")
+        if not verify_allowed_characters(current_title['Source']):
+            bb.markdown(":red[some invalid character]")
         collection_dictionary.append(current_title)
     
     def add_new_title(reverse):
@@ -176,7 +188,8 @@ def tagging_activity():
             )
         else :
             st.session_state.article_collection['sales_man'].pop()
-        
+    
+    a,b,c,e = st.columns([2,2,2,1])
     a.button("Add new",key='add_new',on_click=add_new_title,args=[False])
     b.button("Drop last",key='drop_last',on_click=add_new_title,args=[True])
     dict_to_submit = list(filter(lambda x: x['consider'], collection_dictionary))
