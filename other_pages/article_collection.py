@@ -129,7 +129,7 @@ def tagging_activity():
     # st.dataframe(not_done_db)
 
     def verify_allowed_characters(text):
-        allowed_characters = set(" abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789(){}[]-+_+=|?@!")
+        allowed_characters = set(" abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789(){}[]-+_+=|?@!.")
         for char in text:
             if char not in allowed_characters:
                 return (False,char)
