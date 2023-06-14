@@ -132,8 +132,8 @@ def tagging_activity():
         allowed_characters = set(" abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789(){}[]-+_+=|?@!")
         for char in text:
             if char not in allowed_characters:
-                return False
-        return True
+                return (False,char)
+        return (True,'-1')
     # display and collect input
     st.markdown("---")
     columns = st.columns(3)
@@ -170,12 +170,12 @@ def tagging_activity():
             # dd.markdown("")
             ee.markdown("")
         # Verification
-        if not verify_allowed_characters(current_title['Title']):
-            bb.markdown(":red[some invalid character]")
-        if not verify_allowed_characters(current_title['Author']):
-            bb.markdown(":red[some invalid character]")
-        if not verify_allowed_characters(current_title['Source']):
-            bb.markdown(":red[some invalid character]")
+        if not verify_allowed_characters(current_title['Title'])[0]:
+            bb.markdown(f":red[some invalid character -{verify_allowed_characters(current_title['Title'])[1]}-]")
+        if not verify_allowed_characters(current_title['Author'])[0]:
+            bb.markdown(f":red[some invalid character - {verify_allowed_characters(current_title['Author'])[1]}]")
+        if not verify_allowed_characters(current_title['Source'])[0]:
+            bb.markdown(f":red[some invalid character-> {verify_allowed_characters(current_title['Source'])[1]}]")
         collection_dictionary.append(current_title)
     
     def add_new_title(reverse):
