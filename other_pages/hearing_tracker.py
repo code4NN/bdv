@@ -20,8 +20,21 @@ def change_subpage(subpage):
 
 # --------------- 
 def sp():
-    st.header(":green[Title]")
+    st.header(":green[Shrila Prabhupada Vaani]")
+    lecture_option = st.radio("Please choose one",options=['SB Lectures','Morning Walks'],horizontal=True)
 
+    if lecture_option=='SB Lectures':
+        # if 'spdb_sbclass' not in st.session_state.shravanam_db:
+        if True:
+            database = pd.read_excel("./Hearing Tracker.xlsx",sheet_name='SP_SB',skiprows=1)
+            database['date_obj'] = pd.to_datetime(database['date'],format="%Y-%m-%d",errors='coerce')
+            database['date_show'] = database.date_obj.apply(lambda x: x.strftime("%y %b %d"))
+            st.session_state.shravanam_db['spdb_sbclass'] = database[['canto','chapter','text','Place','date_obj','date_show','final title','heard_by','URL']]
+
+        database = st.session_state.shravanam_db['spdb_sbclass']
+        st.dataframe(database)
+
+    return
     # get the database
     if 'sp_sb_db' not in st.session_state.shravanam_db:
         st.session_state.shravanam_db['sp_sb_db'] = pd.DataFrame(
