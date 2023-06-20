@@ -1,9 +1,6 @@
 
-from typing import Any
-
-
 class template_page:
-    def __init__(self) -> None:
+    def __init__(self):
         
         self.subpage = 'home'
         self.subpage_navigator = {
