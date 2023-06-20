@@ -6,6 +6,8 @@ other_pages/__pycache__/
 .streamlit/
 # C extensions
 *.so
+# gitinore
+*.xlsx
 
 # Distribution / packaging
 .Python

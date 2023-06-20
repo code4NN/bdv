@@ -6,9 +6,12 @@ from other_pages.sadhana_card import sc_main
 from other_pages.departments import structure_main
 from other_pages.settlement import settlement_main
 from other_pages.article_collection import get_article_main
-
+from other_pages.hearing_tracker import hearing_tracker_root
 if 'LAYOUT' not in st.session_state:
     st.session_state['LAYOUT'] = 'centered'
+elif st.session_state.state =='shravanam_record':
+    st.session_state['LAYOUT'] = 'wide'
+
 
 st.set_page_config(page_title="testing",
                     page_icon='📖',
@@ -29,12 +32,13 @@ state_page_map = {'feed':show_feed,
                   'Sadhana_Card':sc_main,
                   'dept_structure':structure_main,
                   'settlement':settlement_main,
-                  'article_collection':get_article_main
+                  'article_collection':get_article_main,
+                  'shravanam_record': hearing_tracker_root
                     }
-
+st.session_state.state = 'shravanam_record'
 if 'state' not in st.session_state:
     # default behaviour
-    st.session_state['state'] = 'feed'
+    st.session_state['state'] = 'shravanam_record'
     st.session_state['user'] = USER
     st.session_state['user']['roles'] = st.session_state['user']['roles'].split(",")
     
