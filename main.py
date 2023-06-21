@@ -1,6 +1,6 @@
 import streamlit as st
 
-# from other_pages.loginpage import login_main
+from other_pages.loginpage import page4_login
 # from other_pages.feed import show_feed
 # from other_pages.sadhana_card import sc_main
 # from other_pages.departments import structure_main
@@ -34,7 +34,7 @@ if 'status_navigator' not in st.session_state:
     # This will not run next since the condition will be false
 
     st.session_state['status_navigator'] = {
-        'login':None,
+        'login':page4_login(),
         'feed': None, # create instance of the feed class (after importing)
         'settlement': None
     }
