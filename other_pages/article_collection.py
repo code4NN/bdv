@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import json
 import pandas as pd
 import openpyxl
@@ -79,7 +80,9 @@ def home():
     for _,row in filtereddf.iterrows():
         col_title.markdown(row.loc['Title'])
         col_author.markdown(row.loc['Author'])
-        col_goto.markdown(f"[ go to ]({row.loc['URL']})")
+        markdown_link = f"""<a href="{row.loc['URL']}" target="_blank">{'Open Article'}</a>"""
+        col_goto.markdown(markdown_link, unsafe_allow_html=True)
+        # col_goto.markdown(f"[ go to ]({row.loc['URL']})")
 
     st.markdown('---')
     st.button('home',key='home',on_click=change_page,args=['feed','default'])
@@ -129,7 +132,7 @@ def tagging_activity():
     # st.dataframe(not_done_db)
 
     def verify_allowed_characters(text):
-        allowed_characters = set(" abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789(){}[]-+_+=|?@!.")
+        allowed_characters = set(" abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789(){}[]-+_+=|?@!.,\n")
         for char in text:
             if char not in allowed_characters:
                 return (False,char)
@@ -138,7 +141,11 @@ def tagging_activity():
     st.markdown("---")
     columns = st.columns(3)
     columns[0].markdown(f":green[Issue - {not_done_db['ID']}]")
-    columns[1].markdown(f"[Click to Open]({not_done_db['URL']})")    
+    markdown_link = f"""<a href="{not_done_db['URL']}" target="_blank">{"Open Article"}</a>"""
+    with columns[1]:
+        components.html(markdown_link)
+        # markdown(markdown_link, unsafe_allow_html=True)
+    # columns[1].markdown(f"[Click to Open]({})")    
 
     collection_dictionary = []
     valid_inputs = True
@@ -173,9 +180,9 @@ def tagging_activity():
         if not verify_allowed_characters(current_title['Title'])[0]:
             bb.markdown(f":red[some invalid character -{verify_allowed_characters(current_title['Title'])[1]}-]")
         if not verify_allowed_characters(current_title['Author'])[0]:
-            bb.markdown(f":red[some invalid character - {verify_allowed_characters(current_title['Author'])[1]}]")
+            aa.markdown(f":red[some invalid character - {verify_allowed_characters(current_title['Author'])[1]}]")
         if not verify_allowed_characters(current_title['Source'])[0]:
-            bb.markdown(f":red[some invalid character-> {verify_allowed_characters(current_title['Source'])[1]}]")
+            cc.markdown(f":red[some invalid character-> {verify_allowed_characters(current_title['Source'])[1]}]")
         collection_dictionary.append(current_title)
     
     def add_new_title(reverse):
