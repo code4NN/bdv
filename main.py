@@ -26,7 +26,7 @@ st.markdown( """
         </style>
         """, unsafe_allow_html=True)
 
-st.session_state['DEBUG_ERROR'] = True
+st.session_state['DEBUG_ERROR'] = False
 
 # ======================================= 
 if 'status_navigator' not in st.session_state:
@@ -42,7 +42,16 @@ if 'status_navigator' not in st.session_state:
     st.session_state['_page'] = 'login'
 
 # run the root loop
-st.session_state['status_navigator'][st.session_state['_page']].run()
+try:
+    st.session_state['status_navigator'][st.session_state['_page']].run()
+except Exception as e:
+    if st.session_state.DEBUG_ERROR:
+        st.write(e)
+    else :
+        st.error("Something Went wrong :(")
+        detailed_error = st.checkbox("Show Error",key="Show_error_debug_button")
+        if detailed_error:  
+            st.write(e)
 
 st.markdown('---')
 st.markdown("[help improve!!](http://wa.me/917260869161?text=Hare%20Krishna%20some%20suggestion)")
