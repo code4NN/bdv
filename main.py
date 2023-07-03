@@ -1,6 +1,7 @@
 import streamlit as st
 
 from other_pages.loginpage import page4_login
+from other_pages.feed import page4_feed
 # from other_pages.feed import show_feed
 # from other_pages.sadhana_card import sc_main
 # from other_pages.departments import structure_main
@@ -11,10 +12,7 @@ from other_pages.loginpage import page4_login
 
 if 'LAYOUT' not in st.session_state:
     st.session_state['LAYOUT'] = 'centered'
-elif 'state' in st.session_state:
-    if st.session_state.state == 'article_collection':
-        st.session_state.LAYOUT = 'wide'
-
+    
 st.set_page_config(page_title="BDV",
                     page_icon='📖',
                     layout=st.session_state.LAYOUT
@@ -28,18 +26,24 @@ st.markdown( """
 
 st.session_state['DEBUG_ERROR'] = False
 
-# ======================================= 
-if 'status_navigator' not in st.session_state:
+# =======================================
+DEVELOPMENT = True
+DEVELOPMENT_PAGE = 'feed'
+
+if 'status_navigator' not in st.session_state or DEVELOPMENT:
     # for the first run create the instances of all the available pages
     # This will not run next since the condition will be false
 
     st.session_state['status_navigator'] = {
         'login':page4_login(),
-        'feed': None, # create instance of the feed class (after importing)
+        'feed': page4_feed(),
         'settlement': None
     }
     # Set the landing page to login
     st.session_state['_page'] = 'login'
+    if DEVELOPMENT:
+        st.session_state['_page'] = DEVELOPMENT_PAGE
+
 
 # run the root loop
 try:
