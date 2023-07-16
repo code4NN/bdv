@@ -88,9 +88,9 @@ def settlement_form():
                                  min_value=1,max_value=max_month_day,
                                  key=f'input_table_day{i}')
             spent_date = datetime.datetime(current_year,request_month,one_entry['day'])
-            if (datetime.datetime.now() -spent_date).days > 8:
-                requestform['error'] = True
-                col_day.markdown(":red[Older than 7 days not accepted]")
+            # if (datetime.datetime.now() -spent_date).days > 8:
+            #     requestform['error'] = True
+            #     col_day.markdown(":red[Older than 7 days not accepted]")
             col_day.caption(datetime.datetime(current_year,request_month,one_entry['day']).strftime("%b %d %a"))
             one_entry['day'] = datetime.datetime(current_year,request_month,one_entry['day']).strftime("%b-%d, %a")
                 
