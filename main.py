@@ -1,14 +1,8 @@
 import streamlit as st
 
+# import other pages
 from other_pages.loginpage import page4_login
 from other_pages.feed import page4_feed
-# from other_pages.feed import show_feed
-# from other_pages.sadhana_card import sc_main
-# from other_pages.departments import structure_main
-# from other_pages.settlement import settlement_main
-# from other_pages.japa_talk import jt_main
-# from other_pages.article_collection import get_article_main
-
 
 if 'LAYOUT' not in st.session_state:
     st.session_state['LAYOUT'] = 'centered'
@@ -30,10 +24,10 @@ st.session_state['DEBUG_ERROR'] = False
 DEVELOPMENT = True
 DEVELOPMENT_PAGE = 'feed'
 
-if 'status_navigator' not in st.session_state or DEVELOPMENT:
-    # for the first run create the instances of all the available pages
-    # This will not run next since the condition will be false
-
+# for the first run create the instances of all the available pages
+# This will not run next since the condition will be false
+# also during development create instances on every run
+if ('status_navigator' not in st.session_state) or DEVELOPMENT:
     st.session_state['status_navigator'] = {
         'login':page4_login(),
         'feed': page4_feed(),
@@ -53,8 +47,8 @@ except Exception as e:
         st.write(e)
     else :
         st.error("Something Went wrong :(")
-        detailed_error = st.checkbox("Show Error",key="Show_error_debug_button")
-        if detailed_error:  
+        show_detailed_error = st.checkbox("Show Error",key="Show_error_debug_button")
+        if show_detailed_error:  
             st.write(e)
 
 st.markdown('---')

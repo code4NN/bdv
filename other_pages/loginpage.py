@@ -46,8 +46,8 @@ class page4_login:
             except Exception as e:
                 if st.session_state['DEBUG_ERROR']:
                     st.write(e)
-                st.error("some problem in fetching data")
-        
+                else :
+                    st.error("some problem in fetching data")        
         else :
             # refresh not required
             return self._userdb
@@ -62,11 +62,11 @@ class page4_login:
         input_user_name = st.text_input("Enter Username",key='username')
         
         if input_user_name.__contains__(" "):
-            st.caption(':red[Haribol, remove space from username]')
+            st.markdown(':red[Haribol, remove space from username]')
 
         input_password = st.text_input("Enter Password",
-                            type='password',
-                            key='password')
+                                        type='password',
+                                        key='password')
         
             
         ## Verify username and password

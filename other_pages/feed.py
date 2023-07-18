@@ -3,7 +3,7 @@ import datetime
 
 class page4_feed:
     def __init__(self):
-        
+
         self.subpage = 'home'
         self.subpage_navigator = {
             'home':self.home
@@ -18,6 +18,7 @@ class page4_feed:
         # st.image("https://rukminim1.flixcart.com/image/850/1000/jm81zm80/poster/j/j/b/medium-posri-sri-radha-gopinath-close-up-03-posri-sri-radha-original-imaf2gg6sttcgq5d.jpeg?q=90")
 
         st.markdown("---")
+        st.subheader(":green[Quick Actions]")
         left,middle,right = st.columns(3)
         left.button("Settlement 💸",on_click=self.go2page,args=['feed'])
     
