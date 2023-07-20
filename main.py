@@ -1,6 +1,5 @@
 import streamlit as st
 
-# import other pages
 from other_pages.loginpage import page4_login
 from other_pages.feed import page4_feed
 
