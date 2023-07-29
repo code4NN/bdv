@@ -26,6 +26,17 @@ hide_menu_style = """
         </style>
         """
 st.markdown(hide_menu_style, unsafe_allow_html=True)
+st.markdown(
+    """
+    <style>
+    .css-1rs6os.edgvbvh3 {
+        display: none;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 st.session_state['DEBUG_ERROR'] = True
 
 # ======================================= 
