@@ -540,7 +540,7 @@ def make_paymnt():
             checkbox_status=False
         
     for r in range(filter_count):        
-        title = f"[{1+r}/{len(dworkbook)}] → ₹ :orange[{dworkbook.loc[r,'amount']}] _spent on_ {dworkbook.loc[r,'actual paymnt date']}"
+        title = f"[{1+r}/{len(dworkbook)}] ({dworkbook.loc[r,'uniqueid'].lower()}) → ₹ :orange[{dworkbook.loc[r,'amount']}] _spent on_ {dworkbook.loc[r,'actual paymnt date']}"
         status = "purple"
         if int(dworkbook.loc[r,'settlement_id']) ==-1:
             if dworkbook.loc[r,'noted_in_expense_sheet'] =='no':
