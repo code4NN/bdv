@@ -338,16 +338,17 @@ def settlement_form():
     for amount,is_settlement in zip(timelinedf.amount.tolist(),timelinedf.is_settlement.tolist()):
             balance.append(balance[-1]+int(amount))
     timelinedf.insert(1,"balance",balance[1:])
-    timeline_view.dataframe(timelinedf)
     
-    dueamount= f'₹ {balance[-1]:,}'
-    if balance[-1] > 0:
-        st.markdown(f"## :green[You will receive :orange[{dueamount}] from VOICE]")
-    elif balance[-1]==0:
-        st.markdown("## :green[All Accounts Clear!!!]")
-    else :
-        st.markdown(f"## :green[Payment of :orange[{dueamount}] is due to VOICE]")
-
+    # timeline_view.dataframe(timelinedf)
+    
+    # dueamount= f'₹ {balance[-1]:,}'
+    # if balance[-1] > 0:
+    #     st.markdown(f"## :green[You will receive :orange[{dueamount}] from VOICE]")
+    # elif balance[-1]==0:
+    #     st.markdown("## :green[All Accounts Clear!!!]")
+    # else :
+    #     st.markdown(f"## :green[Payment of :orange[{dueamount}] is due to VOICE]")
+    st.markdown("### :green[Balance calculation is in progress!!!]")
     # dfsummary = dworkbook.copy()
     # dfsummary = dfsummary[['actual paymnt date','uniqueid','amount','dept','details','any comments','settlement_id']]
     # dfsummary.rename(columns={'actual paymnt date':'payment date','settlement_id':'status'},inplace=True)
