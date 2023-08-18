@@ -301,10 +301,21 @@ def settlement_form():
             return f'settled on {statusdict["date_of_paymnt"]}'
         
     view1df['status'] = view1df['status'].apply(lambda x:process_status(x))
-    request_view.dataframe(view1df)
+    def highlight_rows(row):
+        light_green = '#1b6924'  # Light green color
+        light_red = '#5e132a'    # Light red color
+        color = light_green if row['status'] !='pending' else light_red
+        return ['background-color: {}'.format(color) for _ in row]
+    request_view.dataframe(view1df.style.apply(highlight_rows, axis=1),
+                           use_container_width=True)
     
+
+
     # Chronological view calculations (both)
     timeline_array = [['date','amount','department','details','formfilldate','requestid','is_settlement']]
+    # with timeline_view:
+    #     st.dataframe(dworkbook)
+    completed_settlement_ids = []
     for _,one_request in dworkbook.iterrows():
 
         formfilled_time = one_request['timestamp']
@@ -320,6 +331,12 @@ def settlement_form():
         settlement_status = json.loads(one_request['status'])
         # st.write(settlement_status)
         if settlement_status['status'] =='done':
+            
+            # don't add multiple times
+            if settlement_status['settlement_id'] not in completed_settlement_ids:
+                completed_settlement_ids.append(settlement_status['settlement_id'])
+            else :
+                continue
             timeline_array.append([settlement_status['date_of_paymnt'],
                                 -int(settlement_status['amount_of_paymnt']),
                                 'settlement',
@@ -332,13 +349,21 @@ def settlement_form():
     timelinedf = pd.DataFrame(timeline_array[1:],columns=timeline_array[0])
 
     timelinedf.sort_values(by='date',ascending=True,inplace=True)
-    timelinedf.index=timelinedf['date']
-    timelinedf.drop(columns=['date'],inplace=True)
+    # timelinedf.index=timelinedf['date']
+    # timelinedf.drop(columns=['date'],inplace=True)
     balance = [0]
     for amount,is_settlement in zip(timelinedf.amount.tolist(),timelinedf.is_settlement.tolist()):
             balance.append(balance[-1]+int(amount))
     timelinedf.insert(1,"balance",balance[1:])
-    timeline_view.dataframe(timelinedf)
+    
+    def highlight_settlements(row):
+        light_green = '#1b6924'  # Light green color
+        light_red = '#5e132a'    # Light red color
+        color = light_green if row['is_settlement'] == True else light_red
+        return ['background-color: {}'.format(color) for _ in row]
+
+    timeline_view.dataframe(timelinedf.style.apply(highlight_settlements,axis=1),
+                            use_container_width=True)
     
     dueamount= f'₹ {balance[-1]:,}'
     if balance[-1] > 0:
