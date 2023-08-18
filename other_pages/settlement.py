@@ -374,7 +374,7 @@ def settlement_form():
     #     st.markdown("## :green[All Accounts Clear!!!]")
     # else :
     #     st.markdown(f"## :green[Payment of :orange[{dueamount}] is due to VOICE]")
-    st.markdown("### :green[Balance calculation is in progress!!!]")
+    # st.markdown("### :green[Balance calculation is in progress!!!]")
     # dfsummary = dworkbook.copy()
     # dfsummary = dfsummary[['actual paymnt date','uniqueid','amount','dept','details','any comments','settlement_id']]
     # dfsummary.rename(columns={'actual paymnt date':'payment date','settlement_id':'status'},inplace=True)
