@@ -347,8 +347,10 @@ def settlement_form():
                                 ])
     
     timelinedf = pd.DataFrame(timeline_array[1:],columns=timeline_array[0])
-
-    timelinedf.sort_values(by='date',ascending=True,inplace=True)
+    
+    timelinedf['date_actual'] = pd.to_datetime(timelinedf['date'],format="%b-%d, %a")
+    timelinedf.sort_values(by='date_actual',ascending=True,inplace=True)
+    timelinedf.drop(columns='date_actual',inplace=True)
     # timelinedf.index=timelinedf['date']
     # timelinedf.drop(columns=['date'],inplace=True)
     balance = [0]
@@ -367,13 +369,13 @@ def settlement_form():
     
     # timeline_view.dataframe(timelinedf)
     
-    # dueamount= f'₹ {balance[-1]:,}'
-    # if balance[-1] > 0:
-    #     st.markdown(f"## :green[You will receive :orange[{dueamount}] from VOICE]")
-    # elif balance[-1]==0:
-    #     st.markdown("## :green[All Accounts Clear!!!]")
-    # else :
-    #     st.markdown(f"## :green[Payment of :orange[{dueamount}] is due to VOICE]")
+    dueamount= f'₹ {balance[-1]:,}'
+    if balance[-1] > 0:
+        st.markdown(f"## :green[You will receive :orange[{dueamount}] from VOICE]")
+    elif balance[-1]==0:
+        st.markdown("## :green[All Accounts Clear!!!]")
+    else :
+        st.markdown(f"## :green[Payment of :orange[{dueamount}] is due to VOICE]")
     # st.markdown("### :green[Balance calculation is in progress!!!]")
     # dfsummary = dworkbook.copy()
     # dfsummary = dfsummary[['actual paymnt date','uniqueid','amount','dept','details','any comments','settlement_id']]
