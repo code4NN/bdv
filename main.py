@@ -1,50 +1,50 @@
 import streamlit as st
 
-# from other_pages.loginpage import login_main
-# from other_pages.feed import show_feed
-# from other_pages.sadhana_card import sc_main
-# from other_pages.departments import structure_main
-# from other_pages.settlement import settlement_main
-# from other_pages.japa_talk import jt_main
-# from other_pages.article_collection import get_article_main
+# Import various pages
+from other_pages.loginpage import page4_login
 
 
-if 'LAYOUT' not in st.session_state:
-    st.session_state['LAYOUT'] = 'centered'
-elif 'state' in st.session_state:
-    if st.session_state.state == 'article_collection':
-        st.session_state.LAYOUT = 'wide'
+class myapp:
+    
+    def __init__(self):
+        # Some Global parameters
+        self.PAGE_LAYOUT = 'centered'
+        self.PAGE_TITLE = 'BDV'        
 
-st.set_page_config(page_title="BDV",
-                    page_icon='📖',
-                    layout=st.session_state.LAYOUT
-                    )
-st.markdown( """
-        <style>
-        # #MainMenu {visibility: hidden;}
-        # footer {visibility: hidden;}
-        </style>
-        """, unsafe_allow_html=True)
+        # Page navigation
+        self.current_page = 'login'
+        self.all_pages = {'login':page4_login,
+                          }
+        
+        # Set the Initial Page Configuration
+        st.set_page_config(page_title=self.PAGE_TITLE,
+                            page_icon='☔',
+                            layout=self.LAYOUT
+                            )
+        # st.markdown( """
+        #         <style>
+        #         # #MainMenu {visibility: hidden;}
+        #         # footer {visibility: hidden;}
+        #         </style>
+        #         """, unsafe_allow_html=True)
+    
+    def run(self):
+        self.all_pages[self.current_page].run()
+# End of My App Class
 
-st.session_state['DEBUG_ERROR'] = True
+if 'main_app' not in st.session_state:
+    st.session_state['main_app'] = myapp()
 
-# ======================================= 
-if 'status_navigator' not in st.session_state:
-    # for the first run create the instances of all the available pages
-    # This will not run next since the condition will be false
+try:
+    st.session_state['main_app'].run()
+except Exception as e:
+    st.error("Haribol!! Got some error")
 
-    st.session_state['status_navigator'] = {
-        'login':None,
-        'feed': None, # create instance of the feed class (after importing)
-        'settlement': None
-    }
-    # Set the landing page to login
-    st.session_state['_page'] = 'login'
+    # for deployed. send a wa message to maintainer with the error
+    # for development show a checkbox to show the error
+    if st.checkbox("Show the error"):
+        st.write(e)
 
-# run the root loop
-st.session_state['status_navigator'][st.session_state['_page']].run()
-
-st.markdown('---')
 st.markdown("[help improve!!](http://wa.me/917260869161?text=Hare%20Krishna%20some%20suggestion)")
 
 
