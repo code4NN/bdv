@@ -13,9 +13,9 @@ class myapp:
 
         # Global parameters
         self.in_development = in_development
-        self.page_config = {'page_title': "Login",
-                            'page_icon':'🔑',
-                            'layout':'wide'
+        self.page_config = {'page_title': "BDV",
+                            'page_icon':'☔',
+                            'layout':'centered'
                             }
                
         # register all the page
