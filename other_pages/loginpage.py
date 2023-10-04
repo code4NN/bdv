@@ -8,8 +8,6 @@ import json
 class login_Class:
     def __init__(self):
         
-        self.bdvapp = st.session_state.get('bdv_app',None)
-
         # page map
         self.page_map = {
             'home':self.home
@@ -20,14 +18,9 @@ class login_Class:
         # Sheets related informations
         self.USER_CREDENTIALS = 'credentials!A2'
 
-        # various databases
-        self._userdb = {"ssNN":{"password":"gaur",
-                                "name":"Sample",
-                                "roles":"",
-                                "group":"nak",
-                                "settlement_id":"3"}
-                        } if self.bdvapp.in_development else {}
-        self._userdb_refresh = False
+        # User credentials
+        self._userdb = None
+        self._userdb_refresh = True
 
     @property
     def userdb(self):
@@ -61,6 +54,10 @@ class login_Class:
             # refresh not required
             return self._userdb
 
+    @property
+    def bdvapp(self):
+        return st.session_state.get("bdv_app",None)
+    
     def home(self):
         """ 
         Loging page you could say
@@ -73,9 +70,12 @@ class login_Class:
                                         type='password',
                                         key='password')
         
-            
         ## Verify username and password
-        if input_user_name in self.userdb.keys():
+        if not input_user_name:
+            st.warning("Please Enter Username")
+        elif not input_password:
+            st.warning("Please Enter Password!!")
+        elif input_user_name in self.userdb.keys():
             pswd = self.userdb[input_user_name]['password']
             if input_password == pswd:
                 

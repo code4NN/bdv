@@ -2,6 +2,8 @@ import streamlit as st
 
 # Import various classes
 from other_pages.loginpage import login_Class
+from other_pages.feed import feed_Class
+from other_pages.settlement import settlement_Class
 
 
 
@@ -12,11 +14,14 @@ class myapp:
         # Global parameters
         self.in_development = in_development
         self.page_config = {'page_title': "Login",
-                            'page_icon':'🔑'
+                            'page_icon':'🔑',
+                            'layout':'wide'
                             }
                
         # register all the page
-        self.page_map = {'login':login_Class,
+        self.page_map = {'login':login_Class(),
+                         'feed':feed_Class(),
+                         'settlement':settlement_Class()
                           }
         self.current_page = 'login'
         
@@ -36,12 +41,18 @@ class myapp:
 # End of My App Class
 
 if 'bdv_app' not in st.session_state:
-    st.session_state['bdv_app'] = myapp(in_development=True)
+    st.session_state['bdv_app'] = myapp(in_development=False)
 
 main_app = st.session_state['bdv_app']
 
-st.set_page_config(**main_app.page_config,
-                   layout='wide')
+if main_app.in_development:
+    PAGE_DEVELOPING = 'settlement'
+    PAGE_CLASS = settlement_Class
+    main_app.page_map[PAGE_DEVELOPING] = PAGE_CLASS()
+
+
+
+st.set_page_config(**main_app.page_config)
 
 
 
