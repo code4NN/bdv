@@ -1,5 +1,4 @@
 import streamlit as st
-import datetime
 
 class feed_Class:
     def __init__(self):
@@ -23,7 +22,7 @@ class feed_Class:
             self.bdvapp.current_page = page_name
         
         left,middle,right = st.columns(3)
-        left.button("Settlement 💸",on_click=go2page,args=['feed'])
+        left.button("Settlement 💸",on_click=go2page,args=['settlement'])
     
     def run(self):
         self.page_map[self.current_page]()
