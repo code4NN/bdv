@@ -94,7 +94,12 @@ class login_Class:
 
 
                 left,middle,right = st.columns(3)
-                left.button('Settlements 💸',on_click=takemein,args=['settlement'],key='direct_login_accounts')
+                with left:
+                    st.button('Settlements 💸',on_click=takemein,args=['settlement'],key='direct_login_accounts')
+                
+                with middle:
+                    st.button("Finder 🔍",on_click=takemein,args=['finder'],key='direct_login_finder')
+
 
 
 

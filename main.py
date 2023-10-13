@@ -4,15 +4,18 @@ import streamlit as st
 from other_pages.loginpage import login_Class
 from other_pages.feed import feed_Class
 from other_pages.settlement import settlement_Class
+from other_pages.finder import finder_Class
 
 
 
 class myapp:
     
-    def __init__(self,in_development):
+    def __init__(self,in_development,page_in_development):
 
         # Global parameters
         self.in_development = in_development
+        self.page_in_development = page_in_development
+
         self.page_config = {'page_title': "BDV",
                             'page_icon':'☔',
                             'layout':'centered'
@@ -21,7 +24,8 @@ class myapp:
         # register all the page
         self.page_map = {'login':login_Class(),
                          'feed':feed_Class(),
-                         'settlement':settlement_Class()
+                         'settlement':settlement_Class(),
+                         'finder': finder_Class(),
                           }
         self.current_page = 'login'
         
@@ -37,14 +41,22 @@ class myapp:
         #         """, unsafe_allow_html=True)
     
     def run(self):
+        if self.in_development:
+            self.page_map.pop(self.page_in_development)
+            from other_pages.finder import finder_Class
+            self.page_map[self.page_in_development] = finder_Class()
+            if self.userinfo:
+                self.current_page = self.page_in_development
+            else :
+                pass
         self.page_map[self.current_page].run()
 # End of My App Class
 
 if 'bdv_app' not in st.session_state:
-    st.session_state['bdv_app'] = myapp(in_development=False)
-
+    st.session_state['bdv_app'] = myapp(in_development=True if st.secrets['developer']['in_development']=='1' else False,
+                                        page_in_development='finder'
+                                        )
 main_app = st.session_state['bdv_app']
-
 if main_app.in_development:
     PAGE_DEVELOPING = 'settlement'
     PAGE_CLASS = settlement_Class
