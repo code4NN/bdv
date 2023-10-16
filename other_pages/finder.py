@@ -26,6 +26,12 @@ class finder_Class:
     def vedabase_SP(self):
         pass
     def developer_page(self):
+        if st.checkbox("home"):
+            self.bdvapp.current_page = 'feed'
+            self.bdvapp.run()
+            # st.rerun()
+
+        # self.bdvapp.
         ROOT = "https://vedabase.io/en/library/transcripts/"
         response = self.fetch_URL(ROOT)
         with st.sidebar:
@@ -34,6 +40,13 @@ class finder_Class:
             height3 = st.number_input("window 3",min_value=100,value=600,step=100)
         
         display_html(response.text,height=height,scrolling=True)
+        document = soup(response.text,"html.parser")
+        
+        for filterblock in document.find(id='facets').find_all(class_='facet-block'):
+            st.write(filterblock)
+
+
+
 
         URL = st.text_input("--")
         if URL:

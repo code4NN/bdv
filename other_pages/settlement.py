@@ -104,9 +104,9 @@ class settlement_Class:
 
         # for acc in charge
         if 'acc_ic' in self.bdvapp.userinfo['roles']:
-            def switch_role(role):
-                self.current_page = role
-            st.button('Make settlement',on_click= switch_role,args=['makePayments'])
+            def switch_role():
+                self.current_page = 'makePayments'
+            st.button('Make settlement',on_click= switch_role)
 
 
         requestform = {'error':False}

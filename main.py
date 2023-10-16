@@ -41,14 +41,14 @@ class myapp:
         #         """, unsafe_allow_html=True)
     
     def run(self):
-        if self.in_development:
-            self.page_map.pop(self.page_in_development)
-            from other_pages.finder import finder_Class
-            self.page_map[self.page_in_development] = finder_Class()
-            if self.userinfo:
-                self.current_page = self.page_in_development
-            else :
-                pass
+        # if self.in_development:
+        #     self.page_map.pop(self.page_in_development)
+        #     # from other_pages.finder import finder_Class
+        #     self.page_map[self.page_in_development] = finder_Class()
+        #     if self.userinfo:
+        #         self.current_page = self.page_in_development
+        #     else :
+        #         pass
         self.page_map[self.current_page].run()
 # End of My App Class
 
