@@ -8,8 +8,7 @@ from other_pages.finder import finder_Class
 
 
 
-class myapp:
-    
+class myapp:    
     def __init__(self,in_development,page_in_development):
 
         # Global parameters
@@ -52,14 +51,21 @@ class myapp:
         self.page_map[self.current_page].run()
 # End of My App Class
 
+# Create an instance of the voice-app
 if 'bdv_app' not in st.session_state:
     st.session_state['bdv_app'] = myapp(in_development=True if st.secrets['developer']['in_development']=='1' else False,
                                         page_in_development='finder'
                                         )
+
+
+
+
+
+# For development
 main_app = st.session_state['bdv_app']
 if main_app.in_development:
-    PAGE_DEVELOPING = 'settlement'
-    PAGE_CLASS = settlement_Class
+    PAGE_DEVELOPING = 'finder'
+    PAGE_CLASS = finder_Class
     main_app.page_map[PAGE_DEVELOPING] = PAGE_CLASS()
 
 

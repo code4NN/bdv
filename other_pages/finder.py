@@ -1,8 +1,9 @@
 import streamlit as st
 import requests
+import urllib.parse as urlparser
 from bs4 import BeautifulSoup as soup
 from streamlit.components.v1 import html as display_html
-
+import pandas as pd
 
 class finder_Class:
     def __init__(self):
@@ -26,38 +27,92 @@ class finder_Class:
     def vedabase_SP(self):
         pass
     def developer_page(self):
-        if st.checkbox("home"):
-            self.bdvapp.current_page = 'feed'
-            self.bdvapp.run()
-            # st.rerun()
-
-        # self.bdvapp.
-        ROOT = "https://vedabase.io/en/library/transcripts/"
-        response = self.fetch_URL(ROOT)
-        with st.sidebar:
-            height = st.number_input("height of window",min_value=0,value=600,step=50)
-            height2 = st.number_input("window 2",min_value=100,value=600,step=100)
-            height3 = st.number_input("window 3",min_value=100,value=600,step=100)
+        ROOT = "https://vedabase.io/en/library/transcripts/?type=Srimad-Bhagavatam"
         
-        display_html(response.text,height=height,scrolling=True)
-        document = soup(response.text,"html.parser")
+        use_default = st.checkbox("use default")
+        URL_tofetch = st.text_input("put URL",value=ROOT if use_default else "")
         
+        response = self.fetch_URL(URL_tofetch)
+        document = soup(response.text,"html.parser")        
+        type_filters= []
+        year_filter = []
+        location_filters = []
+        # fill with following dicts
+        # {title:
+        # dataframe:}
+        last_seen_title = "Filter by type"
+        # Iterate over all the filters
         for filterblock in document.find(id='facets').find_all(class_='facet-block'):
-            st.write(filterblock)
+            filter_title = filterblock.find("h3").text.strip()
+            if filter_title in ['Filter by year','Filter by location']:
+                last_seen_title = filter_title
 
-
-
-
-        URL = st.text_input("--")
-        if URL:
-            response = self.fetch_URL(ROOT+URL.split("library/transcripts/")[1])
-            display_html(response.text,height=height2,scrolling=True)
+            item_list = []
+            # Fill the list in order of 
+            # [value, count, is_active]
+            # Iterate over all the options available
+            for one_option in filterblock.find_all("li"):
+                # value and count
+                available_count = one_option.find("span").text.strip()
+                value_name = one_option.find("a").text.strip().replace(available_count,"").strip()
+                available_count = int(available_count.replace("(","").replace(")","").replace(" ",""))
+                # is active
+                is_active = False
+                if one_option.has_attr("class"):
+                    if 'active' in one_option['class']:
+                        is_active= True
+                # Query
+                # query = one_option.fin("a").get("href")
+                # now create the list
+                item_list.append([value_name,available_count,is_active])
+            if item_list:
+                dataframe = pd.DataFrame(item_list,
+                                         columns=['options','count','is_active'])
+            else :
+                dataframe = -1
+            filter_information = {'title':filter_title.replace("Filter by ",""),
+                                  'dataframe':dataframe}
+            # now add based on last seen title
+            if last_seen_title == 'Filter by type':
+                type_filters.append(filter_information)
+            elif last_seen_title == 'Filter by year':
+                year_filter.append(filter_information)
+            elif last_seen_title == 'Filter by location':
+                location_filters.append(filter_information)
+            else :
+                st.error("something went wrong")
         
-        URL = st.text_input("---")
-        if URL:
-            response = self.fetch_URL(ROOT+URL.split("library/transcripts/")[1])
-            display_html(response.text,height=height3,scrolling=True)
+        left,middle,right = st.columns(3)
+        def filter_displayer(container,filter_dictionary):
+            response_queries = []
+            with container:
+                for a_filter in filter_dictionary:
+                    st.subheader(a_filter['title'])
+                    response = st.data_editor(a_filter['dataframe'],
+                                    disabled=['_index','options','count',],
+                                    hide_index=True,
+                                    column_config={
+                                        "options":st.column_config.Column("Choices",
+                                                                ),
+                                        "count":st.column_config.NumberColumn("count",
+                                                                            format="%d"),
+                                        "is_active":st.column_config.CheckboxColumn("Select",
+                                                                                    )
+                                    }
+                    )
+                    response = response.query(" is_active == True ")
+                    for _,row in response.iterrows():
+                        response_queries.append(f"{a_filter['title']}={row['options']}")
+            return response_queries
         
+        query1 = filter_displayer(left,type_filters)
+        query2 = filter_displayer(middle,year_filter)
+        query3 = filter_displayer(right,location_filters)
+        query_list = [*query1,*query2,*query3]
+        if query_list:
+            newURL = "https://vedabase.io/en/library/transcripts/?"+"&".join(query_list).replace(" ","+")
+            response = requests.get(newURL)
+            display_html(response.text,height=500,scrolling=True)
 
     def idt_lectures_by_HHRNSM(self):
         pass
