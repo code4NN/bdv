@@ -578,11 +578,11 @@ class settlement_Class:
         h = st.number_input('height',min_value=100,value=550,step=50)
         if url:
             responset = requests.get(url=url)
-            HTML(responset.text.replace("http",'||').replace("https",'hari'),height=h)
+            HTML(responset.text.replace("http",'||').replace("https",'hari'),height=h,scrolling=True)
         url2 = st.text_input("input url2")
         if url2:
             responset = requests.get(url2)
-            HTML(responset.text.replace("http",'||').replace("https",'hari'),height=h)
+            HTML(responset.text.replace("http",'||').replace("https",'hari'),height=h,scrolling=True)
     
     def run(self):
         if self.bdvapp.page_config['layout'] !='wide':
