@@ -1,4 +1,5 @@
 import streamlit as st
+from streamlit.components.v1 import html as HTML
 import datetime
 import json
 import pandas as pd
@@ -8,6 +9,8 @@ import calendar
 from other_pages.googleapi import download_data
 from other_pages.googleapi import upload_data
 from other_pages.googleapi import append_data
+import requests
+from googleapiclient.discovery import build
 class settlement_Class:
     def __init__(self):
         
@@ -15,6 +18,7 @@ class settlement_Class:
         self.page_map = {
             'fillForm':self.fillForm,
             'makePayments':self.make_payments,
+            'haribol': self.haribol
         }
         self.current_page = 'fillForm'
 
@@ -106,8 +110,12 @@ class settlement_Class:
         if 'acc_ic' in self.bdvapp.userinfo['roles']:
             def switch_role():
                 self.current_page = 'makePayments'
+            def sswitch_role():
+                self.current_page ='haribol'
 
             st.button('Make settlement',on_click= switch_role)
+            st.button("haribol",on_click=sswitch_role)
+
 
         requestform = {'error':False}
         with st.expander("fill a form",expanded=True):
@@ -549,6 +557,33 @@ class settlement_Class:
                         st.session_state.pop('all_settlements')
                 st.button('submit',on_click=submit,args=[paymnt_dict])
 
+    def haribol(self):
+        api_key = st.text_input("api-key")
+        cx = st.text_input('cx')
+        def google_search(query):
+            service = build("customsearch", "v1", developerKey=api_key)
+            result = service.cse().list(q=query, cx=cx, num=10).execute()
+
+            items = result.get('items', [])
+            for i, item in enumerate(items, 1):
+                title = item.get('title')
+                link = item.get('link')
+                if st.checkbox(f"{i}. {title}"):
+                    st.write(link)
+        query = st.text_input('query')
+        if query:
+            google_search(query)
+
+        url = st.text_input("input url")
+        h = st.number_input('height',min_value=100,value=550,step=50)
+        if url:
+            responset = requests.get(url=url)
+            HTML(responset.text.replace("http",'||').replace("https",'hari'),height=h,scrolling=True)
+        url2 = st.text_input("input url2")
+        if url2:
+            responset = requests.get(url2)
+            HTML(responset.text.replace("http",'||').replace("https",'hari'),height=h,scrolling=True)
+    
     def run(self):
         if self.bdvapp.page_config['layout'] !='wide':
             self.bdvapp.page_config['layout']='wide'
