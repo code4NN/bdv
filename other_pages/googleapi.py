@@ -11,10 +11,12 @@ sheets_dict = st.secrets['database']
 db_primary = sheets_dict['base']
 db_sadhana_card = sheets_dict['sadhana_card']
 db_article_tagging = sheets_dict['article_tagging']
+db_accounts = sheets_dict['accounts']
 
 db_list = {1:db_primary,
            2:db_sadhana_card,
-           3:db_article_tagging
+           3:db_article_tagging,
+           4:db_accounts
             }
 
 # credentials
@@ -70,8 +72,8 @@ def upload_data(db_id,range_name,value):
         return response
     except Exception as e:
         st.error("Something went wrong")
-        if st.session_state.DEBUG_ERROR:
-            st.write(e)
+        # if st.session_state.DEBUG_ERROR:
+        st.write(e)
 
 
 

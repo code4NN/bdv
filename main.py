@@ -5,15 +5,16 @@ from other_pages.loginpage import login_Class
 from other_pages.feed import feed_Class
 from other_pages.settlement import settlement_Class
 from other_pages.finder import finder_Class
+from other_pages.accounts import account_Class
 
 
 
 class myapp:    
-    def __init__(self,in_development,page_in_development):
+    def __init__(self,in_development):
 
         # Global parameters
         self.in_development = in_development
-        self.page_in_development = page_in_development
+        self.development_page = ''
 
         self.page_config = {'page_title': "BDV",
                             'page_icon':'☔',
@@ -25,6 +26,7 @@ class myapp:
                          'feed':feed_Class(),
                          'settlement':settlement_Class(),
                          'finder': finder_Class(),
+                         'dpt_accounts': account_Class()
                           }
         self.current_page = 'login'
         
@@ -40,21 +42,15 @@ class myapp:
         #         """, unsafe_allow_html=True)
     
     def run(self):
-        # if self.in_development:
-        #     self.page_map.pop(self.page_in_development)
-        #     # from other_pages.finder import finder_Class
-        #     self.page_map[self.page_in_development] = finder_Class()
-        #     if self.userinfo:
-        #         self.current_page = self.page_in_development
-        #     else :
-        #         pass
-        self.page_map[self.current_page].run()
+        if self.in_development:
+            self.page_map[self.development_page].run()
+        else:
+            self.page_map[self.current_page].run()
 # End of My App Class
 
 # Create an instance of the voice-app
 if 'bdv_app' not in st.session_state:
-    st.session_state['bdv_app'] = myapp(in_development=True if st.secrets['developer']['in_development']=='1' else False,
-                                        page_in_development='finder'
+    st.session_state['bdv_app'] = myapp(in_development=True if st.secrets['developer']['in_development']=='1' else False
                                         )
 
 
@@ -64,9 +60,11 @@ if 'bdv_app' not in st.session_state:
 # For development
 main_app = st.session_state['bdv_app']
 if main_app.in_development:
-    PAGE_DEVELOPING = 'finder'
-    PAGE_CLASS = finder_Class
+    PAGE_DEVELOPING = 'dpt_accounts'
+    PAGE_CLASS = account_Class
+
     main_app.page_map[PAGE_DEVELOPING] = PAGE_CLASS()
+    main_app.development_page = PAGE_DEVELOPING
 
 
 
