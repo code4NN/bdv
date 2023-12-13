@@ -63,7 +63,7 @@ if main_app.in_development:
     PAGE_DEVELOPING = 'dpt_accounts'
     PAGE_CLASS = account_Class
 
-    main_app.page_map[PAGE_DEVELOPING] = PAGE_CLASS()
+    # main_app.page_map[PAGE_DEVELOPING] = PAGE_CLASS()
     main_app.development_page = PAGE_DEVELOPING
 
 
