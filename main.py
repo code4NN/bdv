@@ -48,6 +48,8 @@ class myapp:
             self.page_map[self.current_page].run()
 # End of My App Class
 
+
+
 # Create an instance of the voice-app
 if 'bdv_app' not in st.session_state:
     st.session_state['bdv_app'] = myapp(in_development=True if st.secrets['developer']['in_development']=='1' else False

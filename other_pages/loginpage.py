@@ -68,7 +68,7 @@ class login_Class:
         
         input_password = st.text_input("Enter Password",
                                         type='password',
-                                        key='password')
+                                        key='password').strip()
         
         ## Verify username and password
         if not input_user_name:
@@ -99,7 +99,10 @@ class login_Class:
                 
                 with middle:
                     st.button("Finder 🔍",on_click=takemein,args=['finder'],key='direct_login_finder')
-
+                
+                with right:
+                    if 'acc_ic' in self.bdvapp.userinfo['roles']:
+                        st.button("Accounts 📝",on_click=takemein,args=['dpt_accounts'],key='direct_login_accounts')
 
 
 

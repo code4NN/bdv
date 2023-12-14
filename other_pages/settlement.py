@@ -1,5 +1,4 @@
 import streamlit as st
-from streamlit.components.v1 import html as HTML
 import datetime
 import json
 import pandas as pd
@@ -9,8 +8,7 @@ import calendar
 from other_pages.googleapi import download_data
 from other_pages.googleapi import upload_data
 from other_pages.googleapi import append_data
-import requests
-from googleapiclient.discovery import build
+
 class settlement_Class:
     def __init__(self):
         
@@ -18,7 +16,6 @@ class settlement_Class:
         self.page_map = {
             'fillForm':self.fillForm,
             'makePayments':self.make_payments,
-            'haribol': self.haribol
         }
         self.current_page = 'fillForm'
 
@@ -74,13 +71,14 @@ class settlement_Class:
         if self._request_db_refresh:
 
             # put logic here to download the data
-            array = download_data(db_id=1,range_name=self.SETTLEMENT_INFO)            
+            array = download_data(db_id=1,range_name=self.SETTLEMENT_INFO)          
             temp = pd.DataFrame(array[1:],columns=array[0])
             temp = temp[temp['devotee name']==self.bdvapp.userinfo['name']]
             temp = temp[['dept','timestamp','devotee name','uniqueid','amount','details','any comments','noted_in_expense_sheet','2','settlement_id','status']]
             temp.query("dept=='-'",inplace=True)
             temp['amount'] = temp['amount'].apply(lambda x: float(x))
             
+            temp = temp.reset_index(drop=True)
             self._request_db = temp.copy()
             self._request_db_refresh = False
             return self._request_db
@@ -110,22 +108,19 @@ class settlement_Class:
         if 'acc_ic' in self.bdvapp.userinfo['roles']:
             def switch_role():
                 self.current_page = 'makePayments'
-            def sswitch_role():
-                self.current_page ='haribol'
 
             st.button('Make settlement',on_click= switch_role)
-            st.button("haribol",on_click=sswitch_role)
 
 
         requestform = {'error':False}
         with st.expander("fill a form",expanded=True):
-
         
 
             # get the month of payment
-            current_month = datetime.datetime.now().month
             current_year = datetime.datetime.now().year
+            current_month = datetime.datetime.now().month
             previous_month = current_month - 1 if current_month !=1 else 12
+            
             st.header(f":violet[request-id-{self.bdvapp.userinfo['settlement_id']}]")
             request_month = st.radio("Enter month",
                                     options=[previous_month,current_month],
@@ -134,9 +129,10 @@ class settlement_Class:
             max_month_day = calendar.monthrange(current_year,request_month)[1]
             
             # -------new codes
-            if 'no_of_requests' not in st.session_state:
-                st.session_state['no_of_requests'] = 1
-            no_of_requests = st.session_state['no_of_requests']
+            # if 'no_of_requests' not in st.session_state:
+            #     st.session_state['no_of_requests'] = 1
+            # no_of_requests = st.session_state['no_of_requests']
+            no_of_requests = self.no_of_requests
 
             entry_table = []
             for i in range(no_of_requests):
@@ -173,15 +169,16 @@ class settlement_Class:
             # -------to add or remove more entries
             def modify_no_of_fields(to_increment):
                 if to_increment:
-                    st.session_state.no_of_requests +=1
-                elif st.session_state.no_of_requests ==1:
+                    self.no_of_requests +=1
+                elif self.no_of_requests ==1:
                     pass
                 else:
-                    st.session_state.no_of_requests -=1
+                    self.no_of_requests -=1
+
             left,right = st.columns(2)
             left.button("Add one more entry",on_click=modify_no_of_fields,
                         key='increase_input_fields',args=[True])
-            if st.session_state.no_of_requests >1:
+            if self.no_of_requests >1:
                 right.button("Drop last entry",on_click=modify_no_of_fields,
                             key='decrease_input_fields',args=[False])
             
@@ -225,32 +222,35 @@ class settlement_Class:
                                 value=[request_to_sheet])
                     
                     if response:
-                        st.session_state.pop('settlement_info')
-                        st.session_state.pop('no_of_requests')
+                        # st.session_state.pop('settlement_info')
+                        self._request_db_refresh = True
+                        self.no_of_requests = 1
                         st.session_state.input_table_details0 = ""
                         st.session_state.input_table_dept0 = ""
                         self.bdvapp.userinfo['settlement_id'] = str(int(self.bdvapp.userinfo['settlement_id']) + 1)
 
-                        st.session_state['request_state'] = "success"
+                        self.request_upload_response = "success"
                 except Exception as e :
-                    if st.session_state.DEBUG_ERROR:
+                    if self.bdvapp.in_development:
                         st.write(e)
                     else :
-                        st.session_state['request_state'] = 'error'
+                        self.request_upload_response = 'error'
 
                 
 
-            if not requestform['error']:
+            if requestform['error']:
+                st.button("Submit 👍",disabled=True,key='submit_button')
+            else:
                 st.button("Submit 👍",on_click=request_form_submit,key='submit_button',
                         args=[requestform])
             
-            if 'request_state' in st.session_state:
-                status = st.session_state['request_state']
+            if self.request_upload_response != 'none':
+                status = self.request_upload_response
                 if status =='success':
                     st.success("Successfully submitted")
                 else :
-                    st.error("Some error occurred")
-                st.session_state.pop('request_state')
+                    st.error("Some error occurred")                    
+                self.request_upload_response = 'none'
             
 
             st.markdown("## :blue[my forms]")
@@ -258,28 +258,19 @@ class settlement_Class:
 
         # download the data
         def refresh():
-            st.session_state.pop('settlement_info')                
+            self._request_db_refresh  = True
         st.button("🔃refresh",on_click=refresh)
 
-        if 'settlement_info' not in st.session_state:
-        # if True :
-            array = download_data(db_id=1,range_name=self.SETTLEMENT_INFO)
-            temp = pd.DataFrame(array[1:],columns=array[0])
-            temp = temp[temp['devotee name']==self.bdvapp.userinfo['name']]
-            temp = temp[['dept','timestamp','devotee name','uniqueid','amount','details','any comments','noted_in_expense_sheet','2','settlement_id','status']]
-            temp.query("dept=='-'",inplace=True)
-            temp['amount'] = temp['amount'].apply(lambda x: int(x))
-            st.session_state['settlement_info'] = temp.copy()
         
-        dworkbook = st.session_state['settlement_info'].copy()
-        dworkbook.reset_index(inplace=True,drop=True)
+        dworkbook = self.request_db.copy()
+        # 'd' stands for devotee
         # st.dataframe(dworkbook)
 
-        request_view, timeline_view= st.tabs(["Request View",
-                                                            "Chronological Order",
-                                                            #   "Detailed Chronological order"
-                                                            ])
-        # for request date wise view
+        request_view, timeline_view= st.tabs(["Group by form filled",
+                                              "Group by payments made",
+                                            #   "Detailed Chronological order"
+                                            ])
+        # for group by form filled
         view1df = dworkbook.copy()
         view1df = view1df[['timestamp','uniqueid','amount','status']]
         
@@ -297,14 +288,13 @@ class settlement_Class:
             color = light_green if row['status'] !='pending' else light_red
             return ['background-color: {}'.format(color) for _ in row]
         request_view.dataframe(view1df.style.apply(highlight_rows, axis=1),
-                            use_container_width=True)
+                            hide_index=True)
         
 
 
         # Chronological view calculations (both)
         timeline_array = [['date','amount','department','details','formfilldate','requestid','is_settlement']]
-        # with timeline_view:
-        #     st.dataframe(dworkbook)
+        
         completed_settlement_ids = []
         for _,one_request in dworkbook.iterrows():
 

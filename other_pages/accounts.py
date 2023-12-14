@@ -16,6 +16,7 @@ class account_Class:
         self.page_map = {
             'income':self.income_page,
             'expense':self.expense_page,
+            'dashboard':self.dashboard_page
         }
         self.current_page = 'expense'
 
@@ -373,7 +374,34 @@ class account_Class:
                           input_agenda,input_payment_date,input_remark,
                           len(active_monthdf) == 0])
 
+    def dashboard_page(self):
+        st.header("Welcome to Accounts 💸💰")
         
+        # show a month-wise summary
+        # Choose the month (ask the user to select and by default it is the latest month)
+            # Better store in class
+        
+        # Create two tabs left and right
+        
+        # tab1 Show Income ----------------------
+        # a button to open deep-dive income page
+        # Show the table for rent payment
+        # Show the table for other's income
+        # Display total collected, total remaining
+
+        # tab2 Show expense ----------------------
+        # a button to open deep-dive expense page
+
+        # department wise summary
+            # spent
+        # have a filter on these departments
+        # on the processed data
+        # further filters as
+            # is pending
+            # sub_department
+        # display a table 
+        # button to sync with the database
+
         
     def run(self):
         self.page_map[self.current_page]()
