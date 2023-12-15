@@ -447,12 +447,12 @@ class settlement_Class:
         left,right = st.columns(2)
         view = right.radio('showing',options=['done','pending','all'],index=1,horizontal=True)
         if view=='done':
-            workbook = workbook[workbook.settlement_id !='-1']
+            workbook = workbook.query("settlement_id !='-1' ")#[workbook.settlement_id !='-1']
         elif view == 'all':
             pass
         else:
             assert view == 'pending'
-            workbook = workbook[workbook.settlement_id =='-1']
+            workbook = workbook.query("settlement_id =='-1' ")#[workbook.settlement_id =='-1']
 
         grouped_summary = workbook[['devotee name','amount']]\
                         .groupby(by='devotee name').agg('sum').reset_index()
