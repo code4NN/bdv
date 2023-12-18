@@ -6,17 +6,37 @@ from st_aggrid import AgGrid, GridOptionsBuilder
 from other_pages.googleapi import download_data
 from other_pages.googleapi import upload_data
 
-# ============= some variables
-# ============= some variables end
+
+class hearing_Class:
+    def __init__(self) -> None:
+        
+        self.page_config = {'page_title': "BDV",
+                            'page_icon':'☔',
+                            'layout':'centered'}
+        self.page_map = {'morning_walk':self.morning_walk_page}
+        self.current_page = 'morning_walk'
+
+        self.dball = pd.read_excel("./dev-Hearing-Tracker.xlsx",'SP_MW')
+    
+    @property
+    def bdvapp(self):
+        return st.session_state.get('bdv_app',None)
 
 
-## ----------- call back functions
-def change_page(state,substate='default'):
-    st.session_state['state'] = state
-    st.session_state['substate'] = substate
+    def morning_walk_page(self):
+        st.title("title")
+        
+        data = self.dball
+        grid_builder = GridOptionsBuilder.from_dataframe(data)
+        grid_builder.configure_selection('multiple', use_checkbox=True,
+                                        header_checkbox=True,
+                                        )
+        grid_options = grid_builder.build()
+        grid_result = AgGrid(enable_quicksearch=True,data=data,gridOptions=grid_options,fit_columns_on_grid_load=True)
 
-def change_subpage(subpage):
-    st.session_state['substate'] = subpage
+    def run(self):
+        self.bdvapp.page_config = self.page_config        
+        self.page_map[self.current_page]()
 
 # --------------- 
 def sp():

@@ -83,10 +83,12 @@ class login_Class:
                 def takemein(page):
                     self.bdvapp.current_page = page
                     self.bdvapp.userinfo = self.userdb[input_user_name]
-
-                    self.bdvapp.userinfo['roles'] = \
-                    [role.strip() for role in self.bdvapp.userinfo['roles'].replace(" ","").split(",")]
-                
+                    
+                    try:
+                        self.bdvapp.userinfo['roles'] = \
+                        [role.strip() for role in self.bdvapp.userinfo['roles'].replace(" ","").split(",")]
+                    except:
+                        self.bdvapp.userinfo['roles'] = ['some_error']
                 
                 st.button("Login",on_click=takemein,args=['feed'],key='login_button_feed')                
                 st.divider()

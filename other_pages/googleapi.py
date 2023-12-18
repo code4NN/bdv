@@ -26,6 +26,7 @@ SCOPE = [
     "https://www.googleapis.com/auth/drive",
     "https://www.googleapis.com/auth/spreadsheets"
 ]
+
 # ========================= Some constants end
 def _get_wb(db_id):
     if f'spreadsheet{db_id}' not in st.session_state:
@@ -54,8 +55,7 @@ def download_data(db_id,range_name):
 
     except Exception as e:
         st.error("Something Went Wrong")
-        if st.session_state.DEBUG_ERROR:
-            st.write(e)
+        st.write(e)
 
 def upload_data(db_id,range_name,value):
 #     """
@@ -92,5 +92,4 @@ def append_data(db_id,range_name,value):
         return response
     except Exception as e:
         st.error("Something went Wrong")
-        if st.session_state.DEBUG_ERROR:
-            st.write(e)
+        st.write(e)
