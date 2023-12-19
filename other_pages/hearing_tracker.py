@@ -16,7 +16,7 @@ class hearing_Class:
         self.page_map = {'morning_walk':self.morning_walk_page}
         self.current_page = 'morning_walk'
 
-        self.dball = pd.read_excel("./dev-Hearing-Tracker.xlsx",'SP_MW')
+        self.dball = pd.DataFrame()
     
     @property
     def bdvapp(self):

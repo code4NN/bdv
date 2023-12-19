@@ -18,11 +18,6 @@ class myapp:
         self.requires_login = requires_login
         self.development_page = ''
 
-        self.page_config = {'page_title': "BDV",
-                            'page_icon':'☔',
-                            'layout':'centered'
-                            }
-
         # register all the page
         self.page_map = {'login':login_Class(),
                          'feed':feed_Class(),
@@ -37,6 +32,16 @@ class myapp:
         # User related data
         # Get's populated after login
         self.userinfo = None
+    
+    @property
+    def page_config(self):
+        if self.in_development and self.requires_login:
+            if self.userinfo:
+                return self.page_map[self.development_page].page_config
+            else:
+                return self.page_map['login'].page_config
+        else:
+            return self.page_map[self.current_page].page_config
 
     def run(self):
         # check if dev or prod
@@ -82,14 +87,12 @@ if 'bdv_app' not in st.session_state:
 # For development
 main_app = st.session_state['bdv_app']
 if main_app.in_development:
-    PAGE_DEVELOPING = 'hearing_tracker'
-    PAGE_CLASS = hearing_Class
+    PAGE_DEVELOPING = 'settlements'
+    PAGE_CLASS = settlement_Class()
 
 
-    # main_app.page_map[PAGE_DEVELOPING] = PAGE_CLASS()
+    main_app.page_map[PAGE_DEVELOPING] = PAGE_CLASS
     main_app.development_page = PAGE_DEVELOPING
-
-
 
 st.set_page_config(**main_app.page_config)
 

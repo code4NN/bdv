@@ -13,6 +13,9 @@ class settlement_Class:
     def __init__(self):
         self._settlement_app_version = 'v3'
         # sub page related information
+        self.page_config = {'page_title': "BDV",
+                            'page_icon':'☔',
+                            'layout':'wide'}
         self.page_map = {
             'fillForm':self.fillForm,
             'makePayments':self.make_payments,
@@ -61,6 +64,8 @@ class settlement_Class:
         self._settlement_database_refresh = True
         self._settlement_database_range = 'settlement_request!A2:M'
 
+        # for processing pending
+        self.loaded_dict = {}
     @property
     def bdvapp(self):
         return st.session_state.get('bdv_app',None)
@@ -83,7 +88,7 @@ class settlement_Class:
             temp = pd.DataFrame(array[1:],columns=array[0])
             temp = temp[temp['devotee name']==self.bdvapp.userinfo['name']]
             temp = temp[['dept','timestamp','devotee name','uniqueid','amount','details','any comments','noted_in_expense_sheet','2','settlement_id','status']]
-            temp.query(f"dept=={self._settlement_app_version}",inplace=True)            
+            temp = temp.query(f"dept== '{self._settlement_app_version}'")
             temp['amount'] = temp['amount'].apply(lambda x: float(x))
             
             temp = temp.reset_index(drop=True)
@@ -171,7 +176,9 @@ class settlement_Class:
         )
 
         # --------------- page
-        st.header(" :green[settlement form]")
+        st.header(" :green[settlement form] :red[V3]")
+        st.caption("Please Note that this is 3rd Version of settlement platform")
+        st.text_area(":green[Changes are]",value="""1. by Default date is set to current date, \n2. Selection of department is mandatory from a list\nSo in case of any query please text me""",disabled=True)
         st.markdown('---')
 
         # for acc in charge
@@ -187,14 +194,15 @@ class settlement_Class:
         
 
             # get the month of payment
+            current_day = datetime.datetime.now().day
             current_year = datetime.datetime.now().year
             current_month = datetime.datetime.now().month
             previous_month = current_month - 1 if current_month !=1 else 12
-            
             st.header(f":violet[request-id-{self.bdvapp.userinfo['settlement_id']}]")
             request_month = st.radio("Enter month",
                                     options=[previous_month,current_month],
                                     format_func=lambda x: calendar.month_name[x],
+                                    index=1,
                                     horizontal=True)
             max_month_day = calendar.monthrange(current_year,request_month)[1]
             
@@ -207,10 +215,11 @@ class settlement_Class:
             entry_table = []
             for i in range(no_of_requests):
                 one_entry = {}
-                col_day,col_amount,col_dept,col_details = st.columns([1,1,3,4])
+                col_day,col_amount,col_dept,col_details = st.columns([1,1,2,4])
                 
                 one_entry['day'] = col_day.number_input("day",step=1,
                                     min_value=1,max_value=max_month_day,
+                                    value=current_day,
                                     key=f'input_table_day{i}')
                 spent_date = datetime.datetime(current_year,request_month,one_entry['day'])
                 if (datetime.datetime.now() -spent_date).days > 8:
@@ -222,13 +231,15 @@ class settlement_Class:
                 one_entry['amount'] = col_amount.number_input("amount",
                                         step=100,min_value=1,max_value=15000,
                                     key=f'input_table_amount{i}')
-                one_entry['dept'] =  col_dept.selectbox("dept",options=[*self.department_dict.keys()],
+                
+                one_entry['dept'] =  col_dept.radio("Department",options=[*self.department_dict.keys()][:-1],
                                     key=f'input_table_dept{i}')
+                
                 if not one_entry['dept'].strip():
                     col_dept.markdown(":red[cannot be blank]")
                     requestform['error'] = True
                 
-                one_entry['details'] = col_details.text_area("details",
+                one_entry['details'] = col_details.text_area("Please mention Agenda",
                                     key=f'input_table_details{i}',height=10)
                 if not one_entry['details'].strip():
                     col_details.markdown(":red[cannot be blank]")
@@ -255,8 +266,8 @@ class settlement_Class:
             # collect other fields
             requestform['table_entry'] = entry_table
             # st.write(json.dumps(entry_table))
-            requestform['remark'] = st.text_area("Any other remark",
-                                                height=60,key='additional_remark')
+            requestform['remark'] = st.text_area("Overall any remark or suggession",
+                                                height=60,key='additional_remark').strip()
 
             # timestamp
             requestform['timestamp'] = str(datetime.datetime.now())
@@ -352,11 +363,13 @@ class settlement_Class:
                 return f'settled on {statusdict["date_of_paymnt"]}'
             
         view1df['status'] = view1df['status'].apply(lambda x:process_status(x))
+        view1df['amount'] = view1df['amount'].map('{:,.0f} ₹'.format)
         def highlight_rows(row):
             light_green = '#1b6924'  # Light green color
             light_red = '#5e132a'    # Light red color
             color = light_green if row['status'] !='pending' else light_red
             return ['background-color: {}'.format(color) for _ in row]
+        
         request_view.dataframe(view1df.style.apply(highlight_rows, axis=1),
                             hide_index=True)
         
@@ -406,17 +419,15 @@ class settlement_Class:
         balance = [0]
         for amount,is_settlement in zip(timelinedf.amount.tolist(),timelinedf.is_settlement.tolist()):
                 balance.append(balance[-1]+int(amount))
-        timelinedf.insert(1,"balance",balance[1:])
+        timelinedf.insert(1,"Amount to be settled",balance[1:])
         
         def highlight_settlements(row):
             light_green = '#1b6924'  # Light green color
             light_red = '#5e132a'    # Light red color
             color = light_green if row['is_settlement'] == True else light_red
             return ['background-color: {}'.format(color) for _ in row]
-
-        timeline_view.dataframe(timelinedf.style.apply(highlight_settlements,axis=1),
-                                use_container_width=True)
-        
+        timelinedf = timelinedf.rename(columns={'amount':"Transaction Amout"})
+        timeline_view.dataframe(timelinedf.style.apply(highlight_settlements,axis=1),hide_index=True)
         # timeline_view.dataframe(timelinedf)
         
         dueamount= f'₹ {balance[-1]:,}'
@@ -428,11 +439,18 @@ class settlement_Class:
             st.markdown(f"## :green[Payment of :orange[{dueamount}] is due to VOICE]")
         
     def make_payments(self):
-        st.header(":green[Make payments]")
+        headertitle = st.empty()
+        headertitle.header(":green[Make payments]")
+
         def change_role():
             self.current_page='fillForm'
-
-        st.button("settlement form",on_click=change_role)
+        def change_page():
+            self.bdvapp.current_page = 'accounts'
+            self.bdvapp.page_map['dpt_accounts'].current_page = 'expense'
+        cols = st.columns(2)
+        
+        cols[0].button("settlement form",on_click=change_role)
+        cols[1].button("Expense Page",on_click=change_page)
 
         st.markdown('---')
         def reload():
@@ -444,41 +462,32 @@ class settlement_Class:
         # create the total amount summary
         # st.dataframe(workbook)
 
-        left,right = st.columns(2)
-        view = right.radio('showing',options=['done','pending','all'],index=1,horizontal=True)
-        if view=='done':
-            workbook = workbook.query("settlement_id !='-1' ")#[workbook.settlement_id !='-1']
-        elif view == 'all':
+        view = st.radio('showing',options=['pending','all'],index=1,horizontal=True)
+        if view == 'all':
             pass
         else:
             assert view == 'pending'
             workbook = workbook.query("settlement_id =='-1' ")#[workbook.settlement_id =='-1']
-
+        
+        pending_amount = workbook.query(" settlement_id == '-1' ")['amount'].sum()
+        headertitle.header(f":green[Make Payments of ] :orange[{pending_amount:,} ₹]")
         grouped_summary = workbook[['devotee name','amount']]\
                         .groupby(by='devotee name').agg('sum').reset_index()
         
         grouped_summary.sort_values(by='amount',ascending=False,inplace=True)
         grouped_summary.index = range(1,1+len(grouped_summary))
+        grouped_summary.insert(0,'Select',False)
         
-        left.dataframe(grouped_summary,hide_index=True)
-        if view=='done':
-            right.markdown(f'### :green[Total done: {grouped_summary.amount.sum():,} ₹]')
-        
-        elif grouped_summary.amount.sum() >5000:
-            right.markdown(f'### :red[Total: {grouped_summary.amount.sum()} ₹]')
-        else :
-            right.markdown(f'### :green[Total: {grouped_summary.amount.sum()} ₹]')
+        response = st.data_editor(grouped_summary,disabled=['devotee name','amount'])
+        chosen_devotees = response.query("Select == True ")['devotee name'].tolist()
 
 
-
-
-
+        if not chosen_devotees:
+            chosen_devotees = [grouped_summary.loc[1,'devotee name']]
+        devotee = st.radio("-",chosen_devotees,horizontal=True)
         st.markdown('---')
-        st.markdown("#### :blue[make the payment]")
+        st.markdown(f"## :blue[Let's Do settlement of -]:orange[{devotee} Pr]")
 
-        devotee = st.radio("Devotees",
-        options=sorted(grouped_summary['devotee name'].tolist()),
-            label_visibility='hidden',horizontal=True)
 
         
         # one devotee's summary
@@ -511,25 +520,39 @@ class settlement_Class:
                 dworkbook = dworkbook.query("settlement_id != '-1' ")
 
 
-            choose_a_department = st.radio("department",
-                                           options=['all',*dworkbook.dept.unique().tolist()],
-                                           index=0,
-                                           )
-            if choose_a_department != 'all':
-                dworkbook = dworkbook.query(f" dept == {choose_a_department}")
+            # choose_a_department = st.radio("department",
+            #                                options=['all',*dworkbook.dept.unique().tolist()],
+            #                                index=0,
+            #                                )
+            # if choose_a_department != 'all':
+            #     dworkbook = dworkbook.query(f" dept == {choose_a_department}")
 
 
         collection_dict = {'ids':"",'amount':0}
         st.markdown(f"### ---------Total {len(dworkbook)} records")
         dworkbook = dworkbook.reset_index(drop=True)
 
+        def process_a_pending(dataframe,r):
+            dataframe=dataframe.reset_index(drop=True)
+            current_row = len(dataframe)-1
+            self.loaded_dict = {'current_row':current_row,
+                                'data':dataframe.copy(),
+                                'view_index':r}
+
         for r in range(len(dworkbook)):
             title = f"[{1+r}/{len(dworkbook)}] (id: {dworkbook.loc[r,'uniqueid'].lower()}) → Total :orange[₹ {dworkbook.loc[r,'amount']}] "            
-            payment_dataframe = pd.read_json(dworkbook.loc[r,'details'])
+            payment_array = json.loads(dworkbook.loc[r,'details'])
+            payment_dataframe = pd.DataFrame(payment_array[1:],columns=payment_array[0])
 
             if stage_filter_selection == 'pending':
                 st.markdown(f"### {title}")
                 left,middle,right = st.columns([2,1,1])
+                left.dataframe(payment_dataframe)
+                middle.button("Process this",key=f'processkey_{r}',
+                              on_click=process_a_pending,
+                              args=[payment_dataframe,r])
+                if self.loaded_dict['view_index'] == r:
+                    right.write(f"Remaining Entries: {self.loaded_dict['current_row']+1}")
                 # in the right just show the date, agenda, amount
 
                 # in the middle select each one using radio button

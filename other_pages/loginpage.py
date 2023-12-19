@@ -9,6 +9,9 @@ class login_Class:
     def __init__(self):
         
         # page map
+        self.page_config = {'page_title': "Login Page",
+                            'page_icon':'☔',
+                            'layout':'centered'}
         self.page_map = {
             'home':self.home
         }
@@ -97,13 +100,15 @@ class login_Class:
 
                 left,middle,right = st.columns(3)
                 with left:
-                    st.button('Settlements 💸',on_click=takemein,args=['settlement'],key='direct_login_accounts')
+                    st.button('Settlements 💸',on_click=takemein,args=['settlement'],key='direct_login_settlement')
                 
                 with middle:
                     st.button("Finder 🔍",on_click=takemein,args=['finder'],key='direct_login_finder')
                 
                 with right:
-                    if 'acc_ic' in self.bdvapp.userinfo['roles']:
+                    user_roles = [role.strip() for role in self.userdb[input_user_name]['roles'].replace(" ",'').split(",")]
+                    # st.write(user_roles)
+                    if 'acc_ic' in user_roles:
                         st.button("Accounts 📝",on_click=takemein,args=['dpt_accounts'],key='direct_login_accounts')
 
 
