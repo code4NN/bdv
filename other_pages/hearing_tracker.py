@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import json
-from st_aggrid import AgGrid, GridOptionsBuilder
+# from st_aggrid import AgGrid, GridOptionsBuilder
 
 from other_pages.googleapi import download_data
 from other_pages.googleapi import upload_data
