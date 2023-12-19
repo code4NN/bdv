@@ -42,7 +42,7 @@ class myapp:
         #         """, unsafe_allow_html=True)
     
     def run(self):
-        if self.in_development:
+        if self.in_development and self.userinfo:
             self.page_map[self.development_page].run()
         else:
             self.page_map[self.current_page].run()
@@ -62,8 +62,10 @@ if 'bdv_app' not in st.session_state:
 # For development
 main_app = st.session_state['bdv_app']
 if main_app.in_development:
-    PAGE_DEVELOPING = 'dpt_accounts'
-    PAGE_CLASS = account_Class
+    PAGE_DEVELOPING = 'settlement'
+    PAGE_CLASS = settlement_Class
+    # PAGE_DEVELOPING = 'dpt_accounts'
+    # PAGE_CLASS = account_Class
 
     # main_app.page_map[PAGE_DEVELOPING] = PAGE_CLASS()
     main_app.development_page = PAGE_DEVELOPING
@@ -86,15 +88,3 @@ except Exception as e:
         st.write(e)
 
 # st.markdown("[help improve!!](http://wa.me/917260869161?text=Hare%20Krishna%20some%20suggestion)")
-
-
-
-
-
-
-
-
-
-
-
-

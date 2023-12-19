@@ -16,9 +16,9 @@ class account_Class:
         self.page_map = {
             'income':self.income_page,
             'expense':self.expense_page,
-            'dashboard':self.dashboard_page
+            'dashboard':self.dashboard_page,
         }
-        self.current_page = 'expense'
+        self.current_page = 'income'
 
 
         # databases
