@@ -445,7 +445,7 @@ class settlement_Class:
         def change_role():
             self.current_page='fillForm'
         def change_page():
-            self.bdvapp.current_page = 'accounts'
+            self.bdvapp.current_page = 'dpt_accounts'
             self.bdvapp.page_map['dpt_accounts'].current_page = 'expense'
         cols = st.columns(2)
         
