@@ -6,54 +6,74 @@ from other_pages.feed import feed_Class
 from other_pages.settlement import settlement_Class
 from other_pages.finder import finder_Class
 from other_pages.accounts import account_Class
+from other_pages.hearing_tracker import hearing_Class
 
 
 
-class myapp:    
-    def __init__(self,in_development):
+class myapp:
+    def __init__(self,in_development,requires_login):
 
         # Global parameters
         self.in_development = in_development
+        self.requires_login = requires_login
         self.development_page = ''
 
         self.page_config = {'page_title': "BDV",
                             'page_icon':'☔',
                             'layout':'centered'
                             }
-               
+
         # register all the page
         self.page_map = {'login':login_Class(),
                          'feed':feed_Class(),
                          'settlement':settlement_Class(),
                          'finder': finder_Class(),
-                         'dpt_accounts': account_Class()
+                         'dpt_accounts': account_Class(),
+                         'hearing_tracker': hearing_Class()
                           }
+        # landing page
         self.current_page = 'login'
         
         # User related data
         # Get's populated after login
         self.userinfo = None
-        # Set the Initial Page Configuration
-        # st.markdown( """
-        #         <style>
-        #         # #MainMenu {visibility: hidden;}
-        #         # footer {visibility: hidden;}
-        #         </style>
-        #         """, unsafe_allow_html=True)
-    
+
     def run(self):
-        if self.in_development and self.userinfo:
-            self.page_map[self.development_page].run()
+        # check if dev or prod
+        if self.in_development:
+            # dev > check if we need to login
+            if self.requires_login:
+                # needs login > Now check if user have logged in
+                
+                if self.userinfo is None:
+                    # user have not logged in >> land to login page
+                    self.page_map[self.current_page].run()
+                else:
+                    # land to developer page if it does not need login
+                    self.page_map[self.development_page].run()
+            else:
+                # does not need login > directly run developer page
+                self.page_map[self.development_page].run()
+
+        # in production
         else:
             self.page_map[self.current_page].run()
+
 # End of My App Class
 
 
 
 # Create an instance of the voice-app
 if 'bdv_app' not in st.session_state:
-    st.session_state['bdv_app'] = myapp(in_development=True if st.secrets['developer']['in_development']=='1' else False
-                                        )
+    if st.secrets['developer']['in_development']==1:
+        if st.secrets['developer']['requires_login']==1:
+            st.session_state['bdv_app'] = myapp(in_development=True,
+                                                requires_login=True)
+        else :
+            st.session_state['bdv_app'] = myapp(in_development=True,
+                                                requires_login=False)
+    else:
+        st.session_state['bdv_app'] = myapp(in_development=False,requires_login=False)
 
 
 
@@ -62,10 +82,9 @@ if 'bdv_app' not in st.session_state:
 # For development
 main_app = st.session_state['bdv_app']
 if main_app.in_development:
-    PAGE_DEVELOPING = 'settlement'
-    PAGE_CLASS = settlement_Class
-    # PAGE_DEVELOPING = 'dpt_accounts'
-    # PAGE_CLASS = account_Class
+    PAGE_DEVELOPING = 'hearing_tracker'
+    PAGE_CLASS = hearing_Class
+
 
     # main_app.page_map[PAGE_DEVELOPING] = PAGE_CLASS()
     main_app.development_page = PAGE_DEVELOPING
