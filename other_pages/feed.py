@@ -3,6 +3,9 @@ import streamlit as st
 class feed_Class:
     def __init__(self):
         
+        self.page_config = {'page_title': "Login Page",
+                            'page_icon':'☔',
+                            'layout':'wide'}
         self.page_map = {
             'home':self.home
         }
