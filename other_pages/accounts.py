@@ -434,7 +434,7 @@ class account_Class:
                                            min_value=1,key='inp_amount')
             
             input_payment_date = st.date_input("Paid on")
-            input_payment_date = input_payment_date.strftime("%d-%b-%y")
+            input_payment_date = input_payment_date.strftime("%d-%b-%a-%y")
             st.caption(input_payment_date)
 
             input_remark = st.text_area("Remarks",height=30,key='inp_remark')

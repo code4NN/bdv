@@ -3,7 +3,7 @@ import datetime
 import json
 import pandas as pd
 import calendar
-
+from st_aggrid import AgGrid, GridOptionsBuilder
 
 from other_pages.googleapi import download_data
 from other_pages.googleapi import upload_data
@@ -20,7 +20,7 @@ class settlement_Class:
             'fillForm':self.fillForm,
             'makePayments':self.make_payments,
         }
-        self.current_page = 'fillForm'
+        self.current_page = 'makePayments'
 
         # for request form
         self.REQUEST_FORM_ORDER = [
@@ -37,6 +37,7 @@ class settlement_Class:
         self.SETTLEMENT_INFO = 'settlement_request!A2:M'
         self.REQUEST_SHEET = 'settlement_request!'
         self.NOTED_IN_ACC_COL = 'I'
+        # self.department_list_for_form_value = None
 
         self.no_of_requests = 1 # default value
         self.request_upload_response = 'none'
@@ -59,6 +60,10 @@ class settlement_Class:
         self._expense_database = None
         self._expense_database_refresh = True
         self._expense_database_range = 'expense!A:D'
+        
+        self._active_month_expense_data = {'active_index':-1,
+                                           'data':None
+                                           }
 
         self._settlement_database = None
         self._settlement_database_refresh = True
@@ -66,6 +71,7 @@ class settlement_Class:
 
         # for processing pending
         self.loaded_dict = {}
+        self._department_dictionary = None
     @property
     def bdvapp(self):
         return st.session_state.get('bdv_app',None)
@@ -149,17 +155,33 @@ class settlement_Class:
             return self._expense_database
     
     @property
-    def department_dict(self):
-        expensedata = self.expense_database
-        
-        metadata = dict(zip(expensedata['key'],expensedata['value']))        
+    def department_dictionary(self):
+        if self._department_dictionary:
+            return self._department_dictionary
+        else:
+            expensedata = self.expense_database
+            
+            metadata = dict(zip(expensedata['key'],expensedata['value']))        
 
-        # active_index = int(metadata['active_row'])
-        # active_month_name = expensedata.month.tolist()[active_index]
-        # active_monthdf = pd.read_json(expensedata['data'].tolist()[active_index],orient='records')
-        department_dict = json.loads(metadata['department_dict'])
-        # st.write(department_dict)
-        return department_dict
+            department_dict = json.loads(metadata['department_dict'])
+            self._department_dictionary = department_dict
+
+            return self._department_dictionary
+
+    @property
+    def active_month_expense_data(self):
+        if self._active_month_expense_data['active_index']==-1:
+            expensedata = self.expense_database
+            
+            metadata = dict(zip(expensedata['key'],expensedata['value']))
+            active_month_data = pd.read_json(expensedata['data'].tolist()[metadata['active_row']],
+                                             orient='records')
+
+            self._active_month_expense_data = {'active_index':metadata['active_row'],
+                                               'data':active_month_data}
+            return self._active_month_expense_data
+        else:
+            return self._active_month_expense_data
 
     def fillForm(self):
         st.markdown(
@@ -228,16 +250,23 @@ class settlement_Class:
                 col_day.caption(datetime.datetime(current_year,request_month,one_entry['day']).strftime("%b %d %a"))
                 one_entry['day'] = datetime.datetime(current_year,request_month,one_entry['day']).strftime("%b-%d, %a")
                     
+
                 one_entry['amount'] = col_amount.number_input("amount",
                                         step=100,min_value=1,max_value=15000,
                                     key=f'input_table_amount{i}')
+                # st.write(self.department_dict)
+                one_entry['dept'] =  col_dept.radio("Department",options=['Kitchen',
+                                                                          'Deity',
+                                                                          'Preaching',
+                                                                          'Maintenance',
+                                                                          'BC',
+                                                                          'Guest',
+                                                                          'Notice Board'],
+                                                            key=f'input_table_dept{i}')
                 
-                one_entry['dept'] =  col_dept.radio("Department",options=[*self.department_dict.keys()][:-1],
-                                    key=f'input_table_dept{i}')
-                
-                if not one_entry['dept'].strip():
-                    col_dept.markdown(":red[cannot be blank]")
-                    requestform['error'] = True
+                # if not one_entry['dept'].strip():
+                #     col_dept.markdown(":red[cannot be blank]")
+                #     requestform['error'] = True
                 
                 one_entry['details'] = col_details.text_area("Please mention Agenda",
                                     key=f'input_table_details{i}',height=10)
@@ -298,24 +327,19 @@ class settlement_Class:
                 for value in self.REQUEST_FORM_ORDER:
                     request_to_sheet.append(request_dict[value])
                 request_to_sheet.append("no")
-                try:
-                    response  = append_data(db_id=1,range_name=self.REQUEST_FORM_RANGE,
-                                value=[request_to_sheet])
                     
-                    if response:
-                        # st.session_state.pop('settlement_info')
-                        self._request_db_refresh = True
-                        self.no_of_requests = 1
-                        st.session_state.input_table_details0 = ""
-                        st.session_state.input_table_dept0 = ""
-                        self.bdvapp.userinfo['settlement_id'] = str(int(self.bdvapp.userinfo['settlement_id']) + 1)
+                response  = append_data(db_id=1,range_name=self.REQUEST_FORM_RANGE,
+                            value=[request_to_sheet])
+                
+                if response:
+                    self._request_db_refresh = True
+                    self.no_of_requests = 1
+                    st.session_state.input_table_details0 = ""
+                    # st.session_state.input_table_dept0 = ""
+                    self.bdvapp.userinfo['settlement_id'] = str(int(self.bdvapp.userinfo['settlement_id']) + 1)
 
-                        self.request_upload_response = "success"
-                except Exception as e :
-                    if self.bdvapp.in_development:
-                        st.write(e)
-                    else :
-                        self.request_upload_response = 'error'
+                    self.request_upload_response = "success"
+                
 
                 
 
@@ -449,7 +473,7 @@ class settlement_Class:
             self.bdvapp.page_map['dpt_accounts'].current_page = 'expense'
         cols = st.columns(2)
         
-        cols[0].button("settlement form",on_click=change_role)
+        cols[0].button("settlement form",on_click=change_role)        
         cols[1].button("Expense Page",on_click=change_page)
 
         st.markdown('---')
@@ -476,15 +500,21 @@ class settlement_Class:
         
         grouped_summary.sort_values(by='amount',ascending=False,inplace=True)
         grouped_summary.index = range(1,1+len(grouped_summary))
-        grouped_summary.insert(0,'Select',False)
+        # grouped_summary.insert(0,'Select',False)
         
-        response = st.data_editor(grouped_summary,disabled=['devotee name','amount'])
-        chosen_devotees = response.query("Select == True ")['devotee name'].tolist()
+        grid_builder = GridOptionsBuilder.from_dataframe(grouped_summary)
+        grid_builder.configure_selection(selection_mode='single',
+                                         use_checkbox=True,
+                                         pre_selected_rows=[0])
+        left,right = st.columns(2)
+        with left:
+            grid_result = AgGrid(data = grouped_summary,
+                                gridOptions=grid_builder.build())
+        if not grid_result.selected_rows:
+            right.error("Must Select a devotee")
+            return
+        devotee = grid_result.selected_rows[0]['devotee name']
 
-
-        if not chosen_devotees:
-            chosen_devotees = [grouped_summary.loc[1,'devotee name']]
-        devotee = st.radio("-",chosen_devotees,horizontal=True)
         st.markdown('---')
         st.markdown(f"## :blue[Let's Do settlement of -]:orange[{devotee} Pr]")
 
@@ -531,28 +561,74 @@ class settlement_Class:
         collection_dict = {'ids':"",'amount':0}
         st.markdown(f"### ---------Total {len(dworkbook)} records")
         dworkbook = dworkbook.reset_index(drop=True)
-
-        def process_a_pending(dataframe,r):
+        if 'loaded_dict' not in st.session_state:
+            st.session_state['loaded_dict'] = {'view_index':-1}
+        def onboard_processing(dataframe,r):
             dataframe=dataframe.reset_index(drop=True)
             current_row = len(dataframe)-1
-            self.loaded_dict = {'current_row':current_row,
+            st.session_state['loaded_dict'] = {'current_row':current_row,
                                 'data':dataframe.copy(),
                                 'view_index':r}
+            # self.loaded_dict = {'current_row':current_row,
+            #                     'data':dataframe.copy(),
+            #                     'view_index':r}
 
+        cached_dict = st.session_state['loaded_dict']
         for r in range(len(dworkbook)):
+            st.divider()
             title = f"[{1+r}/{len(dworkbook)}] (id: {dworkbook.loc[r,'uniqueid'].lower()}) → Total :orange[₹ {dworkbook.loc[r,'amount']}] "            
             payment_array = json.loads(dworkbook.loc[r,'details'])
             payment_dataframe = pd.DataFrame(payment_array[1:],columns=payment_array[0])
 
             if stage_filter_selection == 'pending':
                 st.markdown(f"### {title}")
+
                 left,middle,right = st.columns([2,1,1])
                 left.dataframe(payment_dataframe)
-                middle.button("Process this",key=f'processkey_{r}',
-                              on_click=process_a_pending,
-                              args=[payment_dataframe,r])
-                if self.loaded_dict['view_index'] == r:
-                    right.write(f"Remaining Entries: {self.loaded_dict['current_row']+1}")
+
+                if cached_dict['view_index'] == -1:
+                    middle.button("Process this",key=f'processkey_{r}',
+                                on_click=onboard_processing,
+                                args=[payment_dataframe,r])
+                
+                elif cached_dict['view_index'] == r:                    
+                    
+                    userdata = payment_dataframe.iloc[cached_dict['current_row']].to_dict()
+                    st.write(userdata)
+                    
+                    with middle:
+                        upload_department = st.radio("Department",
+                                                     options=self.department_dictionary.keys(),
+                                                     index=list(self.department_dictionary.keys()).index(userdata['dept']),
+                                                     key='onboarded_dpt_radio')
+                        st.divider()
+                        upload_sub_dpt = st.radio("Sub Department",
+                                                  options=self.department_dictionary[upload_department],
+                                                  key='onboard_subdpt_radio')
+                    with right:
+                        upload_amount = st.number_input("Amount",
+                                                        value=userdata['amount'],
+                                                        key='onboard_amount')
+                        upload_date = st.date_input("Date",
+                                                    value=datetime.datetime.strptime(
+                                                        userdata['day'],'%b-%d, %a'
+                                                    ).replace(year=2023),
+                                                    key='onboard_date')
+                        upload_date = upload_date.strftime("%d-%b-%a-%y")
+                        st.caption(upload_date)
+
+                        upload_agenda = st.text_input("Agenda",value=userdata['details'],
+                                                    key='onboard_agenda')
+                        upload_remark  = st.text_area("Remark",
+                                                      value='No',
+                                                      key='onboard_remark')
+                    with left:
+                        st.write(f"##### Remaining Entries: {cached_dict['current_row']+1}")
+
+                        to_upload = st.checkbox("Upload in Database",value=True)
+                        st.markdown("")
+                        st.button("Submit This Record")
+
                 # in the right just show the date, agenda, amount
 
                 # in the middle select each one using radio button
