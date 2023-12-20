@@ -20,7 +20,7 @@ class settlement_Class:
             'fillForm':self.fillForm,
             'makePayments':self.make_payments,
         }
-        self.current_page = 'makePayments'
+        self.current_page = 'fillForm'
 
         # for request form
         self.REQUEST_FORM_ORDER = [
