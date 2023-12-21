@@ -3,7 +3,7 @@ import datetime
 import json
 import pandas as pd
 import calendar
-
+from st_aggrid import AgGrid, GridOptionsBuilder
 
 from other_pages.googleapi import download_data
 from other_pages.googleapi import upload_data
@@ -15,7 +15,7 @@ class account_Class:
         # sub page related information
         self.page_config = {'page_title': "BDV",
                             'page_icon':'☔',
-                            'layout':'centered'}
+                            'layout':'wide'}
         self.page_map = {
             'income':self.income_page,
             'expense':self.expense_page,
@@ -370,15 +370,31 @@ class account_Class:
                 condition.append(" ( `status` == 'pending') ")
             cols = st.columns([4,1])
             with cols[0]:
-                dpt_list = active_monthdf['department'].unique() if not condition else active_monthdf.query("status == 'pending'")['department'].unique()
-                show_department = st.radio("Show Department",
-                                           options=["ALL",*dpt_list],
-                                           index=0,
-                                           horizontal=True)
-                if show_department != 'ALL':
+                # get the department wise sum
+                departmentdf = active_monthdf.groupby(by='department').agg({'amount':sum}).reset_index()
+                departmentdf.rename(columns={'amount':"Sum of all (including pending)"},inplace=True)
+                # st.dataframe(departmentdf)
+                
+                grid_builder = GridOptionsBuilder.from_dataframe(departmentdf)
+                grid_builder.configure_selection(selection_mode='single',
+                                         use_checkbox=True,
+                                         pre_selected_rows=[0])
+                gridresult = AgGrid(departmentdf,gridOptions=grid_builder.build()).selected_rows
+                show_department=None
+                # st.write(gridresult)
+                if gridresult:
+                    show_department = gridresult[0]['department']
                     condition.append(f" ( `department` == '{show_department}' ) ")
+
+                # dpt_list = active_monthdf['department'].unique() if not condition else active_monthdf.query("status == 'pending'")['department'].unique()
+                
+                
+                # show_department = st.radio("Show Department",
+                #                            options=["ALL",*dpt_list],
+                #                            index=0,
+                #                            horizontal=True)
             with cols[1]:
-                if show_department !='ALL':
+                if show_department:
                     sub_department = st.radio("Sub Dept",
                                             options=['ALL',
                                                      *active_monthdf.query(f" `department` == '{show_department}' ")['sub department'].unique()],

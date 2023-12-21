@@ -87,12 +87,17 @@ if 'bdv_app' not in st.session_state:
 # For development
 main_app = st.session_state['bdv_app']
 if main_app.in_development:
-    PAGE_DEVELOPING = 'settlements'
+    PAGE_DEVELOPING = 'settlement'
     PAGE_CLASS = settlement_Class()
+    SUB_PAGE_DEVELOPING = 'makePayments'
 
-
-    main_app.page_map[PAGE_DEVELOPING] = PAGE_CLASS
+    # tell which is my developement class
     main_app.development_page = PAGE_DEVELOPING
+    # Set the subpage
+    PAGE_CLASS.current_page = SUB_PAGE_DEVELOPING
+    # update the page_map
+    main_app.page_map[PAGE_DEVELOPING] = PAGE_CLASS
+
 
 st.set_page_config(**main_app.page_config)
 
@@ -108,5 +113,8 @@ except Exception as e:
 
     if main_app.in_development:
         st.write(e)
+    if main_app.userinfo:
+        if 'dev' in main_app.userinfo['roles']:
+            st.write(e)
 
 # st.markdown("[help improve!!](http://wa.me/917260869161?text=Hare%20Krishna%20some%20suggestion)")

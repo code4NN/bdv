@@ -486,7 +486,7 @@ class settlement_Class:
         # create the total amount summary
         # st.dataframe(workbook)
 
-        view = st.radio('showing',options=['pending','all'],index=1,horizontal=True)
+        view = st.radio('showing',options=['pending','all'],index=0,horizontal=True)
         if view == 'all':
             pass
         else:
