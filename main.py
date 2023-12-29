@@ -87,9 +87,9 @@ if 'bdv_app' not in st.session_state:
 # For development
 main_app = st.session_state['bdv_app']
 if main_app.in_development:
-    PAGE_DEVELOPING = 'settlement'
-    PAGE_CLASS = settlement_Class()
-    SUB_PAGE_DEVELOPING = 'makePayments'
+    PAGE_DEVELOPING = 'dpt_account'
+    PAGE_CLASS = account_Class()
+    SUB_PAGE_DEVELOPING = 'income'
 
 
     # tell which is my developement class

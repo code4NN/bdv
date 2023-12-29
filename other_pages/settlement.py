@@ -122,7 +122,7 @@ class settlement_Class:
             array = download_data(db_id=1,range_name=self._settlement_database_range)
             temp = pd.DataFrame(array[1:],columns=array[0])
             temp = temp[['actual paymnt date','devotee name','uniqueid','amount','dept','details','any comments','noted_in_expense_sheet','2','settlement_id','status']]
-            
+            # temp = temp.query(f"dept== '{self._settlement_app_version}'")
             temp['amount'] = temp['amount'].apply(lambda x: round(float(x),2))
             self._settlement_database = temp.copy()
 
@@ -487,16 +487,22 @@ class settlement_Class:
         # st.dataframe(workbook)
 
         view = st.radio('showing',options=['pending','all'],index=0,horizontal=True)
-        if view == 'all':
-            pass
-        else:
-            assert view == 'pending'
-            workbook = workbook.query("settlement_id =='-1' ")#[workbook.settlement_id =='-1']
         
-        pending_amount = workbook.query(" settlement_id == '-1' ")['amount'].sum()
-        headertitle.header(f":green[Make Payments of ] :orange[{pending_amount:,} ₹]")
-        grouped_summary = workbook[['devotee name','amount']]\
-                        .groupby(by='devotee name').agg('sum').reset_index()
+        if view == 'all':
+            grouped_summary = workbook[['devotee name','amount']]\
+                            .groupby(by='devotee name').agg('sum').reset_index()
+            
+            pending_amount = grouped_summary['amount'].sum()
+            headertitle.header(f":green[Total Transaction of ] :orange[{pending_amount:,} ₹]")
+
+        else:
+            assert view == 'pending'        
+            grouped_summary = workbook.query(" settlement_id == '-1' ")[['devotee name','amount']]\
+                            .groupby(by='devotee name').agg('sum').reset_index()
+            
+            pending_amount = grouped_summary['amount'].sum()
+            headertitle.header(f":green[Total pending: ] :orange[{pending_amount:,} ₹]")
+
         
         grouped_summary.sort_values(by='amount',ascending=False,inplace=True)
         grouped_summary.index = range(1,1+len(grouped_summary))
@@ -521,8 +527,7 @@ class settlement_Class:
 
         
         # one devotee's summary
-        dworkbook = workbook[workbook['devotee name'] == devotee].reset_index()
-
+        dworkbook = workbook.query(f" `devotee name` == '{devotee}' ")
 
         with st.expander("Filters",expanded=True):
             stage_filter_selection = st.radio("status",options=['pending','staged','completed'],horizontal=True,index=0)
@@ -532,7 +537,7 @@ class settlement_Class:
 
             elif stage_filter_selection =='staged':
                 dworkbook = dworkbook.query("settlement_id == '-1' and noted_in_expense_sheet == 'yes' ")
-                select_all_or_none = st.radio('select',options=['select all',"select none"],label_visibility='collapsed',index=1)
+                select_all_or_none = st.checkbox('Select All',value=True,key='sallstagedbuttoncheckbox')
 
             elif stage_filter_selection =='completed':
                 dworkbook = dworkbook.query("settlement_id != '-1' ")
@@ -546,7 +551,9 @@ class settlement_Class:
             #     dworkbook = dworkbook.query(f" dept == {choose_a_department}")
 
 
-        collection_dict = {'ids':"",'amount':0}
+        collection_dict = {'ids':"",
+                           'amount':0,
+                           'valid':True}
         st.markdown(f"### ---------Total {len(dworkbook)} records")
         dworkbook = dworkbook.reset_index(drop=True)
         
@@ -573,6 +580,7 @@ class settlement_Class:
 
                 st.markdown(f"### {title}")
                 left,middle,right = st.columns([2,1,1])
+                left.data_editor(payment_dataframe,hide_index=True,disabled=True)
 
                 middle.markdown(f":violet[comments: :orange[{dworkbook.loc[r,'any comments']}]]")
                 
@@ -583,10 +591,13 @@ class settlement_Class:
                 # now codes for payment etc                
             else :
                 st.markdown(f"### {title}")
+                status = json.loads(dworkbook.loc[r,'status'])
                 left,middle,right = st.columns([2,1,1])
-                # Do later
-                st.markdown("in progress")
-                break
+                left.dataframe(payment_dataframe)
+                middle.write(dworkbook.loc[r,'any comments'])
+                right.text(f"""Settled on {status['date_of_paymnt']} \n {status['paymnt_info']}""")
+                
+                
         
 
 
@@ -594,24 +605,28 @@ class settlement_Class:
         if stage_filter_selection == 'staged':
             with st.expander("Make Payment",expanded=True):
                 # timestamp
-                paymnt_dict['timestamp'] = str(datetime.datetime.now())
+                collection_dict['timestamp'] = str(datetime.datetime.now())
 
-                paymnt_dict['request_ids'] = st.text_input(":orange[unique_ids]",
+                collection_dict['request_ids'] = st.text_input(":orange[unique_ids]",
                 value=collection_dict['ids'],disabled=True)
 
                 # date of paymnt
-                paymnt_date = st.date_input(":green[Date of Payment]")
-                paymnt_dict['date_of_paymnt'] = str(paymnt_date)
+                payment_date = st.date_input(":green[Date of Payment]")
+                payment_date = payment_date.strftime("%b-%d, %a")
+                st.caption(payment_date)
+                collection_dict['date_of_paymnt'] = payment_date
 
-                paymnt_dict['amount'] = st.number_input('amount',
+                collection_dict['amount'] = st.number_input('amount',
                 value=collection_dict['amount'])
 
-                paymnt_dict['paymnt_info'] = st.text_input(":green[Payment Details]")
-                if paymnt_dict['paymnt_info'].strip() =="":
-                    paymnt_dict['valid'] = (paymnt_dict['valid']) and (True)
-                paymnt_dict['remark'] = st.text_area(":orange[any remarks]",height=50)
+                collection_dict['paymnt_info'] = st.text_input(":green[Payment Details]")
+                if not collection_dict['paymnt_info']:
+                    collection_dict['valid'] = False
+                if collection_dict['paymnt_info'].strip() =="":
+                    collection_dict['valid'] = (collection_dict['valid']) and (True)
+                collection_dict['remark'] = st.text_area(":orange[any remarks]",height=50)
                 # st.write(paymnt_dict)
-                if not paymnt_dict['valid']:
+                if not collection_dict['valid']:
                     st.button("Submit",disabled=True, help='Some error in filling')
                 else:
                     
@@ -627,14 +642,19 @@ class settlement_Class:
                             collection_dict['ids'] = ""
                             self._settlement_database_refresh = True
 
-                    st.button('submit',on_click=submit,args=[paymnt_dict])
-
-
-
-        paymnt_dict = {'valid':collection_dict['ids']  != ""}
+                    st.button('submit',on_click=submit,args=[collection_dict])
         
     def run(self):
-        if self.bdvapp.page_config['layout'] !='wide':
-            self.bdvapp.page_config['layout']='wide'
-        
+        st.markdown(
+        """
+        <style>
+        .step-up,
+        .step-down {
+            display: none;
+        }
+        </style>
+        </style>
+        """,
+        unsafe_allow_html=True
+        )
         self.page_map[self.current_page]()
