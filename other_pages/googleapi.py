@@ -11,10 +11,12 @@ sheets_dict = st.secrets['database']
 db_primary = sheets_dict['base']
 db_sadhana_card = sheets_dict['sadhana_card']
 db_article_tagging = sheets_dict['article_tagging']
+db_accounts = sheets_dict['accounts']
 
 db_list = {1:db_primary,
            2:db_sadhana_card,
-           3:db_article_tagging
+           3:db_article_tagging,
+           4:db_accounts
             }
 
 # credentials
@@ -24,6 +26,7 @@ SCOPE = [
     "https://www.googleapis.com/auth/drive",
     "https://www.googleapis.com/auth/spreadsheets"
 ]
+
 # ========================= Some constants end
 def _get_wb(db_id):
     if f'spreadsheet{db_id}' not in st.session_state:
@@ -52,8 +55,7 @@ def download_data(db_id,range_name):
 
     except Exception as e:
         st.error("Something Went Wrong")
-        if st.session_state.DEBUG_ERROR:
-            st.write(e)
+        st.write(e)
 
 def upload_data(db_id,range_name,value):
 #     """
@@ -70,8 +72,8 @@ def upload_data(db_id,range_name,value):
         return response
     except Exception as e:
         st.error("Something went wrong")
-        if st.session_state.DEBUG_ERROR:
-            st.write(e)
+        # if st.session_state.DEBUG_ERROR:
+        st.write(e)
 
 
 
@@ -90,5 +92,4 @@ def append_data(db_id,range_name,value):
         return response
     except Exception as e:
         st.error("Something went Wrong")
-        if st.session_state.DEBUG_ERROR:
-            st.write(e)
+        st.write(e)

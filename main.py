@@ -1,79 +1,120 @@
 import streamlit as st
 
-from other_pages.loginpage import login_main
-from other_pages.feed import show_feed
-from other_pages.sadhana_card import sc_main
-from other_pages.departments import structure_main
-from other_pages.settlement import settlement_main
-from other_pages.japa_talk import jt_main
-from other_pages.article_collection import get_article_main
-
-
-if 'LAYOUT' not in st.session_state:
-    st.session_state['LAYOUT'] = 'centered'
-elif 'state' in st.session_state:
-    if st.session_state.state == 'article_collection':
-        st.session_state.LAYOUT = 'wide'
-
-st.set_page_config(page_title="BDV",
-                    page_icon='📖',
-                    layout=st.session_state.LAYOUT
-                    )
-# #MainMenu {visibility: hidden;}
-hide_menu_style = """
-        <style>
-        # footer {visibility: hidden;}
-        </style>
-        """
-st.markdown(hide_menu_style, unsafe_allow_html=True)
-st.markdown(
-    """
-    <style>
-    .css-1rs6os.edgvbvh3 {
-        display: none;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-st.session_state['DEBUG_ERROR'] = True
-
-# ======================================= 
-state_page_map = {'feed':show_feed,
-                  'Sadhana_Card':sc_main,
-                  'dept_structure':structure_main,
-                  'settlement':settlement_main,
-                  'japa_talk':jt_main,
-                  'article_collection': get_article_main
-                    }
-
-if 'state' not in st.session_state:
-    # default behaviour
-    login_main()
-
-else :
-    # directed behaviour
-    try:
-        state_page_map[st.session_state.state]()    
-    except Exception as e:
-        if st.session_state['DEBUG_ERROR']:
-            st.write(e)       
+# Import various classes
+from other_pages.loginpage import login_Class
+from other_pages.feed import feed_Class
+from other_pages.settlement import settlement_Class
+from other_pages.finder import finder_Class
+from other_pages.accounts import account_Class
+from other_pages.hearing_tracker import hearing_Class
 
 
 
+class myapp:
+    def __init__(self,in_development,requires_login):
+
+        # Global parameters
+        self.in_development = in_development
+        self.requires_login = requires_login
+        self.development_page = ''
+
+        # register all the page
+        self.page_map = {'login':login_Class(),
+                         'feed':feed_Class(),
+                         'settlement':settlement_Class(),
+                         'finder': finder_Class(),
+                         'dpt_accounts': account_Class(),
+                         'hearing_tracker': hearing_Class()
+                          }
+        # landing page
+        self.current_page = 'login'
+        
+        # User related data
+        # Get's populated after login
+        self.userinfo = None
     
-st.markdown('---')
-st.markdown("[help improve!!](http://wa.me/917260869161?text=Hare%20Krishna%20some%20suggestion)")
+    @property
+    def page_config(self):
+        if self.in_development and self.requires_login:
+            if self.userinfo:
+                return self.page_map[self.development_page].page_config
+            else:
+                return self.page_map['login'].page_config
+        else:
+            return self.page_map[self.current_page].page_config
+
+    def run(self):
+        # check if dev or prod
+        if self.in_development:
+            # dev > check if we need to login
+            if self.requires_login:
+                # needs login > Now check if user have logged in
+                
+                if self.userinfo is None:
+                    # user have not logged in >> land to login page
+                    self.page_map[self.current_page].run()
+                else:
+                    # land to developer page if it does not need login
+                    self.page_map[self.development_page].run()
+            else:
+                # does not need login > directly run developer page
+                self.page_map[self.development_page].run()
+
+        # in production
+        else:
+            self.page_map[self.current_page].run()
+
+# End of My App Class
+
+
+
+# Create an instance of the voice-app
+if 'bdv_app' not in st.session_state:
+    if st.secrets['developer']['in_development']==1:
+        if st.secrets['developer']['requires_login']==1:
+            st.session_state['bdv_app'] = myapp(in_development=True,
+                                                requires_login=True)
+        else :
+            st.session_state['bdv_app'] = myapp(in_development=True,
+                                                requires_login=False)
+    else:
+        st.session_state['bdv_app'] = myapp(in_development=False,requires_login=False)
 
 
 
 
 
+# For development
+main_app = st.session_state['bdv_app']
+if main_app.in_development:
+    PAGE_DEVELOPING = 'settlement'
+    PAGE_CLASS = settlement_Class()
+    SUB_PAGE_DEVELOPING = 'makePayments'
+
+    # tell which is my developement class
+    main_app.development_page = PAGE_DEVELOPING
+    # Set the subpage
+    PAGE_CLASS.current_page = SUB_PAGE_DEVELOPING
+    # update the page_map
+    main_app.page_map[PAGE_DEVELOPING] = PAGE_CLASS
+
+
+st.set_page_config(**main_app.page_config)
 
 
 
 
 
+try:
+    main_app.run()
 
+except Exception as e:
+    st.error("Haribol!! Got some error")
 
+    if main_app.in_development:
+        st.write(e)
+    if main_app.userinfo:
+        if 'dev' in main_app.userinfo['roles']:
+            st.write(e)
+
+# st.markdown("[help improve!!](http://wa.me/917260869161?text=Hare%20Krishna%20some%20suggestion)")

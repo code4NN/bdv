@@ -3,673 +3,703 @@ import datetime
 import json
 import pandas as pd
 import calendar
-# import locale
-# locale.setlocale(locale.LC_ALL, 'en_IN')
-from st_aggrid import AgGrid, GridOptionsBuilder,ColumnsAutoSizeMode
+from st_aggrid import AgGrid, GridOptionsBuilder
 
 from other_pages.googleapi import download_data
 from other_pages.googleapi import upload_data
 from other_pages.googleapi import append_data
 
-# ============= some variables
-REQUEST_FORM_ORDER = ['timestamp','date_of_paymnt','name','request_id','amount','department','table_entry','remark']
-REQUEST_FORM_RANGE = 'settlement_request!A:H'
-SETTLEMENT_INFO = 'settlement_request!A2:M'
-REQUEST_SHEET = 'settlement_request!'
-NOTED_IN_ACC_COL = 'I'
+class settlement_Class:
+    def __init__(self):
+        self._settlement_app_version = 'v3'
+        # sub page related information
+        self.page_config = {'page_title': "BDV",
+                            'page_icon':'☔',
+                            'layout':'wide'}
+        self.page_map = {
+            'fillForm':self.fillForm,
+            'makePayments':self.make_payments,
+        }
+        self.current_page = 'fillForm'
 
-PAYMENT_ORDER = ['timestamp','date_of_paymnt','amount',
-                'paymnt_info','remark','request_ids']
-PAYMENT_RANGE = 'settlement_payment!C:H'
+        # for request form
+        self.REQUEST_FORM_ORDER = [
+                                'timestamp',
+                                'date_of_paymnt',
+                                'name',
+                                'request_id',
+                                'amount',
+                                'department',
+                                'table_entry',
+                                'remark'
+                                ]
+        self.REQUEST_FORM_RANGE = 'settlement_request!A:H'
+        self.SETTLEMENT_INFO = 'settlement_request!A2:M'
+        self.REQUEST_SHEET = 'settlement_request!'
+        self.NOTED_IN_ACC_COL = 'I'
+        # self.department_list_for_form_value = None
 
-# ============= </some variables>
-
-
-## ----------- call back functions
-def change_page(state,substate='default'):
-    st.session_state['state'] = state
-    st.session_state['substate'] = substate
-
-def change_subpage(subpage):
-    st.session_state['substate'] = subpage
-
-## -------------
-def settlement_form():
-    st.session_state.LAYOUT = 'wide'
-    st.markdown(
-    """
-    <style>
-    .step-up,
-    .step-down {
-        display: none;
-    }
-    </style>
-    </style>
-    """,
-    unsafe_allow_html=True
-    )
-
-    # --------------- page
-    st.header(" :green[settlement form]")
-    st.markdown('---')
-
-    # for acc in charge
-    if 'acc_ic' in st.session_state['user']['roles']:
-        st.button('Make settlement',on_click=change_subpage,args=['make_paymnt'])
-
-
-    requestform = {'error':False}
-    with st.expander("fill a form",expanded=True):
-
-       
-
-        # get the month of payment
-        current_month = datetime.datetime.now().month
-        current_year = datetime.datetime.now().year
-        previous_month = current_month - 1 if current_month !=1 else 12
-        st.header(f":violet[request-id-{st.session_state['user']['settlement_id']}]")
-        request_month = st.radio("Enter month",
-                                 options=[previous_month,current_month],
-                                format_func=lambda x: calendar.month_name[x],
-                                horizontal=True)
-        max_month_day = calendar.monthrange(current_year,request_month)[1]
+        self.no_of_requests = 1 # default value
+        self.request_upload_response = 'none'
         
-        # -------new codes
-        if 'no_of_requests' not in st.session_state:
-            st.session_state['no_of_requests'] = 1
-        no_of_requests = st.session_state['no_of_requests']
 
-        entry_table = []
-        for i in range(no_of_requests):
-            one_entry = {}
-            col_day,col_amount,col_dept,col_details = st.columns([1,1,3,4])
+        # for payments
+        self.PAYMENT_ORDER = ['timestamp',
+                              'date_of_paymnt',
+                              'amount',
+                              'paymnt_info',
+                              'remark',
+                              'request_ids']
+        self.PAYMENT_RANGE = 'settlement_payment!C:H'
+        
+
+        # data bases
+        self._request_db = None
+        self._request_db_refresh = True
+
+        self._expense_database = None
+        self._expense_database_refresh = True
+        self._expense_database_range = 'expense!A:D'
+        
+        self._active_month_expense_data = {'active_index':-1,
+                                           'data':None
+                                           }
+
+        self._settlement_database = None
+        self._settlement_database_refresh = True
+        self._settlement_database_range = 'settlement_request!A2:M'
+
+        # for processing pending
+        self.loaded_dict = {}
+        self._department_dictionary = None
+    @property
+    def bdvapp(self):
+        return st.session_state.get('bdv_app',None)
+    
+    @property
+    def request_db(self):
+        """
+        1. downloads the data if refresh is True
+        2. else returns the database
+        Actions
+            1. download
+            2. save
+            3. set the refresh to False
+            4. return
+        """
+        if self._request_db_refresh:
+
+            # put logic here to download the data
+            array = download_data(db_id=1,range_name=self.SETTLEMENT_INFO)          
+            temp = pd.DataFrame(array[1:],columns=array[0])
+            temp = temp[temp['devotee name']==self.bdvapp.userinfo['name']]
+            temp = temp[['dept','timestamp','devotee name','uniqueid','amount','details','any comments','noted_in_expense_sheet','2','settlement_id','status']]
+            temp = temp.query(f"dept== '{self._settlement_app_version}'")
+            temp['amount'] = temp['amount'].apply(lambda x: float(x))
             
-            one_entry['day'] = col_day.number_input("day",step=1,
-                                 min_value=1,max_value=max_month_day,
-                                 key=f'input_table_day{i}')
-            spent_date = datetime.datetime(current_year,request_month,one_entry['day'])
-            if (datetime.datetime.now() -spent_date).days > 8:
-                requestform['error'] = True
-                col_day.markdown(":red[Older than 7 days not accepted]")
-            col_day.caption(datetime.datetime(current_year,request_month,one_entry['day']).strftime("%b %d %a"))
-            one_entry['day'] = datetime.datetime(current_year,request_month,one_entry['day']).strftime("%b-%d, %a")
+            temp = temp.reset_index(drop=True)
+            self._request_db = temp.copy()
+            self._request_db_refresh = False
+            return self._request_db
+
+        else:
+            return self._request_db
+
+    @property
+    def settlement_database(self):
+        """
+        1. downloads the data if refresh is True
+        2. else returns the database
+        Actions
+            1. download and save in the class
+            3. set the refresh to False
+            4. return
+        """
+        if self._settlement_database_refresh:
+            # download a fresh data
+            # update database and refresh to False
+            # return
+            array = download_data(db_id=1,range_name=self._settlement_database_range)
+            temp = pd.DataFrame(array[1:],columns=array[0])
+            temp = temp[['actual paymnt date','devotee name','uniqueid','amount','dept','details','any comments','noted_in_expense_sheet','2','settlement_id','status']]
+            
+            temp['amount'] = temp['amount'].apply(lambda x: round(float(x),2))
+            self._settlement_database = temp.copy()
+
+            return self._settlement_database
+        else:
+            return self._settlement_database
+    
+    @property
+    def expense_database(self):
+        """
+        1. downloads the data if refresh is True
+        2. else returns the database
+        Actions
+            1. download and save in the class
+            3. set the refresh to False
+            4. return
+        """
+        if self._expense_database_refresh:
+            # download a fresh data
+            # update database and refresh to False
+            # return
+            _expense_database = download_data(4,self._expense_database_range)
+            _expense_database = pd.DataFrame(_expense_database[1:],columns=_expense_database[0])
+            
+            self._expense_database = _expense_database.copy()
+            self._expense_database_refresh = False
+
+            return self._expense_database
+        else:
+            return self._expense_database
+    
+    @property
+    def department_dictionary(self):
+        if self._department_dictionary:
+            return self._department_dictionary
+        else:
+            expensedata = self.expense_database
+            
+            metadata = dict(zip(expensedata['key'],expensedata['value']))        
+
+            department_dict = json.loads(metadata['department_dict'])
+            self._department_dictionary = department_dict
+
+            return self._department_dictionary
+
+    @property
+    def active_month_expense_data(self):
+        if self._active_month_expense_data['active_index']==-1:
+            expensedata = self.expense_database
+            
+            metadata = dict(zip(expensedata['key'],expensedata['value']))
+            active_month_data = pd.read_json(expensedata['data'].tolist()[metadata['active_row']],
+                                             orient='records')
+
+            self._active_month_expense_data = {'active_index':metadata['active_row'],
+                                               'data':active_month_data}
+            return self._active_month_expense_data
+        else:
+            return self._active_month_expense_data
+
+    def fillForm(self):
+        st.markdown(
+        """
+        <style>
+        .step-up,
+        .step-down {
+            display: none;
+        }
+        </style>
+        </style>
+        """,
+        unsafe_allow_html=True
+        )
+
+        # --------------- page
+        st.header(" :green[settlement form] :red[V3]")
+        st.caption("Please Note that this is 3rd Version of settlement platform")
+        st.text_area(":green[Changes are]",value="""1. by Default date is set to current date, \n2. Selection of department is mandatory from a list\nSo in case of any query please text me""",disabled=True)
+        st.markdown('---')
+
+        # for acc in charge
+        if 'acc_ic' in self.bdvapp.userinfo['roles']:
+            def switch_role():
+                self.current_page = 'makePayments'
+
+            st.button('Make settlement',on_click= switch_role)
+
+
+        requestform = {'error':False}
+        with st.expander("fill a form",expanded=True):
+        
+
+            # get the month of payment
+            current_day = datetime.datetime.now().day
+            current_year = datetime.datetime.now().year
+            current_month = datetime.datetime.now().month
+            previous_month = current_month - 1 if current_month !=1 else 12
+            st.header(f":violet[request-id-{self.bdvapp.userinfo['settlement_id']}]")
+            request_month = st.radio("Enter month",
+                                    options=[previous_month,current_month],
+                                    format_func=lambda x: calendar.month_name[x],
+                                    index=1,
+                                    horizontal=True)
+            max_month_day = calendar.monthrange(current_year,request_month)[1]
+            
+            # -------new codes
+            # if 'no_of_requests' not in st.session_state:
+            #     st.session_state['no_of_requests'] = 1
+            # no_of_requests = st.session_state['no_of_requests']
+            no_of_requests = self.no_of_requests
+
+            entry_table = []
+            for i in range(no_of_requests):
+                one_entry = {}
+                col_day,col_amount,col_dept,col_details = st.columns([1,1,2,4])
                 
-            one_entry['amount'] = col_amount.number_input("amount",
-                                    step=100,min_value=1,max_value=15000,
-                                 key=f'input_table_amount{i}')
-            one_entry['dept'] =  col_dept.text_input("dept",
-                                 key=f'input_table_dept{i}')
-            if not one_entry['dept'].strip():
-                col_dept.markdown(":red[cannot be blank]")
-                requestform['error'] = True
+                one_entry['day'] = col_day.number_input("day",step=1,
+                                    min_value=1,max_value=max_month_day,
+                                    value=current_day,
+                                    key=f'input_table_day{i}')
+                spent_date = datetime.datetime(current_year,request_month,one_entry['day'])
+                if (datetime.datetime.now() -spent_date).days > 8:
+                    requestform['error'] = True
+                    col_day.markdown(":red[Older than 7 days not accepted]")
+                col_day.caption(datetime.datetime(current_year,request_month,one_entry['day']).strftime("%b %d %a"))
+                one_entry['day'] = datetime.datetime(current_year,request_month,one_entry['day']).strftime("%b-%d, %a")
+                    
+
+                one_entry['amount'] = col_amount.number_input("amount",
+                                        step=100,min_value=1,max_value=15000,
+                                    key=f'input_table_amount{i}')
+                # st.write(self.department_dict)
+                one_entry['dept'] =  col_dept.radio("Department",options=['Kitchen',
+                                                                          'Deity',
+                                                                          'Preaching',
+                                                                          'Maintenance',
+                                                                          'BC',
+                                                                          'Guest',
+                                                                          'Notice Board'],
+                                                            key=f'input_table_dept{i}')
+                
+                # if not one_entry['dept'].strip():
+                #     col_dept.markdown(":red[cannot be blank]")
+                #     requestform['error'] = True
+                
+                one_entry['details'] = col_details.text_area("Please mention Agenda",
+                                    key=f'input_table_details{i}',height=10)
+                if not one_entry['details'].strip():
+                    col_details.markdown(":red[cannot be blank]")
+                    requestform['error'] = True
+                entry_table.append(one_entry)
+                st.markdown('---')
             
-            one_entry['details'] = col_details.text_area("details",
-                                 key=f'input_table_details{i}',height=10)
-            if not one_entry['details'].strip():
-                col_details.markdown(":red[cannot be blank]")
-                requestform['error'] = True
-            entry_table.append(one_entry)
-            st.markdown('---')
-        
-        # -------to add or remove more entries
-        def modify_no_of_fields(to_increment):
-            if to_increment:
-                st.session_state.no_of_requests +=1
-            elif st.session_state.no_of_requests ==1:
-                pass
-            else:
-                st.session_state.no_of_requests -=1
-        left,right = st.columns(2)
-        left.button("Add one more entry",on_click=modify_no_of_fields,
-                    key='increase_input_fields',args=[True])
-        if st.session_state.no_of_requests >1:
-            right.button("Drop last entry",on_click=modify_no_of_fields,
-                        key='decrease_input_fields',args=[False])
-        
-        # collect other fields
-        requestform['table_entry'] = entry_table
-        # st.write(json.dumps(entry_table))
-        requestform['remark'] = st.text_area("Any other remark",
-                                             height=60,key='additional_remark')
+            # -------to add or remove more entries
+            def modify_no_of_fields(to_increment):
+                if to_increment:
+                    self.no_of_requests +=1
+                elif self.no_of_requests ==1:
+                    pass
+                else:
+                    self.no_of_requests -=1
 
-        # timestamp
-        requestform['timestamp'] = str(datetime.datetime.now())
-        # name
-        requestform['name'] = st.session_state['user']['name']
-        # request ID
-        requestform['request_id'] = f"{requestform['name']}-{st.session_state['user']['settlement_id']}"
+            left,right = st.columns(2)
+            left.button("Add one more entry",on_click=modify_no_of_fields,
+                        key='increase_input_fields',args=[True])
+            if self.no_of_requests >1:
+                right.button("Drop last entry",on_click=modify_no_of_fields,
+                            key='decrease_input_fields',args=[False])
+            
+            # collect other fields
+            requestform['table_entry'] = entry_table
+            # st.write(json.dumps(entry_table))
+            requestform['remark'] = st.text_area("Overall any remark or suggession",
+                                                height=60,key='additional_remark').strip()
 
-        # submit
-        def request_form_submit(request_dict):
-            final_entry_table = [['day','amount','dept','details']]
-            total_amount = 0
-
-            for one_entry in request_dict['table_entry']:
-                final_entry_table.append([one_entry['day'],
-                                        one_entry['amount'],
-                                        one_entry['dept'],
-                                        one_entry['details']])
-                total_amount += int(one_entry['amount'])
-            request_dict['table_entry'] = json.dumps(final_entry_table)
-            # other changes
-            request_dict['date_of_paymnt'] = '-'
-            request_dict['department'] = '-'
-            request_dict['amount'] =  total_amount
+            # timestamp
+            requestform['timestamp'] = str(datetime.datetime.now())
+            # name
+            requestform['name'] = self.bdvapp.userinfo['name']
+            # request ID
+            requestform['request_id'] = f"{requestform['name']}-{self.bdvapp.userinfo['settlement_id']}"
 
             # submit
-            request_to_sheet = []
-            for value in REQUEST_FORM_ORDER:
-                request_to_sheet.append(request_dict[value])
-            request_to_sheet.append("no")
-            try:
-                response  = append_data(db_id=1,range_name=REQUEST_FORM_RANGE,
+            def request_form_submit(request_dict):
+                final_entry_table = [['day','amount','dept','details']]
+                total_amount = 0
+
+                for one_entry in request_dict['table_entry']:
+                    final_entry_table.append([one_entry['day'],
+                                            one_entry['amount'],
+                                            one_entry['dept'],
+                                            one_entry['details']])
+                    total_amount += int(one_entry['amount'])
+                request_dict['table_entry'] = json.dumps(final_entry_table)
+                # other changes
+                request_dict['date_of_paymnt'] = '-'
+                request_dict['department'] = self._settlement_app_version
+                request_dict['amount'] =  total_amount
+
+                # submit
+                request_to_sheet = []
+                for value in self.REQUEST_FORM_ORDER:
+                    request_to_sheet.append(request_dict[value])
+                request_to_sheet.append("no")
+                    
+                response  = append_data(db_id=1,range_name=self.REQUEST_FORM_RANGE,
                             value=[request_to_sheet])
                 
                 if response:
-                    st.session_state.pop('settlement_info')
-                    st.session_state.pop('no_of_requests')
+                    self._request_db_refresh = True
+                    self.no_of_requests = 1
                     st.session_state.input_table_details0 = ""
-                    st.session_state.input_table_dept0 = ""
-                    st.session_state['user']['settlement_id'] = str(int(st.session_state['user']['settlement_id']) + 1)
+                    # st.session_state.input_table_dept0 = ""
+                    self.bdvapp.userinfo['settlement_id'] = str(int(self.bdvapp.userinfo['settlement_id']) + 1)
 
-                    st.session_state['request_state'] = "success"
-            except Exception as e :
-                if st.session_state.DEBUG_ERROR:
-                    st.write(e)
+                    self.request_upload_response = "success"
+                
+
+                
+
+            if requestform['error']:
+                st.button("Submit 👍",disabled=True,key='submit_button')
+            else:
+                st.button("Submit 👍",on_click=request_form_submit,key='submit_button',
+                        args=[requestform])
+            
+            if self.request_upload_response != 'none':
+                status = self.request_upload_response
+                if status =='success':
+                    st.success("Successfully submitted")
                 else :
-                    st.session_state['request_state'] = 'error'
-
+                    st.error("Some error occurred")                    
+                self.request_upload_response = 'none'
             
 
-        if not requestform['error']:
-            st.button("Submit 👍",on_click=request_form_submit,key='submit_button',
-                      args=[requestform])
+            st.markdown("## :blue[my forms]")
+
+
+        # download the data
+        def refresh():
+            self._request_db_refresh  = True
+        st.button("🔃refresh",on_click=refresh)
+
         
-        if 'request_state' in st.session_state:
-            status = st.session_state['request_state']
-            if status =='success':
-                st.success("Successfully submitted")
+        dworkbook = self.request_db.copy()
+        # 'd' stands for devotee
+        # st.dataframe(dworkbook)
+
+        request_view, timeline_view= st.tabs(["Group by form filled",
+                                              "Group by payments made",
+                                            #   "Detailed Chronological order"
+                                            ])
+        # for group by form filled
+        view1df = dworkbook.copy()
+        view1df = view1df[['timestamp','uniqueid','amount','status']]
+        
+        def process_status(status_raw):
+            statusdict = json.loads(status_raw)
+            if statusdict['status'] == 'pending':
+                return 'pending'
             else :
-                st.error("Some error occurred")
-            st.session_state.pop('request_state')
-
-        """
-
-
-
-        # date of paymnt
-        paymnt_date = st.date_input(":green[Date of Payment]")
-        requestform['date_of_paymnt'] = str(paymnt_date)
-        # name
-        st.write(f":blue[Name: {st.session_state['user']['name']}]")
-        requestform['name'] = st.session_state['user']['name']
-
-        # request ID
-        requestform['request_id'] = f"{requestform['name']}-{st.session_state['user']['settlement_id']}"
-
-        # amount
-        requestform['amount'] = st.number_input(":green[Amount]",min_value=0,
-        max_value=10000,step=100,key='amount')
-
-        # payment for
-        requestform['agenda'] = st.text_area(":green[Expense Agenda Details ]",max_chars=500,
-                                height=60,key='agenda')
-        if not requestform['agenda'].strip():
-            st.caption(':red[agenda cannot be blank]')
-            requestform['error'] = True
-
-        # department
-        requestform['department'] = st.text_input(":green[Department]",max_chars=100,key='dept')
-        if not requestform['department'].strip():
-            st.caption(':red[department cannot be blank]')
-            requestform['error'] = True
-
-        # any remark
-
-        requestform['remark'] = st.text_area(":orange[any other remark]",height=50,max_chars=300,key='remark')
-        if not requestform['remark'].strip():
-            requestform['remark'] ='no comments'
-            st.caption(requestform['remark'])
-
-        def submit(requestdict):
-            request = []
-            for value in REQUEST_FORM_ORDER:
-                request.append(requestdict[value])
-            request.append('no') # noted in expense sheet = no
-            try:
-                response = append_data(db_id=1,range_name=REQUEST_FORM_RANGE,
-                            value=[request])
-                if response:
-                    st.session_state['successful'] = f':green[successfully filled form for ] :orange[₹ {requestdict["amount"]}]'
-                    st.session_state['user']['settlement_id'] = str(int(st.session_state['user']['settlement_id']) + 1)
-                    st.session_state.pop('settlement_info')
-                    # form related
-                    # st.session_state.pop('agenda')
-                    # st.session_state.pop('amount')
-                    # st.session_state.pop('remark')
-                    # st.session_state.pop('dept')
-            except Exception as e:
-                # st.write(e)
-                st.session_state['error_upload'] = ':red[some error in uploading data]'
-        if not requestform['error']:
-            st.button("Submit",on_click=submit,args=[requestform])
+                return f'settled on {statusdict["date_of_paymnt"]}'
+            
+        view1df['status'] = view1df['status'].apply(lambda x:process_status(x))
+        view1df['amount'] = view1df['amount'].map('{:,.0f} ₹'.format)
+        def highlight_rows(row):
+            light_green = '#1b6924'  # Light green color
+            light_red = '#5e132a'    # Light red color
+            color = light_green if row['status'] !='pending' else light_red
+            return ['background-color: {}'.format(color) for _ in row]
         
-        if 'error_upload' in st.session_state:
-            st.caption(st.session_state['error_upload'])
-            st.session_state.pop('error_upload')
-        elif 'successful' in st.session_state:
-            st.caption(st.session_state['successful'])
-            st.session_state.pop('successful')
-
-    st.markdown('---')
-    """
-    st.markdown("## :blue[my forms]")
+        request_view.dataframe(view1df.style.apply(highlight_rows, axis=1),
+                            hide_index=True)
+        
 
 
-    # download the data
-    def refresh():
-        st.session_state.pop('settlement_info')                
-    st.button("🔃refresh",on_click=refresh)
+        # Chronological view calculations (both)
+        timeline_array = [['date','amount','department','details','formfilldate','requestid','is_settlement']]
+        
+        completed_settlement_ids = []
+        for _,one_request in dworkbook.iterrows():
 
-    if 'settlement_info' not in st.session_state:
-    # if True :
-        array = download_data(db_id=1,range_name=SETTLEMENT_INFO)
-        temp = pd.DataFrame(array[1:],columns=array[0])
-        temp = temp[temp['devotee name']==st.session_state['user']['name']]
-        temp = temp[['dept','timestamp','devotee name','uniqueid','amount','details','any comments','noted_in_expense_sheet','2','settlement_id','status']]
-        temp.query("dept=='-'",inplace=True)
-        temp['amount'] = temp['amount'].apply(lambda x: int(x))
-        st.session_state['settlement_info'] = temp.copy()
-    
-    dworkbook = st.session_state['settlement_info'].copy()
-    dworkbook.reset_index(inplace=True,drop=True)
-    # st.dataframe(dworkbook)
-
-    request_view, timeline_view= st.tabs(["Request View",
-                                                          "Chronological Order",
-                                                        #   "Detailed Chronological order"
-                                                          ])
-    # for request date wise view
-    view1df = dworkbook.copy()
-    view1df = view1df[['timestamp','uniqueid','amount','status']]
-    
-    def process_status(status_raw):
-        statusdict = json.loads(status_raw)
-        if statusdict['status'] == 'pending':
-            return 'pending'
+            formfilled_time = one_request['timestamp']
+            request_id = one_request['uniqueid']
+            
+            # enter individual payments
+            infotable = json.loads(one_request['details'])
+            infotable = infotable[1:]
+            for one_item in infotable:
+                timeline_array.append([*one_item,formfilled_time,request_id,False])
+            
+            # check for settlement status an add if payment one
+            settlement_status = json.loads(one_request['status'])
+            # st.write(settlement_status)
+            if settlement_status['status'] =='done':
+                
+                # don't add multiple times
+                if settlement_status['settlement_id'] not in completed_settlement_ids:
+                    completed_settlement_ids.append(settlement_status['settlement_id'])
+                else :
+                    continue
+                timeline_array.append([settlement_status['date_of_paymnt'],
+                                    -int(settlement_status['amount_of_paymnt']),
+                                    'settlement',
+                                    settlement_status['paymnt_info'],
+                                    settlement_status['date_of_paymnt'],
+                                    settlement_status['remark'],
+                                    True
+                                    ])
+        
+        timelinedf = pd.DataFrame(timeline_array[1:],columns=timeline_array[0])
+        
+        timelinedf['date_actual'] = pd.to_datetime(timelinedf['date'],format="%b-%d, %a")
+        timelinedf.sort_values(by='date_actual',ascending=True,inplace=True)
+        timelinedf.drop(columns='date_actual',inplace=True)
+        # timelinedf.index=timelinedf['date']
+        # timelinedf.drop(columns=['date'],inplace=True)
+        balance = [0]
+        for amount,is_settlement in zip(timelinedf.amount.tolist(),timelinedf.is_settlement.tolist()):
+                balance.append(balance[-1]+int(amount))
+        timelinedf.insert(1,"Amount to be settled",balance[1:])
+        
+        def highlight_settlements(row):
+            light_green = '#1b6924'  # Light green color
+            light_red = '#5e132a'    # Light red color
+            color = light_green if row['is_settlement'] == True else light_red
+            return ['background-color: {}'.format(color) for _ in row]
+        timelinedf = timelinedf.rename(columns={'amount':"Transaction Amout"})
+        timeline_view.dataframe(timelinedf.style.apply(highlight_settlements,axis=1),hide_index=True)
+        # timeline_view.dataframe(timelinedf)
+        
+        dueamount= f'₹ {balance[-1]:,}'
+        if balance[-1] > 0:
+            st.markdown(f"## :green[You will receive :orange[{dueamount}] from VOICE]")
+        elif balance[-1]==0:
+            st.markdown("## :green[All Accounts Clear!!!]")
         else :
-            return f'settled on {statusdict["date_of_paymnt"]}'
+            st.markdown(f"## :green[Payment of :orange[{dueamount}] is due to VOICE]")
         
-    view1df['status'] = view1df['status'].apply(lambda x:process_status(x))
-    def highlight_rows(row):
-        light_green = '#1b6924'  # Light green color
-        light_red = '#5e132a'    # Light red color
-        color = light_green if row['status'] !='pending' else light_red
-        return ['background-color: {}'.format(color) for _ in row]
-    request_view.dataframe(view1df.style.apply(highlight_rows, axis=1),
-                           use_container_width=True)
-    
+    def make_payments(self):
+        headertitle = st.empty()
+        headertitle.header(":green[Make payments]")
 
-
-    # Chronological view calculations (both)
-    timeline_array = [['date','amount','department','details','formfilldate','requestid','is_settlement']]
-    # with timeline_view:
-    #     st.dataframe(dworkbook)
-    completed_settlement_ids = []
-    for _,one_request in dworkbook.iterrows():
-
-        formfilled_time = one_request['timestamp']
-        request_id = one_request['uniqueid']
+        def change_role():
+            self.current_page='fillForm'
+        def change_page():
+            self.bdvapp.current_page = 'dpt_accounts'
+            self.bdvapp.page_map['dpt_accounts'].current_page = 'expense'
+        cols = st.columns(2)
         
-        # enter individual payments
-        infotable = json.loads(one_request['details'])
-        infotable = infotable[1:]
-        for one_item in infotable:
-            timeline_array.append([*one_item,formfilled_time,request_id,False])
-        
-        # check for settlement status an add if payment one
-        settlement_status = json.loads(one_request['status'])
-        # st.write(settlement_status)
-        if settlement_status['status'] =='done':
-            
-            # don't add multiple times
-            if settlement_status['settlement_id'] not in completed_settlement_ids:
-                completed_settlement_ids.append(settlement_status['settlement_id'])
-            else :
-                continue
-            timeline_array.append([settlement_status['date_of_paymnt'],
-                                -int(settlement_status['amount_of_paymnt']),
-                                'settlement',
-                                settlement_status['paymnt_info'],
-                                settlement_status['date_of_paymnt'],
-                                settlement_status['remark'],
-                                True
-                                ])
-    
-    timelinedf = pd.DataFrame(timeline_array[1:],columns=timeline_array[0])
-    
-    timelinedf['date_actual'] = pd.to_datetime(timelinedf['date'],format="%b-%d, %a")
-    timelinedf.sort_values(by='date_actual',ascending=True,inplace=True)
-    timelinedf.drop(columns='date_actual',inplace=True)
-    # timelinedf.index=timelinedf['date']
-    # timelinedf.drop(columns=['date'],inplace=True)
-    balance = [0]
-    for amount,is_settlement in zip(timelinedf.amount.tolist(),timelinedf.is_settlement.tolist()):
-            balance.append(balance[-1]+int(amount))
-    timelinedf.insert(1,"balance",balance[1:])
-    
-    def highlight_settlements(row):
-        light_green = '#1b6924'  # Light green color
-        light_red = '#5e132a'    # Light red color
-        color = light_green if row['is_settlement'] == True else light_red
-        return ['background-color: {}'.format(color) for _ in row]
+        cols[0].button("settlement form",on_click=change_role)        
+        cols[1].button("Expense Page",on_click=change_page)
 
-    timeline_view.dataframe(timelinedf.style.apply(highlight_settlements,axis=1),
-                            use_container_width=True)
-    
-    # timeline_view.dataframe(timelinedf)
-    
-    dueamount= f'₹ {balance[-1]:,}'
-    if balance[-1] > 0:
-        st.markdown(f"## :green[You will receive :orange[{dueamount}] from VOICE]")
-    elif balance[-1]==0:
-        st.markdown("## :green[All Accounts Clear!!!]")
-    else :
-        st.markdown(f"## :green[Payment of :orange[{dueamount}] is due to VOICE]")
-    # st.markdown("### :green[Balance calculation is in progress!!!]")
-    # dfsummary = dworkbook.copy()
-    # dfsummary = dfsummary[['actual paymnt date','uniqueid','amount','dept','details','any comments','settlement_id']]
-    # dfsummary.rename(columns={'actual paymnt date':'payment date','settlement_id':'status'},inplace=True)
-    # dfsummary['status'] = dfsummary['status'].apply(lambda x: "done" if x!='-1' else "pending")
+        st.markdown('---')
+        def reload():
+            self._settlement_database_refresh = True
+        st.button('🔃refresh',on_click=reload)
 
-    # status = st.radio("Showing", options=['done','pending'],horizontal=True,index=1)
-    # if status=='done':
-    #     dfsummary = dfsummary[dfsummary.status =='done']
-    #     dworkbook = dworkbook[dworkbook.status1=='done']
-    # else:
-    #     # pending
-    #     dfsummary = dfsummary[dfsummary.status =='pending']
-    #     dworkbook = dworkbook[dworkbook.status1=='pending']
+        workbook = self.settlement_database.copy()
 
-    # st.dataframe(dfsummary.drop(columns='status').reset_index(drop=True))
-    # total_sum = dfsummary.amount.sum()
-    # # Show total lakshmi 
-    # if status=='done':
-    #     st.markdown(f":green[Total Settled: ₹ {total_sum}]")
-    # elif total_sum >4000:
-    #     st.markdown(f":red[Total Pending: ₹ {total_sum}]")
-    # else:
-    #     st.markdown(f":green[Total Pending: ₹ {total_sum}]")
+        # create the total amount summary
+        # st.dataframe(workbook)
 
-    
-    # dworkbook.reset_index(drop=True,inplace=True)
-    # # st.dataframe(dworkbook)
-
-    # # Filter for detals
-    # with st.expander("Filters",expanded=True):
-    #     show_list = []  
-    #     filter_status = st.radio("status",options=['pending','completed','all'],horizontal=True,index=0)
-    #     if filter_status =='pending':
-    #         show_list[:] = ['red','orange']
-    #     elif filter_status =='completed':
-    #         show_list[:] = ['green']
-    #     elif filter_status =='all':
-    #         show_list[:] = ['red','orange','green']        
-        
-    #     filter_count = st.slider("show option",min_value=1,
-    #                         max_value=max(2,len(dworkbook)),step=1,value=max(1,len(dworkbook)))
-        
-
-
-
-    
-    # for r in range(filter_count):
-    #     title = f"[{1+r}/{len(dworkbook)}] → ₹ :orange[{dworkbook.loc[r,'amount']}] _spent on_ {dworkbook.loc[r,'actual paymnt date']}"
-    #     status = "purple"
-    #     if int(dworkbook.loc[r,'settlement_id']) ==-1:
-    #         if dworkbook.loc[r,'noted_in_expense_sheet'] =='no':
-    #             status = 'red'
-    #         else:
-    #             # noted_in_expense_sheet is 'yes
-    #             status = 'orange'
-    #     else:
-    #         # payment done
-    #         status = 'green'
-
-    #     if status in show_list:
-    #         st.markdown('---')
-    #         st.write(f"#### :{status}[{title}]")
-            
-    #         left,middle,right = st.columns(3)
-    #         left.markdown(f""":violet[Department: :orange[{dworkbook.loc[r,'dept']}].]
-    #                     :violet[info: :orange[{dworkbook.loc[r,'details']}]]
-    #         """)
-
-    #         middle.markdown(f":violet[comments: :orange[{dworkbook.loc[r,'any comments']}]]")
-            
-    #         # making button for noting in account sheet        
-    #         if status=='green':
-    #             content = "".join(l for l in dworkbook.loc[r,'status'].splitlines())
-    #             print(content)
-    #             info = json.loads(content)
-    #             # right.write(info)
-    #             right.write(f""":violet[settled on :orange[{info["date_of_paymnt"]}].]
-    #                     :violet[had sent total of ₹ :orange[{info["amount_of_paymnt"]}].]
-    #                     :violet[info: :orange[{info['paymnt_info']}].]
-    #                     :violet[remark: :orange[{info['remark']}]]""")
-    #         elif status =="red":
-    #             right.write(":orange[settlement process yet to begin]")
-    #         elif status =='orange':
-    #             right.write(":orange[expense has been noted. Payment will be done soon]")
-
-    # st.markdown('---')
-    # st.button("feed",on_click=change_page,args=['feed'])
-
-
-
-    # other status
-
-
-def make_paymnt():
-    st.header(":green[Make payments]")
-    st.button("settlement form",on_click=change_subpage,args=['default'])
-
-    st.markdown('---')
-    def reload():
-        if 'all_settlements' in st.session_state:
-            st.session_state.pop('all_settlements')
-    st.button('🔃refresh',on_click=reload)
-
-
-    if 'all_settlements' not in st.session_state:
-        array = download_data(db_id=1,range_name=SETTLEMENT_INFO)
-        temp = pd.DataFrame(array[1:],columns=array[0])
-        temp = temp[['actual paymnt date','devotee name','uniqueid','amount','dept','details','any comments','noted_in_expense_sheet','2','settlement_id','status']]
-        st.session_state['all_settlements'] = temp.copy()
-
-    workbook = st.session_state['all_settlements']
-
-    # create the total amount summary
-    # st.dataframe(workbook)
-    workbook['amount'] = workbook['amount'].apply(lambda x: round(float(x),2))
-
-    left,right = st.columns(2)
-    view = right.radio('showing',options=['done','pending'],index=1,horizontal=True)
-    if view=='done':
-        workbook = workbook[workbook.settlement_id !='-1']
-    else:
-        workbook = workbook[workbook.settlement_id =='-1']
-
-    grouped_summary = workbook[['devotee name','amount']]\
-                    .groupby(by='devotee name').agg('sum').reset_index()
-    grouped_summary.sort_values(by='amount',ascending=False,inplace=True)
-    grouped_summary.index = range(1,1+len(grouped_summary))
-    
-    left.dataframe(grouped_summary)
-    if view=='done':
-        right.markdown(f'### :green[Total done: {grouped_summary.amount.sum():,} ₹]')
-    elif grouped_summary.amount.sum() >5000:
-        right.markdown(f'### :red[Total: {grouped_summary.amount.sum()} ₹]')
-    else :
-        right.markdown(f'### :green[Total: {grouped_summary.amount.sum()} ₹]')
-
-
-
-
-
-    st.markdown('---')
-    st.markdown("#### :blue[make the payment]")
-
-    devotee = st.radio("Devotees",
-    options=sorted(grouped_summary['devotee name'].tolist()),
-        label_visibility='hidden',horizontal=True)
-
-    
-    # one devotee's summary
-    dworkbook = workbook[workbook['devotee name'] == devotee].reset_index()
-
-
-    def noted_update(range,update_value):
-        st.write(f'{REQUEST_SHEET}{range}')
-        st.write(update_value)
-        response = upload_data(db_id=1,range_name=f'{REQUEST_SHEET}{range}',
-                value=[[update_value]])
-        # st.write(response)
-        if response:
-            row  = workbook[workbook['2']==range[1:]].index.tolist()[0]
-            st.session_state['all_settlements'].loc[row,'noted_in_expense_sheet']=update_value
-
-
-
-    with st.expander("Filters",expanded=True):
-        show_list = []  
-        filter_status = st.radio("status",options=['pending','staged','completed','all'],horizontal=True,index=0)
-        if filter_status =='pending':
-            show_list[:] = ['red']
-        elif filter_status =='completed':
-            show_list[:] = ['green']
-        elif filter_status =='staged':
-            show_list =['orange']
-        elif filter_status =='all':
-            show_list[:] = ['red','orange','green']
-        
-        filter_count = st.slider("show option",min_value=1,
-                            max_value=max(2,len(dworkbook)),step=1,value=max(1,len(dworkbook)))
-
-
-
-
-    collection_dict = {'ids':"",'amount':0}
-    if filter_status=='staged':
-        sachoice = st.radio('select',options=['select all',"select none"],label_visibility='collapsed',index=1)
-        if sachoice=='select all':
-            checkbox_status = True
+        view = st.radio('showing',options=['pending','all'],index=0,horizontal=True)
+        if view == 'all':
+            pass
         else:
-            checkbox_status=False
+            assert view == 'pending'
+            workbook = workbook.query("settlement_id =='-1' ")#[workbook.settlement_id =='-1']
         
-    for r in range(filter_count):        
-        title = f"[{1+r}/{len(dworkbook)}] ({dworkbook.loc[r,'uniqueid'].lower()}) → ₹ :orange[{dworkbook.loc[r,'amount']}] _spent on_ {dworkbook.loc[r,'actual paymnt date']}"
-        status = "purple"
-        if int(dworkbook.loc[r,'settlement_id']) ==-1:
-            if dworkbook.loc[r,'noted_in_expense_sheet'] =='no':
-                status = 'red'
-            else:
-                # noted_in_expense_sheet is 'yes
-                status = 'orange'
-        else:
-            # payment done
-            status = 'green'
-        if status in show_list:
-            st.markdown('---')
-            st.write(f"#### :{status}[{title}]")
-            
-            left,middle,right = st.columns([2,1,1])
-            tableinfo = dworkbook.loc[r,'details']
-            try :
-                tablearray = json.loads(tableinfo)
-                tabledf = pd.DataFrame(tablearray[1:],columns=tablearray[0])
-                left.dataframe(tabledf)
-            except:
-                left.markdown(f""":violet[Department: :orange[{dworkbook.loc[r,'dept']}].]
-                            :violet[info: :orange[{dworkbook.loc[r,'details']}]]
-                """)
+        pending_amount = workbook.query(" settlement_id == '-1' ")['amount'].sum()
+        headertitle.header(f":green[Make Payments of ] :orange[{pending_amount:,} ₹]")
+        grouped_summary = workbook[['devotee name','amount']]\
+                        .groupby(by='devotee name').agg('sum').reset_index()
+        
+        grouped_summary.sort_values(by='amount',ascending=False,inplace=True)
+        grouped_summary.index = range(1,1+len(grouped_summary))
+        # grouped_summary.insert(0,'Select',False)
+        
+        grid_builder = GridOptionsBuilder.from_dataframe(grouped_summary)
+        grid_builder.configure_selection(selection_mode='single',
+                                         use_checkbox=True,
+                                         pre_selected_rows=[0])
+        left,right = st.columns(2)
+        with left:
+            grid_result = AgGrid(data = grouped_summary,
+                                gridOptions=grid_builder.build())
+        if not grid_result.selected_rows:
+            right.error("Must Select a devotee")
+            return
+        devotee = grid_result.selected_rows[0]['devotee name']
 
-            middle.markdown(f":violet[comments: :orange[{dworkbook.loc[r,'any comments']}]]")
-            
-            # making button for noting in account sheet        
-            if status=='red':
-                right.button('mark noted',key=f'row{dworkbook.loc[r,"2"]}',
-                            on_click=noted_update,
-                            args=[f'{NOTED_IN_ACC_COL}{dworkbook.loc[r,"2"]}',
-                                'yes'])
+        st.markdown('---')
+        st.markdown(f"## :blue[Let's Do settlement of -]:orange[{devotee} Pr]")
 
-            elif status =='orange':
-                truthvalue = right.checkbox('select',value=checkbox_status,key=f'row{dworkbook.loc[r,"2"]}')
-                if truthvalue:
+
+        
+        # one devotee's summary
+        dworkbook = workbook[workbook['devotee name'] == devotee].reset_index()
+
+
+        def noted_update(range,update_value):
+            # st.write(f'{self.REQUEST_SHEET}{range}')
+            # st.write(update_value)
+            response = upload_data(db_id=1,range_name=f'{self.REQUEST_SHEET}{range}',
+                    value=[[update_value]])
+            # st.write(response)
+            if response:
+                row  = workbook[workbook['2']==range[1:]].index.tolist()[0]
+                st.session_state['all_settlements'].loc[row,'noted_in_expense_sheet']=update_value
+
+
+
+        with st.expander("Filters",expanded=True):
+            stage_filter_selection = st.radio("status",options=['pending','staged','completed'],horizontal=True,index=0)
+            
+            if stage_filter_selection =='pending':
+                dworkbook = dworkbook.query("settlement_id == '-1' and noted_in_expense_sheet == 'no' ")
+
+            elif stage_filter_selection =='staged':
+                dworkbook = dworkbook.query("settlement_id == '-1' and noted_in_expense_sheet == 'yes' ")
+                select_all_or_none = st.radio('select',options=['select all',"select none"],label_visibility='collapsed',index=1)
+
+            elif stage_filter_selection =='completed':
+                dworkbook = dworkbook.query("settlement_id != '-1' ")
+
+
+            # choose_a_department = st.radio("department",
+            #                                options=['all',*dworkbook.dept.unique().tolist()],
+            #                                index=0,
+            #                                )
+            # if choose_a_department != 'all':
+            #     dworkbook = dworkbook.query(f" dept == {choose_a_department}")
+
+
+        collection_dict = {'ids':"",'amount':0}
+        st.markdown(f"### ---------Total {len(dworkbook)} records")
+        dworkbook = dworkbook.reset_index(drop=True)
+        if 'loaded_dict' not in st.session_state:
+            st.session_state['loaded_dict'] = {'view_index':-1}
+        def onboard_processing(dataframe,r):
+            dataframe=dataframe.reset_index(drop=True)
+            current_row = len(dataframe)-1
+            st.session_state['loaded_dict'] = {'current_row':current_row,
+                                'data':dataframe.copy(),
+                                'view_index':r}
+            # self.loaded_dict = {'current_row':current_row,
+            #                     'data':dataframe.copy(),
+            #                     'view_index':r}
+
+        cached_dict = st.session_state['loaded_dict']
+        for r in range(len(dworkbook)):
+            st.divider()
+            title = f"[{1+r}/{len(dworkbook)}] (id: {dworkbook.loc[r,'uniqueid'].lower()}) → Total :orange[₹ {dworkbook.loc[r,'amount']}] "            
+            payment_array = json.loads(dworkbook.loc[r,'details'])
+            payment_dataframe = pd.DataFrame(payment_array[1:],columns=payment_array[0])
+
+            if stage_filter_selection == 'pending':
+                st.markdown(f"### {title}")
+
+                left,middle,right = st.columns([2,1,1])
+                left.dataframe(payment_dataframe)
+
+                if cached_dict['view_index'] == -1:
+                    middle.button("Process this",key=f'processkey_{r}',
+                                on_click=onboard_processing,
+                                args=[payment_dataframe,r])
+                
+                elif cached_dict['view_index'] == r:                    
+                    
+                    userdata = payment_dataframe.iloc[cached_dict['current_row']].to_dict()
+                    st.write(userdata)
+                    
+                    with middle:
+                        upload_department = st.radio("Department",
+                                                     options=self.department_dictionary.keys(),
+                                                     index=list(self.department_dictionary.keys()).index(userdata['dept']),
+                                                     key='onboarded_dpt_radio')
+                        st.divider()
+                        upload_sub_dpt = st.radio("Sub Department",
+                                                  options=self.department_dictionary[upload_department],
+                                                  key='onboard_subdpt_radio')
+                    with right:
+                        upload_amount = st.number_input("Amount",
+                                                        value=userdata['amount'],
+                                                        key='onboard_amount')
+                        upload_date = st.date_input("Date",
+                                                    value=datetime.datetime.strptime(
+                                                        userdata['day'],'%b-%d, %a'
+                                                    ).replace(year=2023),
+                                                    key='onboard_date')
+                        upload_date = upload_date.strftime("%d-%b-%a-%y")
+                        st.caption(upload_date)
+
+                        upload_agenda = st.text_input("Agenda",value=userdata['details'],
+                                                    key='onboard_agenda')
+                        upload_remark  = st.text_area("Remark",
+                                                      value='No',
+                                                      key='onboard_remark')
+                    with left:
+                        st.write(f"##### Remaining Entries: {cached_dict['current_row']+1}")
+
+                        to_upload = st.checkbox("Upload in Database",value=True)
+                        st.markdown("")
+                        st.button("Submit This Record")
+
+                # in the right just show the date, agenda, amount
+
+                # in the middle select each one using radio button
+                # this should also disappear once all are submitted
+                
+                # in the right
+                # have a display and button to submit it to the expense sheet
+                # and update noted_in_expense_sheet to yes
+
+            elif stage_filter_selection == 'staged':
+
+                st.markdown(f"### {title}")
+                left,middle,right = st.columns([2,1,1])
+
+                middle.markdown(f":violet[comments: :orange[{dworkbook.loc[r,'any comments']}]]")
+                
+                if right.checkbox("Select",value=select_all_or_none,key=f'staged_key_{r}'):
                     collection_dict['ids'] += dworkbook.loc[r,'uniqueid'] + ','
-                    collection_dict['amount'] += float(dworkbook.loc[r,'amount'])
-            
+                    collection_dict['amount'] += float(dworkbook.loc[r,'amount'])        
+
+                # now codes for payment etc                
+            else :
+                st.markdown(f"### {title}")
+                left,middle,right = st.columns([2,1,1])
+                # Do later
+                st.markdown("in progress")
+                break
+        
+        with st.expander("Make Payment",expanded=True):
+            # timestamp
+            paymnt_dict['timestamp'] = str(datetime.datetime.now())
+
+            paymnt_dict['request_ids'] = st.text_input(":orange[unique_ids]",
+            value=collection_dict['ids'],disabled=True)
+
+            # date of paymnt
+            paymnt_date = st.date_input(":green[Date of Payment]")
+            paymnt_dict['date_of_paymnt'] = str(paymnt_date)
+
+            paymnt_dict['amount'] = st.number_input('amount',
+            value=collection_dict['amount'])
+
+            paymnt_dict['paymnt_info'] = st.text_input(":green[Payment Details]")
+            if paymnt_dict['paymnt_info'].strip() =="":
+                paymnt_dict['valid'] = (paymnt_dict['valid']) and (True)
+            paymnt_dict['remark'] = st.text_area(":orange[any remarks]",height=50)
+            # st.write(paymnt_dict)
+            if not paymnt_dict['valid']:
+                st.button("Submit",disabled=True, help='Some error in filling')
             else:
-                assert status =='green'
-                info = json.loads(dworkbook.loc[r,'status'])
-                # right.write(info)
-                right.write(f""":violet[settled on :orange[{info["date_of_paymnt"]}].]
-                        :violet[had sent total of ₹ :orange[{info["amount_of_paymnt"]}].]
-                        :violet[info: :orange[{info['paymnt_info']}].]
-                        :violet[remark: :orange[{info['remark']}]]""")
-    # st.write(collection_dict)
-    st.markdown('---')
+                
+                def submit(finaldict):
+                    write_value = []
+                    for k in self.PAYMENT_ORDER:
+                        write_value.append(finaldict[k])
+                    response = append_data(db_id=1,range_name=self.PAYMENT_RANGE,
+                    value=[write_value])
+                    # st.write(response)
+                    if response:
+                        collection_dict['amount'] = 0
+                        collection_dict['ids'] = ""
+                        self._settlement_database_refresh = True
+
+                st.button('submit',on_click=submit,args=[paymnt_dict])
 
 
-    paymnt_dict = {'valid':collection_dict['ids']  != ""}
-    
-    # st.write(paymnt_dict)
-    with st.expander("Make Payment",expanded=True):
-         # timestamp
-        paymnt_dict['timestamp'] = str(datetime.datetime.now())
 
-        paymnt_dict['request_ids'] = st.text_input(":orange[unique_ids]",
-        value=collection_dict['ids'],disabled=True)
-
-        # date of paymnt
-        paymnt_date = st.date_input(":green[Date of Payment]")
-        paymnt_dict['date_of_paymnt'] = str(paymnt_date)
-
-        paymnt_dict['amount'] = st.number_input('amount',
-        value=collection_dict['amount'],disabled=True)
-
-        paymnt_dict['paymnt_info'] = st.text_input(":green[Payment Details]")
-        if paymnt_dict['paymnt_info'].strip() =="":
-            paymnt_dict['valid'] = (paymnt_dict['valid']) and (True)
-        paymnt_dict['remark'] = st.text_area(":orange[any remarks]",height=50)
-        # st.write(paymnt_dict)
-        if paymnt_dict['valid']:
-            def submit(finaldict):
-                write_value = []
-                for k in PAYMENT_ORDER:
-                    write_value.append(finaldict[k])
-                response = append_data(db_id=1,range_name=PAYMENT_RANGE,
-                value=[write_value])
-                # st.write(response)
-                if response:
-                    collection_dict['amount'] = 0
-                    collection_dict['ids'] = ""
-                    st.session_state.pop('all_settlements')
-            st.button('submit',on_click=submit,args=[paymnt_dict])
-
-
-# -------------- Wrapper
-login_state_map = {'default':settlement_form,
-                    'make_paymnt':make_paymnt}
-
-def settlement_main():
-    if 'substate' not in st.session_state:
-        # default behaviour
-        login_state_map['default']()
-
-    elif st.session_state['substate'] in login_state_map.keys():
-        # directed behaviour
-        login_state_map[st.session_state['substate']]()
-    else:
-        # exceptional
-        login_state_map['default']()        
+        paymnt_dict = {'valid':collection_dict['ids']  != ""}
+        
+    def run(self):
+        if self.bdvapp.page_config['layout'] !='wide':
+            self.bdvapp.page_config['layout']='wide'
+        
+        self.page_map[self.current_page]()
