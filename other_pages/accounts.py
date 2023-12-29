@@ -112,8 +112,13 @@ class account_Class:
 
         metadata = dict(zip(incomedata['key'],incomedata['value']))        
         # st.write(metadata)
-
-        active_index = int(metadata['active_row'])
+        with st.sidebar:
+            all_months = { index:monthname for index,monthname in enumerate(incomedata['month'].tolist()) if monthname!=''}
+            active_index = st.radio("Choose Month",options=all_months.keys(),
+                     format_func=lambda x: all_months[x],
+                     index=int(metadata['active_row']))
+            
+        
         active_month_name = incomedata.month.tolist()[active_index]
         active_regular_df = pd.read_json(incomedata['regular'].tolist()[active_index],orient='records')
 
@@ -289,32 +294,34 @@ class account_Class:
                     st.button("Submit",disabled=True,help="Please fill all the fields")
         
         
-        st.divider()
-        st.header(f"Prepare Data for {metadata['next_month_name']}")
-        def update_next_month():
-            next_meta_data = [[metadata['next_month']],
-                            [metadata['next_year']],
-                            [metadata['next_row']]]
-            upload_data(4,'income!B2:B4',next_meta_data)
+        with st.sidebar:
+            st.divider()
+            st.header(f"Prepare Data for {metadata['next_month_name']}")
+            def update_next_month():
+                next_meta_data = [[metadata['next_month']],
+                                [metadata['next_year']],
+                                [metadata['next_row']]]
+                upload_data(4,'income!B2:B4',next_meta_data)
+                
+
+                nextmonthdf = active_regular_df.copy()
+                nextmonthdf['Amount'] = 0
+                nextmonthdf['Account'] = ''
+                nextmonthdf['Date of Payment'] = ''
+                nextmonthdf['Remark'] = ''
+                nextmonthdf['Status'] = 'pending'
+                nextmonthdfjson = f"{nextmonthdf.to_json(orient='records')}"
+
+                upload_data(4,f"income!C{active_index+3}:E{active_index+3}",
+                            [[metadata['next_month_name'],nextmonthdfjson,f"{[]}"]])
+                self._income_database_refresh=True
+                st.session_state['next_month_checkbox'] = False
+                
+            if st.checkbox("Are you Sure",key='next_month_checkbox'):
+                st.caption("This will create next month's data and activate also")
+
+                st.button(f"Create {metadata['next_month_name']}",on_click=update_next_month)
             
-
-            nextmonthdf = active_regular_df.copy()
-            nextmonthdf['Amount'] = 0
-            nextmonthdf['Account'] = ''
-            nextmonthdf['Date of Payment'] = ''
-            nextmonthdf['Remark'] = ''
-            nextmonthdf['Status'] = 'pending'
-            nextmonthdfjson = f"{nextmonthdf.to_json(orient='records')}"
-
-            upload_data(4,f"income!C{active_index+3}:E{active_index+3}",
-                        [[metadata['next_month_name'],nextmonthdfjson,f"{[]}"]])
-            self._income_database_refresh=True
-
-        if st.checkbox("Are you Sure"):
-            st.caption("This will create next month's data and activate also")
-
-            st.button(f"Create {metadata['next_month_name']}",on_click=update_next_month)
-        
 
     def expense_page(self):
         st.markdown(
@@ -330,16 +337,22 @@ class account_Class:
         unsafe_allow_html=True
         )
         expensedata = self.expense_database
-        # st.dataframe(expensedata)
-        
         metadata = dict(zip(expensedata['key'],expensedata['value']))        
+
+        with st.sidebar:
+            all_months = { index:monthname for index,monthname in enumerate(expensedata['month'].tolist()) if monthname!=''}
+            active_index = st.radio("Choose Month",options=all_months.keys(),
+                     format_func=lambda x: all_months[x],
+                     index=int(metadata['active_row']))
+
+        
         # st.write(metadata)
 
-        active_index = int(metadata['active_row'])
+        
         active_month_name = expensedata.month.tolist()[active_index]
         active_monthdf = pd.read_json(expensedata['data'].tolist()[active_index],orient='records')
         department_dict = json.loads(metadata['department_dict'])
-        # st.write(department_dict)
+
         cols = st.columns(2)
         cols[0].button("Go to Income Page",on_click=self._switch_page,args=['income'])
         cols[1].button("Go to Dashboard Page",on_click=self._switch_page,args=['dashboard'])
@@ -504,25 +517,31 @@ class account_Class:
                           args=[input_department,input_sub_department,
                           input_agenda,input_amount,input_payment_date,input_remark,
                           len(active_monthdf) == 0])
-        st.divider()
-        st.header("Next Month Prep")
-        if st.checkbox("Sure? This will create Next Month Data",key='nextmonthgen'):
+        
+        matchingdf = active_monthdf.query(f" department == '{input_department}' and `sub department` == '{input_sub_department}' ")
+        st.caption(f" You have {len(matchingdf)} similar Previous expenses")
+        st.data_editor(matchingdf,disabled=True)
+        
+        with st.sidebar:
+            st.divider()
+            st.header("Upcoming month")
+            if st.checkbox("Sure? This will create Next Month Data",key='nextmonthgen'):
 
-            def update_next_month():
-                next_meta_data = [[metadata['next_month']],
-                                [metadata['next_year']],
-                                [metadata['next_row']]]
-                upload_data(4,'expense!B2:B4',next_meta_data)
-                
+                def update_next_month():
+                    next_meta_data = [[metadata['next_month']],
+                                    [metadata['next_year']],
+                                    [metadata['next_row']]]
+                    upload_data(4,'expense!B2:B4',next_meta_data)
+                    
 
-                nextmonthdfjson = metadata['next_month_prefill']
+                    nextmonthdfjson = metadata['next_month_prefill']
 
-                upload_data(4,f"expense!C{active_index+3}:D{active_index+3}",
-                            [[metadata['next_month_name'],nextmonthdfjson]])
-                self._expense_database_refresh=True
-                st.session_state['nextmonthgen'] = False
+                    upload_data(4,f"expense!C{active_index+3}:D{active_index+3}",
+                                [[metadata['next_month_name'],nextmonthdfjson]])
+                    self._expense_database_refresh=True
+                    st.session_state['nextmonthgen'] = False
 
-            st.button(f"Go Ahead and Create for {metadata['next_month_name']}",on_click=update_next_month)
+                st.button(f"Go Ahead and Create for {metadata['next_month_name']}",on_click=update_next_month)
 
     def dashboard_page(self):
 
@@ -578,6 +597,13 @@ class account_Class:
             # sub_department
         # display a table 
         # button to sync with the database
+        # st.divider()
+        # if st.checkbox("Edit monthly sample input"):
+        #     expensedata = self.expense_database
+        #     metadata = dict(zip(expensedata['key'],expensedata['value']))
+        #     sampleinput = pd.read_json(metadata['next_month_prefill'],orient='records')
+        #     st.data_editor(sampleinput,
+        #                    num_rows='dynamic')
 
         
     def run(self):

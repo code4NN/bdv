@@ -63,17 +63,12 @@ def upload_data(db_id,range_name,value):
 #     1. database
 #     2. sadhana card    
 #     """
-    try:
-        workbook = _get_wb(db_id)
-        sheetname, rangename = range_name.split("!")
-        response = workbook.worksheet(sheetname).update(rangename,
-                                    value,
-                                    value_input_option='USER_ENTERED')
-        return response
-    except Exception as e:
-        st.error("Something went wrong")
-        # if st.session_state.DEBUG_ERROR:
-        st.write(e)
+    workbook = _get_wb(db_id)
+    sheetname, rangename = range_name.split("!")
+    response = workbook.worksheet(sheetname).update(rangename,
+                                value,
+                                value_input_option='USER_ENTERED')
+    return response
 
 
 
