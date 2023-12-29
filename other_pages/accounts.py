@@ -504,6 +504,11 @@ class account_Class:
                           args=[input_department,input_sub_department,
                           input_agenda,input_amount,input_payment_date,input_remark,
                           len(active_monthdf) == 0])
+        
+        matchingdf = active_monthdf.query(f" department == '{input_department}' and `sub department` == '{input_sub_department}' ")
+        st.caption(f" You have {len(matchingdf)} similar Previous expenses")
+        st.dataframe(matchingdf,use_container_width=True)
+        
         st.divider()
         st.header("Next Month Prep")
         if st.checkbox("Sure? This will create Next Month Data",key='nextmonthgen'):
@@ -578,6 +583,13 @@ class account_Class:
             # sub_department
         # display a table 
         # button to sync with the database
+        # st.divider()
+        # if st.checkbox("Edit monthly sample input"):
+        #     expensedata = self.expense_database
+        #     metadata = dict(zip(expensedata['key'],expensedata['value']))
+        #     sampleinput = pd.read_json(metadata['next_month_prefill'],orient='records')
+        #     st.data_editor(sampleinput,
+        #                    num_rows='dynamic')
 
         
     def run(self):
