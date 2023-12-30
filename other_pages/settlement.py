@@ -1,9 +1,11 @@
+import requests
 import streamlit as st
 import datetime
 import json
 import pandas as pd
 import calendar
 from st_aggrid import AgGrid, GridOptionsBuilder
+from streamlit.components.v1 import html as HTML
 
 from other_pages.googleapi import download_data
 from other_pages.googleapi import upload_data
@@ -19,6 +21,7 @@ class settlement_Class:
         self.page_map = {
             'fillForm':self.fillForm,
             'makePayments':self.make_payments,
+            'mysite':self.customsite,
         }
         self.current_page = 'fillForm'
 
@@ -466,14 +469,19 @@ class settlement_Class:
         headertitle = st.empty()
         headertitle.header(":green[Make payments]")
 
-        def change_role():
-            self.current_page='fillForm'
+        def change_role(subpage):
+            self.current_page=subpage#'fillForm'
+            if subpage == 'mysite':
+                 self.page_config = {'page_title': "BDV",
+                            'page_icon':'☔',
+                            'layout':'centered'}
         def change_page():
             self.bdvapp.current_page = 'dpt_accounts'
             self.bdvapp.page_map['dpt_accounts'].current_page = 'expense'
         cols = st.columns(2)
         
-        cols[0].button("settlement form",on_click=change_role)        
+        cols[0].button("settlement form",on_click=change_role,args=['fillForm'])     
+        cols[0].button("site",on_click=change_role,args=['mysite'])     
         cols[1].button("Expense Page",on_click=change_page)
 
         st.markdown('---')
@@ -644,6 +652,29 @@ class settlement_Class:
 
                     st.button('submit',on_click=submit,args=[collection_dict])
         
+    def customsite(self):
+        h = st.sidebar.number_input('height',min_value=100,value=550,step=50)
+        main,secondary = st.tabs(['window-1','window-2'])
+        with main:
+            url = st.text_input("URL")
+            if url:
+                url = f"https://{url.split('://')[2]}"
+                st.write(url)
+                responset = requests.get(url=url)
+                # HTML(responset.text.replace("http",'||').replace("https",'hari'),height=h)
+                HTML(responset.text.replace("http",'||').replace("https",'hari'),height=h,scrolling=True)
+        # st.markdown("")
+        # st.divider()
+        # st.markdown("")
+        with secondary:
+            url2 = st.text_input("URL",key='wndengine')
+            if url2:
+                url2 = f"https://{url2.split('://')[2]}"
+                st.write(url2)
+                responset = requests.get(url2)
+                # HTML(responset.text.replace("http",'||').replace("https",'hari'),height=h)
+                HTML(responset.text.replace("http",'||').replace("https",'hari'),height=h,scrolling=True)
+    
     def run(self):
         st.markdown(
         """
