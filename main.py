@@ -24,7 +24,7 @@ class myapp:
                          'settlement':settlement_Class(),
                          'finder': finder_Class(),
                          'dpt_accounts': account_Class(),
-                         'hearing_tracker': hearing_Class()
+                         'heart_medicine': hearing_Class()
                           }
         # landing page
         self.current_page = 'login'
@@ -87,9 +87,9 @@ if 'bdv_app' not in st.session_state:
 # For development
 main_app = st.session_state['bdv_app']
 if main_app.in_development:
-    PAGE_DEVELOPING = 'dpt_account'
-    PAGE_CLASS = account_Class()
-    SUB_PAGE_DEVELOPING = 'income'
+    PAGE_DEVELOPING = 'heart_medicine'
+    PAGE_CLASS = hearing_Class()
+    SUB_PAGE_DEVELOPING = 'SP'
 
 
     # tell which is my developement class
