@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import json
+import datetime
 # from st_aggrid import AgGrid, GridOptionsBuilder
 
 from other_pages.googleapi import download_data
@@ -13,102 +14,154 @@ class hearing_Class:
         self.page_config = {'page_title': "BDV",
                             'page_icon':'☔',
                             'layout':'centered'}
-        self.page_map = {'morning_walk':self.morning_walk_page}
-        self.current_page = 'morning_walk'
+        self.page_map = {
+            'SP':self.srila_prabhupada_page,
+            }
+        self.current_page = 'SP'
 
-        self.dball = pd.DataFrame()
+        # databases
+        # for Prabhupada
+        self._morning_walk_db = None
+        self._morning_walk_db_refresh = True
+        self._morning_walk_db_range = "SP-morning-walk!A2:J341"
+
+    @property
+    def morning_walk_db(self):
+        if self._morning_walk_db_refresh:
+
+            temp = download_data(5,self._morning_walk_db_range)
+            temp = pd.DataFrame(temp[1:],columns=temp[0])
+            for column in ['year','month','day',]:
+                temp[column] = pd.to_numeric(temp[column],errors='coerce')
+            
+            self._morning_walk_db = temp.copy()
+            self._morning_walk_db_refresh=False
+            return self._morning_walk_db
+        
+        else :
+            return self._morning_walk_db
+
     
     @property
     def bdvapp(self):
         return st.session_state.get('bdv_app',None)
 
 
-    def morning_walk_page(self):
-        st.title("title")
+    def srila_prabhupada_page(self):
+        st.title("Srila Prabhupada Vaani")
+        section = st.radio("Choose",
+                           options=['Morning Walks'],
+                            horizontal=True,
+                            label_visibility='hidden',
+                            format_func=lambda x: f":green[{x}]")
         
-        data = self.dball
-        grid_builder = GridOptionsBuilder.from_dataframe(data)
-        grid_builder.configure_selection('multiple', use_checkbox=True,
-                                        header_checkbox=True,
-                                        )
-        grid_options = grid_builder.build()
-        grid_result = AgGrid(enable_quicksearch=True,data=data,gridOptions=grid_options,fit_columns_on_grid_load=True)
+        if section == 'Morning Walks':
+            st.header(":blue[Morning Walks]")
+            
+            data = self.morning_walk_db
+            query_list = []
+
+            filteryear = st.select_slider("Year",
+                                         options=['all',*sorted(data.year.unique())]
+                                         )
+            if filteryear!='all':
+                data=data.query(f"year == {filteryear}")
+
+            filters = st.columns([1,1])
+
+            filtermonth = filters[0].selectbox("Month",
+                                               options=data['month-english'].unique())
+            
+            if filtermonth:
+                data = data.query(f" `month-english` == '{filtermonth}' ")
+            
+            filterplace = filters[1].selectbox("Place",
+                                                options=sorted(data.place.unique()),
+                                                )
+            if filterplace:
+                data = data.query(f" place == '{filterplace}' ")
+            
+            st.caption(f"Total {len(data)} records found")
+            data.insert(0,"Choose",False)
+
+            idf = st.data_editor(data,hide_index=True,
+                                 column_order=['Choose','place','date','title'])
+
+            idf=idf.query("Choose == True").reset_index(drop=True)
+            
+            if len(idf)>0:
+                
+                def freeze_status(status,timestamp,sheetrow):
+                    targetrange = f"SP-morning-walk!J{sheetrow}"
+                    data = download_data(5,targetrange)
+                    if data:
+                        data = json.loads(data[0][0])
+                    else:
+                        data={}
+                    data[self.bdvapp.userinfo['name']] = {'status':status,
+                                                            'timestamp':timestamp,
+                                                            'last_modified':datetime.datetime.now().strftime("%y-%b-%d-%a-%H:%M")}
+                    upload_data(5,
+                                targetrange,
+                                [[json.dumps(data)]])
+
+                    self._morning_walk_db_refresh=True
+
+                for row in range(len(idf)):
+                    if st.checkbox(idf.loc[row,'title']):
+                        st.audio(data = idf.loc[row,'URL'])
+                        left,middle,right = st.columns(3)
+                        status = left.radio("Status",
+                                          options=[':red[in progress]',
+                                                   ':green[completed]'],
+                                          key='statusradio'+str(row))
+                        with right:
+                            st.markdown("")
+                            st.markdown("")
+
+                        if status ==':red[in progress]':
+                            timestamp = middle.text_input("Timestamp",
+                                              key=f"timeinput{row}")
+                            if not timestamp:
+                                right.button("Freeze",disabled=True,
+                                             help='Must fill timestamp',
+                                             key=f"submit button {row}")
+                            else:
+                                right.button("Freeze",
+                                         on_click=freeze_status,
+                                         args=['iprogress',timestamp,idf.loc[row,'sheetrow']],
+                                         key=f"submit button {row}")
+                        else:
+                            middle.success("Jai Ho!!")
+                            value = download_data(5,f"SP-morning-walk!J9")
+                            right.button("Freeze Status",
+                                      on_click=freeze_status,
+                                      args=['done','full',idf.loc[row,'sheetrow']],
+                                      key=f"submit button {row}")
+                        
+                    st.divider()
+                                
+
+
+
+        else:
+            st.snow()
+            st.title("In progress...")
+        
 
     def run(self):
-        self.bdvapp.page_config = self.page_config        
+        st.markdown(
+        """
+        <style>
+        .step-up,
+        .step-down {
+            display: none;
+        }
+        </style>
+        </style>
+        """,
+        unsafe_allow_html=True
+        )
         self.page_map[self.current_page]()
 
 # --------------- 
-def sp():
-    st.header(":green[Shrila Prabhupada Vaani]")
-    lecture_option = st.radio("Please choose one",options=['SB Lectures','Morning Walks'],horizontal=True)
-
-    if lecture_option=='SB Lectures':
-        # if 'spdb_sbclass' not in st.session_state.shravanam_db:
-        if True:
-            database = pd.read_excel("./Hearing Tracker.xlsx",sheet_name='SP_SB',skiprows=1)
-            database['date_obj'] = pd.to_datetime(database['date'],format="%Y-%m-%d",errors='coerce')
-            database['date_show'] = database.date_obj.apply(lambda x: x.strftime("%y %b %d"))
-            st.session_state.shravanam_db['spdb_sbclass'] = database[['canto','chapter','text','Place','date_obj','date_show','final title','heard_by','URL']]
-
-        database = st.session_state.shravanam_db['spdb_sbclass']
-        st.dataframe(database)
-
-    return
-    # get the database
-    if 'sp_sb_db' not in st.session_state.shravanam_db:
-        st.session_state.shravanam_db['sp_sb_db'] = pd.DataFrame(
-            [
-            ["Hyderabad",	"1974-04-24",	"Untitled"	],
-            ["Tirupati",	"1974-04-26",	"Untitled"	],
-            ["Los_Angeles",	"1974-01-13",	"Untitled"	],
-            ["Caracas",	"1975-02-20",	"Increasing_Your_Problems"	],
-            ["Caracas",	"1975-02-21",	"The_Caracas_Is_Ford-But_Ford_Is--etc"]],
-            columns=["Place",	"date final title",	"heard_by"])
-
-    database = st.session_state.shravanam_db['sp_sb_db']
-    database['dateobj'] = pd.to_datetime(database['date final title'],format="%Y-%m-%d")
-    database['date_display'] = database.dateobj.apply(lambda x: x.strftime("%y-%b-%d"))
-    st.dataframe(database)
-
-    place_filter_df = database.Place.value_counts().to_frame().reset_index().rename(columns={"index":"Location",
-                                                                              'Place':"Count"})
-    
-    # Location filter
-    grid_builder = GridOptionsBuilder.from_dataframe(place_filter_df)
-    grid_builder.configure_selection('multiple', use_checkbox=True,
-                                        header_checkbox=True
-                                        )
-    grid_options = grid_builder.build()
-    grid_result = AgGrid(place_filter_df,gridOptions=grid_options,fit_columns_on_grid_load=True)
-
-
-    st.dataframe(place_filter_df)
-    include_date_in_title = st.checkbox("Date",key='include_date_checkbox')
-    include_place_in_title = st.checkbox("Place",key='include_place_checkbox')
-    for i,row in database.iterrows():
-        title = row['heard_by']
-        if include_place_in_title:
-            title = f"""{row['Place']}{'-'*5} {title}"""
-        if include_date_in_title:
-            title = f"""{row['date_display']}{'-'*2} {title}"""
-
-        st.button(f":green[{title.replace('_',' ')}]",key=i)
-
-# --------------- Wrapper
-pagestate_map = {'default'}
-
-def hearing_tracker_root():
-    if 'shravanam_db' not in st.session_state:
-        st.session_state['shravanam_db'] = {}
-
-    if 'substate' not in st.session_state:
-        # default behaviour
-        sp()
-
-    elif st.session_state['substate'] in pagestate_map.keys():
-        # directed behaviour
-        pagestate_map[st.session_state['substate']]()
-    else:
-        # exceptional
-        pass 
