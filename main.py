@@ -89,7 +89,7 @@ main_app = st.session_state['bdv_app']
 if main_app.in_development:
     PAGE_DEVELOPING = 'heart_medicine'
     PAGE_CLASS = hearing_Class()
-    SUB_PAGE_DEVELOPING = 'SP'
+    SUB_PAGE_DEVELOPING = 'other'
 
 
     # tell which is my developement class
