@@ -18,11 +18,8 @@ class hearing_Class:
                             'layout':'centered'}
         self.page_map = {
             'SP':self.srila_prabhupada_page,
-            'other':self.other,
             }
         self.current_page = 'SP'
-        self.current_page = 'other'
-
         # databases
         # for Prabhupada
         self._morning_walk_db = None
@@ -152,26 +149,6 @@ class hearing_Class:
             st.snow()
             st.title("In progress...")
         
-    def other(self):
-        tabs = st.tabs(["main",'secondary','info'])
-        with tabs[2]:
-            height = st.number_input("height",value=600)
-        with tabs[0]:
-            URL = st.text_input("URL",key='1input')
-            if URL:
-                URL = f"https://{URL.split('://')[2]}"
-
-                contents = requests.get(URL).text
-                HTML(contents.replace("http",'||').replace("https",'hari'),height=height,scrolling=True)
-        
-        with tabs[1]:
-            URL = st.text_input("URL",key='2input')
-            if URL:
-                URL = f"https://{URL.split('://')[2]}"
-
-                contents = requests.get(URL).text
-                HTML(contents.replace("http",'||').replace("https",'hari'),height=height,scrolling=True)
-                
 
     def run(self):
         st.markdown(
