@@ -8,10 +8,11 @@ import pandas as pd
 class finder_Class:
     def __init__(self):
         
-        self.page_dict = {'home':self.home,
-                          'sp_transcript':self.vedabase_SP,
-                          'idt_hhrnsm':self.idt_lectures_by_HHRNSM,
-                          'developer':self.developer_page,
+        self.page_dict = {
+                        #     'home':self.home,
+                        #   'sp_transcript':self.vedabase_SP,
+                        #   'idt_hhrnsm':self.idt_lectures_by_HHRNSM,
+                        #   'developer':self.developer_page,
                           'other':self.other}
         self.current_page = 'other'
     def other(self):
