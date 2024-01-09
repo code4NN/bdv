@@ -7,7 +7,10 @@ import pandas as pd
 
 class finder_Class:
     def __init__(self):
-        
+        # page map
+        self.page_config = {'page_title': "Login Page",
+                            'page_icon':'☔',
+                            'layout':'centered'}
         self.page_dict = {
                         #     'home':self.home,
                         #   'sp_transcript':self.vedabase_SP,
