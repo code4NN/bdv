@@ -14,7 +14,7 @@ class finder_Class:
                           'developer':self.developer_page,
                           'other':self.other}
         self.current_page = 'other'
-     def other(self):
+    def other(self):
         tabs = st.tabs(["main",'secondary','info'])
         with tabs[2]:
             height = st.number_input("height",value=600)
