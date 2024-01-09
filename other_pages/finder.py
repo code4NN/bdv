@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 import urllib.parse as urlparser
 from bs4 import BeautifulSoup as soup
-from streamlit.components.v1 import html as display_html
+from streamlit.components.v1 import html as HTML
 import pandas as pd
 
 class finder_Class:
