@@ -13,12 +13,14 @@ db_sadhana_card = sheets_dict['sadhana_card']
 db_article_tagging = sheets_dict['article_tagging']
 db_accounts = sheets_dict['accounts']
 db_hearing = sheets_dict['hearing']
+db_plan4krsna = sheets_dict['plan4krishna']
 
 db_list = {1:db_primary,
            2:db_sadhana_card,
            3:db_article_tagging,
            4:db_accounts,
-           5:db_hearing
+           5:db_hearing,
+           6:db_plan4krsna
             }
 
 # credentials
