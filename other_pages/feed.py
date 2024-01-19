@@ -28,6 +28,8 @@ class feed_Class:
         left.button("Settlement 💸",on_click=go2page,args=['settlement'])
 
         middle.button("Hearing 💊",on_click=go2page,args=['heart_medicine'])
+
+        right.button("Class revisions",on_click=go2page,args=['revision'])
     
     def run(self):
         self.page_map[self.current_page]()

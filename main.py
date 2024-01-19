@@ -7,6 +7,7 @@ from other_pages.settlement import settlement_Class
 from other_pages.finder import finder_Class
 from other_pages.accounts import account_Class
 from other_pages.hearing_tracker import hearing_Class
+from other_pages.lecture_notes import class_notes_Class
 
 
 
@@ -24,7 +25,8 @@ class myapp:
                          'settlement':settlement_Class(),
                          'finder': finder_Class(),
                          'dpt_accounts': account_Class(),
-                         'heart_medicine': hearing_Class()
+                         'heart_medicine': hearing_Class(),
+                         'revision': class_notes_Class()
                           }
         # landing page
         self.current_page = 'login'
@@ -87,9 +89,9 @@ if 'bdv_app' not in st.session_state:
 # For development
 main_app = st.session_state['bdv_app']
 if main_app.in_development:
-    PAGE_DEVELOPING = 'heart_medicine'
-    PAGE_CLASS = hearing_Class()
-    SUB_PAGE_DEVELOPING = 'SP'
+    PAGE_DEVELOPING = 'revision'
+    PAGE_CLASS = class_notes_Class()
+    SUB_PAGE_DEVELOPING = 'all'
 
 
     # tell which is my developement class

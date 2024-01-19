@@ -100,6 +100,7 @@ class login_Class:
 
                 left,middle,right = st.columns(3)
                 with left:
+                    st.button("Class Notes",on_click=takemein,args=['revision'],key='direct_login_revision')
                     st.button('Settlements 💸',on_click=takemein,args=['settlement'],key='direct_login_settlement')
                 
                 with middle:
