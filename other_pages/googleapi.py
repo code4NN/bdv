@@ -12,15 +12,17 @@ db_primary = sheets_dict['base']
 db_sadhana_card = sheets_dict['sadhana_card']
 db_article_tagging = sheets_dict['article_tagging']
 db_accounts = sheets_dict['accounts']
-db_hearing = sheets_dict['hearing']
+db_hearing = sheets_dict['hearing_tracker']
 db_plan4krsna = sheets_dict['plan4krishna']
+db_psadhana_encyclopaedia = sheets_dict['p_reading_hearing_notes']
 
 db_list = {1:db_primary,
            2:db_sadhana_card,
            3:db_article_tagging,
            4:db_accounts,
            5:db_hearing,
-           6:db_plan4krsna
+           6:db_plan4krsna,
+           7:db_psadhana_encyclopaedia
             }
 
 # credentials
@@ -44,9 +46,13 @@ def _get_wb(db_id):
 def download_data(db_id,range_name):
     """
     * for sheet choose value from
-    1. database
-    2. sadhana card
-    3. article database
+    1:db_primary,
+    2:db_sadhana_card,
+    3:db_article_tagging,
+    4:db_accounts,
+    5:db_hearing,
+    6:db_plan4krsna,
+    7:db_psadhana_encyclopaedia
     sheet!range in A1 notation
     """
     try:            
@@ -62,11 +68,16 @@ def download_data(db_id,range_name):
         st.write(e)
 
 def upload_data(db_id,range_name,value):
-#     """
-#     * for sheet choose value from
-#     1. database
-#     2. sadhana card    
-#     """
+    """
+    * for sheet choose value from
+    1:db_primary,
+    2:db_sadhana_card,
+    3:db_article_tagging,
+    4:db_accounts,
+    5:db_hearing,
+    6:db_plan4krsna,
+    7:db_psadhana_encyclopaedia
+    """
     workbook = _get_wb(db_id)
     sheetname, rangename = range_name.split("!")
     response = workbook.worksheet(sheetname).update(rangename,

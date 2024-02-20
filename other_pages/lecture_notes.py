@@ -16,13 +16,14 @@ class class_notes_Class:
         }
         self.current_page = 'all'
 
+        self._link_input_sheetname = "hearing-summary"
         self._link_inputdb = None
         self._link_inputdb_refresh = True
-        self._link_inputdb_range = "class-notes!A3:F"
+        self._link_inputdb_range = f"{self._link_input_sheetname}!A3:F"
         
         self._notesdb = None
         self._notesdb_refresh = True
-        self._notesdb_range = 'class-notes!A:C'
+        self._notesdb_range = 'hearing_notes!A:C'
         
     @property
     def bdvapp(self):
@@ -35,13 +36,14 @@ class class_notes_Class:
             data = pd.DataFrame(data[1:],columns=data[0])
             data = data.to_dict(orient='list')
             final_list = [['speaker','URL','row']]
+            # iterate over data
             for key,value in data.items():
                 column_name = {'SP':"A",
                                'HH RNSM':'B',
                                'HG RSP':'C',
                                'HG Priyagopesh Pr':'D',
                                'Others':'E'}[key]
-                list_toadd = [[key,i,f"class-notes!{column_name}{_i}"] for _i,i in enumerate(value,start=4) if i!='']
+                list_toadd = [[key,i,f"{self._link_input_sheetname}!{column_name}{_i}"] for _i,i in enumerate(value,start=4) if i!='']
                 final_list.extend(list_toadd)
             
             df = pd.DataFrame(final_list[1:],columns=final_list[0])
@@ -53,7 +55,7 @@ class class_notes_Class:
     @property
     def notes_db(self):
         if self._notesdb_refresh:
-            data = download_data(5,self._notesdb_range)
+            data = download_data(7,self._notesdb_range)
             data = pd.DataFrame(data[1:],columns=data[0])
             metadata = dict(zip(data['key'],data['value']))
             if len(data.query("data !=''"))==0:
@@ -75,6 +77,7 @@ class class_notes_Class:
             return self._notesdb
         else:
             return self._notesdb
+    
     def write_summary(self,notion_dict,index=None):
         """
         """
@@ -101,7 +104,7 @@ class class_notes_Class:
                            'view_count':1,
                            'speaker':speaker}
             upload_data_json = json.dumps(data2upload)
-            upload_data(5,upload_range,[[upload_data_json]])
+            upload_data(7,upload_range,[[upload_data_json]])
             self._notesdb_refresh=True
             # erase link
             upload_data(6,erase_range,[['']])
@@ -117,12 +120,14 @@ class class_notes_Class:
                 with right:
                     st.button("Mark seen",key=f'seenbutton{index}',
                               on_click=mark_noted_1st_time,args=[_contents,item['row'],item['speaker']])
+                st.divider()
 
         st.divider()
         notesdf = self.notes_db['data']
         for index,item in notesdf.iterrows():
             self.write_summary({'class_title':item['class'],
                                 **item})
+            st.divider()
 
 
     def run(self):
