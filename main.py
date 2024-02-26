@@ -3,6 +3,7 @@ import streamlit as st
 # Import various classes
 from other_pages.loginpage import login_Class
 from other_pages.feed import feed_Class
+from other_pages.sadhana_card import sadhana_card_class
 from other_pages.settlement import settlement_Class
 from other_pages.finder import finder_Class
 from other_pages.accounts import account_Class
@@ -22,6 +23,7 @@ class myapp:
         # register all the page
         self.page_map = {'login':login_Class(),
                          'feed':feed_Class(),
+                         'sadhana_card':sadhana_card_class(),
                          'settlement':settlement_Class(),
                          'finder': finder_Class(),
                          'dpt_accounts': account_Class(),
@@ -89,9 +91,9 @@ if 'bdv_app' not in st.session_state:
 # For development
 main_app = st.session_state['bdv_app']
 if main_app.in_development:
-    PAGE_DEVELOPING = 'revision'
-    PAGE_CLASS = class_notes_Class()
-    SUB_PAGE_DEVELOPING = 'all'
+    PAGE_DEVELOPING = 'sadhana_card'
+    PAGE_CLASS = sadhana_card_class()
+    SUB_PAGE_DEVELOPING = 'filling'
 
 
     # tell which is my developement class
