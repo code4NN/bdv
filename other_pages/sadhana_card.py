@@ -12,7 +12,8 @@ class sadhana_card_class:
                     'page_icon':'📈',
                     'layout':'centered'}
         self.page_dict = {
-            'filling':self.filling
+            'filling':self.filling,
+            'dashboard':self.dashboard,
         }
         self.current_page = 'filling'
         
@@ -56,7 +57,17 @@ class sadhana_card_class:
             # st.dataframe(scdbdf)
             devotee_name = self.bdv.userinfo['name']
             if devotee_name not in mscdict['name2col'].keys():
-                self.add_name_in_sc()
+                # add name to sadhana card
+                def add_new_name():
+                    insertrange = f"{self._db_sheet_name}!{mscdict['new_name_append_range']}"
+                    upload_data(self.dbi,insertrange,devotee_name)
+                    upload_data(self.dbi,f"{self._db_sheet_name}!{mscdict['new_name_col_update']}",
+                                int(mscdict['data_col_last_column'])+1)
+                    st.snow()
+                st.header("You do not have a sadhana card yet!!")
+                st.button("create one for me",on_click=add_new_name)
+                return None
+                
             
             # get my sadhana card
             myscdf = scdbdf[['row_number','week_id',self.bdv.userinfo['name']]].copy()
@@ -85,15 +96,30 @@ class sadhana_card_class:
                                        'helptext':row['help_message'],
                                        'min':row['min'],
                                        'max':row['max']}
-
-            self._scstandard = {'qnadict':qnadict}
+            # get the two standards
+            lt3hraw = download_data(self.dbi,"standards!C2:E")
+            lt3hdf = pd.DataFrame(lt3hraw[1:],columns=lt3hraw[0])
+            lt3hdf.query("name !='' ",inplace=True)
+            lt3hdict = {}
+            for _,item in lt3hdf.query("name not in ['japa_time','to_bed','wake_up','day_rest']").iterrows():
+                lt3hdict[item['name']] = {'value':item['value'],
+                                          'mark':item['mark']}
+            
+            self._scstandard = {'qnadict':qnadict,
+                                'sc_fast':{'df':lt3hdf,
+                                           'dict':lt3hdict}
+                                }
             self._scstandard_refresh = False
             return self._scstandard
         else:
             return self._scstandard
     def filling(self):
-        
+        def switch():
+            self.current_page='dashboard'
+        st.button("Go To Dashboard",on_click=switch)
         scdata = self.scdb
+        if not scdata:
+            return
         metadata = scdata['meta']
         current_week_scdata = scdata['mysc'].query(f"`week_id` == '{metadata['current_week']}' ").to_dict(orient='list')
         
@@ -103,11 +129,11 @@ class sadhana_card_class:
         active_row = current_week_scdata['row_number'][0]
         active_column = metadata['name2col'][self.bdv.userinfo['name']]
         active_range = f"{self._db_sheet_name}!{active_column}{active_row}"
-        st.write(metadata)
-        st.write(current_week_scdata)
-        st.write(qna)
-        st.write()
-        st.divider()
+        # st.write(metadata)
+        # st.write(current_week_scdata)
+        # st.write(qna)
+        # st.write()
+        # st.divider()
         st.header(f"For :green[{metadata['current_week']}]")
 
         if current_week_scdata[self.bdv.userinfo['name']][0]=="":
@@ -142,13 +168,16 @@ class sadhana_card_class:
                 weekdata[filldate] = data_2_upload
                 jsonifieddf = json.dumps(weekdata)
                 upload_data(self.dbi,range_name,[[jsonifieddf]])
+                st.snow()
 
             st.button("Submit",on_click=dailyscreport, args=[weekdata,dailydata,fillingdate,active_range])
+    
+    def dashboard(self):
+        dbstd = self.scstandard
+        db_fast = dbstd['sc_fast']
+        st.write(db_fast)
 
-
-
-
-
+        mysc,mygroup,allsc=st.tabs(["My Sadhana Scores",'Group',"All"])
 
 
     def run(self):
