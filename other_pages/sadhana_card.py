@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from datetime import timedelta
 from other_pages.googleapi import download_data,upload_data
-from other_pages.sadhana_card_helper import daily_filling
+from other_pages.sadhana_card_helper import daily_filling, evaluate_weekly_summary
 
 class sadhana_card_class:
     def __init__(self):
@@ -16,6 +16,8 @@ class sadhana_card_class:
             'dashboard':self.dashboard,
         }
         self.current_page = 'filling'
+        self.userinfo = st.session_state['bdv_app'].userinfo
+        self.username = self.userinfo['name']
         
         # sadhana card meta data
         self.dbi = 2
@@ -29,6 +31,7 @@ class sadhana_card_class:
         self._scstandard_refresh = True
         self._scstandard = None
         self._filling_format_range = "meta!E:J"
+    
     @property
     def bdv(self):
         return st.session_state['bdv_app']
@@ -55,7 +58,7 @@ class sadhana_card_class:
             scdbraw = download_data(self.dbi,f"{self._db_sheet_name}!{mscdict['data_col_range']}")
             scdbdf = pd.DataFrame(scdbraw[1:],columns=scdbraw[0])
             # st.dataframe(scdbdf)
-            devotee_name = self.bdv.userinfo['name']
+            devotee_name = self.username
             if devotee_name not in mscdict['name2col'].keys():
                 # add name to sadhana card
                 def add_new_name():
@@ -70,7 +73,7 @@ class sadhana_card_class:
                 
             
             # get my sadhana card
-            myscdf = scdbdf[['row_number','week_id',self.bdv.userinfo['name']]].copy()
+            myscdf = scdbdf[['row_number','week_id',self.username]].copy()
 
             # final db
             scdb = {'meta':mscdict,
@@ -96,14 +99,16 @@ class sadhana_card_class:
                                        'helptext':row['help_message'],
                                        'min':row['min'],
                                        'max':row['max']}
+            
             # get the two standards
             lt3hraw = download_data(self.dbi,"standards!C2:E")
             lt3hdf = pd.DataFrame(lt3hraw[1:],columns=lt3hraw[0])
             lt3hdf.query("name !='' ",inplace=True)
+            lt3hdf.fillna(-1,inplace=True)
             lt3hdict = {}
             for _,item in lt3hdf.query("name not in ['japa_time','to_bed','wake_up','day_rest']").iterrows():
-                lt3hdict[item['name']] = {'value':item['value'],
-                                          'mark':item['mark']}
+                lt3hdict[item['name']] = {'value':int(item['value']),
+                                          'mark':int(item['mark'])}
             
             self._scstandard = {'qnadict':qnadict,
                                 'sc_fast':{'df':lt3hdf,
@@ -113,72 +118,122 @@ class sadhana_card_class:
             return self._scstandard
         else:
             return self._scstandard
+    
     def filling(self):
         def switch():
             self.current_page='dashboard'
         st.button("Go To Dashboard",on_click=switch)
-        scdata = self.scdb
-        if not scdata:
-            return
-        metadata = scdata['meta']
-        current_week_scdata = scdata['mysc'].query(f"`week_id` == '{metadata['current_week']}' ").to_dict(orient='list')
         
+        scdatabase = self.scdb
+        if not scdatabase:
+            # this will happend when devotee do not have name added in the sadhana card
+            # name addition page will be handled by self.scdb
+            # therefore don't show anything further
+            return
+        
+        # retrieve all the data from scdatabase
+        scmetadata = scdatabase['meta']
+        
+        # get the current week's details
+        current_week_scdata = scdatabase['mysc'].query(f"`week_id` == '{scmetadata['current_week']}' ").to_dict(orient='list')
+        active_row = current_week_scdata['row_number'][0]
+        active_column = scmetadata['name2col'][self.username]
+        active_range = f"{self._db_sheet_name}!{active_column}{active_row}"
+        
+        # Get the sadhana card standards
         scstandards = self.scstandard
         qna = scstandards['qnadict']
-
-        active_row = current_week_scdata['row_number'][0]
-        active_column = metadata['name2col'][self.bdv.userinfo['name']]
-        active_range = f"{self._db_sheet_name}!{active_column}{active_row}"
         # st.write(metadata)
         # st.write(current_week_scdata)
         # st.write(qna)
         # st.write()
         # st.divider()
-        st.header(f"For :green[{metadata['current_week']}]")
+        st.header(f"For :green[{scmetadata['current_week']}]")
 
-        if current_week_scdata[self.bdv.userinfo['name']][0]=="":
-            weekdata = {}
+        if current_week_scdata[self.username][0]=="":
+            # create the schema for data
+            weekdatabase = {'data':{},'summary':{}}
+            weekdata = weekdatabase['data']
         else:
-            weekdata = json.loads(current_week_scdata[self.bdv.userinfo['name']][0])
+            weekdatabase = json.loads(current_week_scdata[self.username][0])
+            weekdata = weekdatabase['data']
         
-        weekstart = datetime(int(metadata['current_year']),
-                             int(metadata['current_month']),
-                             int(metadata['current_monday']))
+        weekstart = datetime(int(scmetadata['current_year']),
+                             int(scmetadata['current_month']),
+                             int(scmetadata['current_monday']))
         weekdays = [weekstart + timedelta(days=i) for i in range(7)]
+        
         # drop future days
-        aajkadin = datetime(2024,2,29)
+        aajkadin = datetime.today()
         availabledays = [day for day in weekdays if day <= aajkadin]
+        
         # get date which have been filled
         def fillformatfunc(x):
             if x.strftime("%b %d %a") in weekdata.keys():
                 return f":green[{x.strftime('%b %d %a')}--already filled]"
             else:
                 return f':red[{x.strftime("%b %d %a")}]'
-        fillingdate = st.radio("Filling For",availabledays,format_func=fillformatfunc,index=len(availabledays)-1)
-        fillingdate = fillingdate.strftime("%b %d %a")
-        st.markdown(f"#### Filling for :violet[{fillingdate}]")
+            
+        fillingdate = st.radio("Filling For",
+                               availabledays,
+                               format_func=fillformatfunc,
+                               index=len(availabledays)-1).strftime("%b %d %a")
+
+        st.markdown(f"### Filling for :violet[{fillingdate}]")
         if fillingdate in weekdata.keys():
             st.warning("You have already filled for this date")
-            st.markdown(":red[filling again will overwrite the previous data]")
+            st.markdown("## :red[filling again will overwrite the previous data]")
         incomplete,dailydata = daily_filling(qna,show_help_text=False)
         if incomplete:
-            st.button("Submit",disabled=True)
+            st.button("Submit",type='primary',disabled=True,help="some required filleds are blank")
         else:
             def dailyscreport(weekdata,data_2_upload,filldate,range_name):
+                # in the base case weekdata will be {}
+                # final structure would be {"data":{weekdata},"scores":reportdata}
                 weekdata[filldate] = data_2_upload
-                jsonifieddf = json.dumps(weekdata)
+                weekdatabase['data'] = weekdata
+                weekdatabase['summary'] = evaluate_weekly_summary(weekdata)
+                
+                jsonifieddf = json.dumps(weekdatabase)
                 upload_data(self.dbi,range_name,[[jsonifieddf]])
-                st.snow()
+                st.balloons()
 
             st.button("Submit",on_click=dailyscreport, args=[weekdata,dailydata,fillingdate,active_range])
     
-    def dashboard(self):
-        dbstd = self.scstandard
-        db_fast = dbstd['sc_fast']
-        st.write(db_fast)
-
-        mysc,mygroup,allsc=st.tabs(["My Sadhana Scores",'Group',"All"])
-
+    def dashboard(self):        
+        scdb = self.scdb
+        scmetadata = scdb['meta']
+        scdata = scdb['allsc']
+        mysc = scdb['mysc']
+        
+        viwing_week = scmetadata['current_week']
+        mysc_this_week = scdb['mysc'].query(f"`week_id` == '{viwing_week}' ").to_dict(orient='list')
+        if mysc_this_week[self.username][0]=="":
+            # create the schema for data
+            st.error("You have not filled for any day")
+            return
+        else:
+            weekdatabase = json.loads(mysc_this_week[self.username][0])
+            weekdata = weekdatabase['data']
+            weeksummary = weekdatabase['summary']
+        
+        st.header(f"For :green[{viwing_week}]")
+        _mysc,_mygroup,_allsc=st.tabs(["My Sadhana Scores",'Group',"All"])
+        
+        with _mysc:
+            weekdf = pd.DataFrame.from_dict(weekdata, orient="index").reset_index()
+            st.dataframe(weekdf)
+            st.divider()
+            left,middle,right = st.columns(3)
+            with left:
+                st.metric("Body", f"{weeksummary['summary']['body']['achieved']:.2%}")
+            with right:
+                st.metric("Soul", f"{weeksummary['summary']['soul']['achieved']:.2%}")
+            with middle:
+                st.metric("Total", f"{weeksummary['summary']['total']['achieved']:.2%}")
+            st.divider()
+            for i in ['reading','hearing']:
+                st.markdown(f"### {i.title()}: {weeksummary['summary'][i]['achieved']} minutes ---total: {weeksummary['summary'][i]['target']} minutes")
 
     def run(self):
         st.markdown(
