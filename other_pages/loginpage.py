@@ -100,7 +100,7 @@ class login_Class:
 
                 left,middle,right = st.columns(3)
                 with left:
-                    st.button("Class Notes",on_click=takemein,args=['revision'],key='direct_login_revision')
+                    st.button("Sadhana Card",on_click=takemein,args=['sadhana_card'])
                     st.button('Settlements 💸',on_click=takemein,args=['settlement'],key='direct_login_settlement')
                 
                 with middle:
@@ -109,6 +109,7 @@ class login_Class:
                 with right:
                     user_roles = [role.strip() for role in self.userdb[input_user_name]['roles'].replace(" ",'').split(",")]
                     # st.write(user_roles)
+                    st.button("Class Notes",on_click=takemein,args=['revision'],key='direct_login_revision')
                     if 'acc_ic' in user_roles:
                         st.button("Accounts 📝",on_click=takemein,args=['dpt_accounts'],key='direct_login_accounts')
 

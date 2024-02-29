@@ -5,6 +5,8 @@ from datetime import datetime
 from datetime import timedelta
 from other_pages.googleapi import download_data,upload_data
 from other_pages.sadhana_card_helper import daily_filling, evaluate_weekly_summary
+from other_pages.sadhana_card_helper import display_weekly_filling
+from other_pages.sadhana_card_helper import extract_week_summary
 
 class sadhana_card_class:
     def __init__(self):
@@ -16,8 +18,6 @@ class sadhana_card_class:
             'dashboard':self.dashboard,
         }
         self.current_page = 'filling'
-        self.userinfo = st.session_state['bdv_app'].userinfo
-        self.username = self.userinfo['name']
         
         # sadhana card meta data
         self.dbi = 2
@@ -35,7 +35,13 @@ class sadhana_card_class:
     @property
     def bdv(self):
         return st.session_state['bdv_app']
-    
+    @property
+    def userino(self):
+        return self.bdv.userinfo
+    @property
+    def username(self):
+        return self.userino['name']
+
     @property
     def scdb(self):
         if self._scdb_refresh:
@@ -61,14 +67,24 @@ class sadhana_card_class:
             devotee_name = self.username
             if devotee_name not in mscdict['name2col'].keys():
                 # add name to sadhana card
-                def add_new_name():
-                    insertrange = f"{self._db_sheet_name}!{mscdict['new_name_append_range']}"
-                    upload_data(self.dbi,insertrange,devotee_name)
+                def add_new_name(sc_type):
+                    nameinsertrange = f"{self._db_sheet_name}!{mscdict['new_name_append_range']}"
+                    metadatainsertrange = f"{self._db_sheet_name}!{mscdict['new_name_append_metadata_range']}"
+                    
+                    upload_data(self.dbi,nameinsertrange,[[devotee_name]])
                     upload_data(self.dbi,f"{self._db_sheet_name}!{mscdict['new_name_col_update']}",
-                                int(mscdict['data_col_last_column'])+1)
+                                [[int(mscdict['data_col_last_column'])+1]])
+                    # add the sadhana card type
+                    upload_data(self.dbi,metadatainsertrange,[[sctype]])
                     st.snow()
+                    st.success("Successful!")
+                    self._scstandard_refresh = True
                 st.header("You do not have a sadhana card yet!!")
-                st.button("create one for me",on_click=add_new_name)
+                sctype = st.radio("Choose your Sadhana Card Type",
+                                  ['gt3h','le3h'],
+                                  format_func=lambda x: 'Working Hour > 3hours' if x=='gt3h' else "Working Hour <= 3 hours"
+                                  )
+                st.button("create one for me",on_click=add_new_name,args=[sctype])
                 return None
                 
             
@@ -157,6 +173,8 @@ class sadhana_card_class:
         else:
             weekdatabase = json.loads(current_week_scdata[self.username][0])
             weekdata = weekdatabase['data']
+            weekdf = pd.DataFrame.from_dict(weekdata, orient="index")
+            display_weekly_filling(weekdf)
         
         weekstart = datetime(int(scmetadata['current_year']),
                              int(scmetadata['current_month']),
@@ -183,7 +201,10 @@ class sadhana_card_class:
         if fillingdate in weekdata.keys():
             st.warning("You have already filled for this date")
             st.markdown("## :red[filling again will overwrite the previous data]")
+            if not st.checkbox("I know and I wish to refill"):
+                return
         incomplete,dailydata = daily_filling(qna,show_help_text=False)
+
         if incomplete:
             st.button("Submit",type='primary',disabled=True,help="some required filleds are blank")
         else:
@@ -192,15 +213,16 @@ class sadhana_card_class:
                 # final structure would be {"data":{weekdata},"scores":reportdata}
                 weekdata[filldate] = data_2_upload
                 weekdatabase['data'] = weekdata
-                weekdatabase['summary'] = evaluate_weekly_summary(weekdata)
-                
+                weekdatabase['summary'] = evaluate_weekly_summary(weekdata,scstandards['sc_fast'])
+                # st.write(weekdatabase)
                 jsonifieddf = json.dumps(weekdatabase)
                 upload_data(self.dbi,range_name,[[jsonifieddf]])
                 st.balloons()
+                self._scdb_refresh= True
 
             st.button("Submit",on_click=dailyscreport, args=[weekdata,dailydata,fillingdate,active_range])
     
-    def dashboard(self):        
+    def dashboard(self):
         scdb = self.scdb
         scmetadata = scdb['meta']
         scdata = scdb['allsc']
@@ -208,6 +230,7 @@ class sadhana_card_class:
         
         viwing_week = scmetadata['current_week']
         mysc_this_week = scdb['mysc'].query(f"`week_id` == '{viwing_week}' ").to_dict(orient='list')
+        all_sc_this_week = scdata.query(f"`week_id` == '{viwing_week}' ").to_dict(orient='list')
         if mysc_this_week[self.username][0]=="":
             # create the schema for data
             st.error("You have not filled for any day")
@@ -221,8 +244,9 @@ class sadhana_card_class:
         _mysc,_mygroup,_allsc=st.tabs(["My Sadhana Scores",'Group',"All"])
         
         with _mysc:
-            weekdf = pd.DataFrame.from_dict(weekdata, orient="index").reset_index()
-            st.dataframe(weekdf)
+            weekdf = pd.DataFrame.from_dict(weekdata, orient="index")
+            display_weekly_filling(weekdf)
+
             st.divider()
             left,middle,right = st.columns(3)
             with left:
@@ -232,8 +256,37 @@ class sadhana_card_class:
             with middle:
                 st.metric("Total", f"{weeksummary['summary']['total']['achieved']:.2%}")
             st.divider()
-            for i in ['reading','hearing']:
-                st.markdown(f"### {i.title()}: {weeksummary['summary'][i]['achieved']} minutes ---total: {weeksummary['summary'][i]['target']} minutes")
+            
+            bodytab, soultab = st.tabs(['Body related','Soul related'])
+            with bodytab:
+                for item in ['wake_up','day_rest','to_bed']:
+                    st.metric(item.replace("_"," ").title(),
+                            f"{weeksummary['all'][item]['%']:.0%}")
+            with soultab:
+                st.metric('japa_time'.replace("_"," ").title(),
+                        f"{weeksummary['all']['japa_time']['%']:.0%}")
+                
+                st.markdown(
+        f"""#### Hearing :green[{weeksummary['summary']['hearing']['achieved']}] out of :red[{weeksummary['summary']['hearing']['target']}] minutes""")
+                st.markdown(
+        f"""#### Reading :green[{weeksummary['summary']['reading']['achieved']}] out of :red[{weeksummary['summary']['reading']['target']}] minutes""")
+                
+        with _allsc:
+            st.write(all_sc_this_week)
+            ignore_list = ['row_number','week_id','summary']
+            not_filled = []
+            summarydflist = []
+            for name, data in all_sc_this_week.items():
+                if data[0] == '':
+                    not_filled.append(name)
+                else:
+                    converted2dict = json.loads(data[0])
+                    summarydflist.append(extract_week_summary(name,converted2dict))
+            
+
+
+
+
 
     def run(self):
         st.markdown(
