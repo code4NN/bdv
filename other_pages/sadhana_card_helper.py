@@ -289,7 +289,7 @@ def evaluate_weekly_summary(weekdata, standard):
     # now evaluate the time bound things
     for i in ["japa_time", "wake_up", "to_bed",'day_rest']:
         score = sum([slookup(i,e) for e in  weekdf[i].tolist()])
-        scorepercent[i] = {"score": score, "maxs": dictstd[f"_{i}"]["mark"]}
+        scorepercent[i] = {"score": score, "maxs": 7*dictstd[f"_{i}"]["mark"]}
     
     # --- prepare the summary report
     summary = {}
@@ -333,17 +333,18 @@ def extract_week_summary(name,wd):
     """
     """
     summary  =  {}
-    summary['name'] = f"{name} Pr"
-    summary['body'] = wd['summary']['body']
-    summary['soul'] = wd['summary']['soul']
-    summary['total'] = wd['summary']['total']
+    summary['Name'] = f"{name} Pr"
+    summary['Body'] = wd['summary']['body']['achieved']
+    summary['Soul'] = wd['summary']['soul']['achieved']
+    summary['Total'] = wd['summary']['total']['achieved']
 
-    summary['To Bed'] = f"{wd['all']['to_bed']['%']:.0%}"
-    summary['Wake Up'] = f"{wd['all']['wake_up']['%']:.0%}"
-    summary['Day Rest'] = f"{wd['all']['day_rest']['%']:.0%}"
-    summary['Japa'] = f"{wd['all']['japa_time']['%']:.0%}"
+    summary['To Bed'] = wd['all']['to_bed']['%']
+    summary['Wake Up'] = wd['all']['wake_up']['%']
+    summary['Day Rest'] = wd['all']['day_rest']['%']
+    summary['Japa'] = wd['all']['japa_time']['%']
 
     summary['Reading'] = wd['summary']['reading']['achieved']
     summary['Hearing'] = wd['summary']['hearing']['achieved']
+    summary['Days filled'] = wd['summary']['filled_days']['achieved']
     
     return summary

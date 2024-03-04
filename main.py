@@ -85,9 +85,6 @@ if 'bdv_app' not in st.session_state:
         st.session_state['bdv_app'] = myapp(in_development=False,requires_login=False)
 
 
-
-
-
 # For development
 main_app = st.session_state['bdv_app']
 if main_app.in_development:
