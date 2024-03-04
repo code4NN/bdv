@@ -82,35 +82,44 @@ class login_Class:
             pswd = self.userdb[input_user_name]['password']
             if input_password == pswd:
                 
+                # get the user access details
+                self.bdvapp.userinfo = self.userdb[input_user_name]
+                try:
+                    self.bdvapp.userinfo['roles'] = \
+                    [role.strip() for role in self.bdvapp.userinfo['roles'].replace(" ","").split(",")]
+                    self.bdvapp.userinfo['group'] = \
+                    [role.strip() for role in self.bdvapp.userinfo['group'].replace(" ","").split(",")]
+                except:
+                    self.bdvapp.userinfo['roles'] = ['some_error']
+                    self.bdvapp.userinfo['group'] = ['some_error']
+
                 # authenticated
                 def takemein(page):
                     self.bdvapp.current_page = page
-                    self.bdvapp.userinfo = self.userdb[input_user_name]
                     
-                    try:
-                        self.bdvapp.userinfo['roles'] = \
-                        [role.strip() for role in self.bdvapp.userinfo['roles'].replace(" ","").split(",")]
-                    except:
-                        self.bdvapp.userinfo['roles'] = ['some_error']
                 
                 st.button("Login",on_click=takemein,args=['feed'],key='login_button_feed')                
                 st.divider()
                 st.markdown('#### :green[Direct login to]')
 
-
-                left,middle,right = st.columns(3)
-                with left:
-                    st.button("Class Notes",on_click=takemein,args=['revision'],key='direct_login_revision')
-                    st.button('Settlements 💸',on_click=takemein,args=['settlement'],key='direct_login_settlement')
+                # for all devotees of HG PrGP
+                if 'hgprgp_councelle' in self.bdvapp.userinfo['group']:
+                    st.button("Sadhana Card",on_click=takemein,args=['sadhana_card'])
                 
-                with middle:
-                    st.button("Finder 🔍",on_click=takemein,args=['finder'],key='direct_login_finder')
-                
-                with right:
-                    user_roles = [role.strip() for role in self.userdb[input_user_name]['roles'].replace(" ",'').split(",")]
-                    # st.write(user_roles)
-                    if 'acc_ic' in user_roles:
-                        st.button("Accounts 📝",on_click=takemein,args=['dpt_accounts'],key='direct_login_accounts')
+                # for voice Devotees
+                if 'bdv' in self.bdvapp.userinfo['group']:
+                    left,middle,right = st.columns(3)
+                    with left:
+                        st.button('Settlements 💸',on_click=takemein,args=['settlement'],key='direct_login_settlement')
+                    
+                    with middle:
+                        st.button("Finder 🔍",on_click=takemein,args=['finder'],key='direct_login_finder')
+                    
+                    with right:
+                        # st.write(user_roles)
+                        st.button("Class Notes",on_click=takemein,args=['revision'],key='direct_login_revision')
+                        if 'acc_ic' in self.bdvapp.userinfo['roles']:
+                            st.button("Accounts 📝",on_click=takemein,args=['dpt_accounts'],key='direct_login_accounts')
 
 
 
