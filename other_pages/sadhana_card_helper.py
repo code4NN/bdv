@@ -11,31 +11,24 @@ def global_slookup(name,value,dfstd):
             
 def mycheckbox(question_data, showhelp,show_mark,standard):
     title = question_data["title"]
-    helptext = question_data["helptext"]
-    fullmark = standard[question_data['key']]['mark']
+    helptext = question_data["helptext"] if showhelp else None
 
-    if not showhelp:
-        if show_mark:
-            userinput = st.checkbox(label=title, value=False)
+    userinput = st.checkbox(label=title, value=False,help=helptext)
+    if show_mark:
+            fullmark = standard[question_data['key']]['mark']
             marks = fullmark if userinput else 0
             st.caption(marks)
-            return userinput
-    else:
-        if show_mark:
-            userinput = st.checkbox(label=title, value=False,help=helptext)
-            marks = fullmark if userinput else 0
-            st.caption(marks)
-            return userinput
+    return userinput
 
-def mynuminput(question_data, showhelp):
+def mynuminput(question_data, showhelp,show_mark=False,_standard_df=None):
     title = question_data["title"]
     lower_limit = int(question_data["min"])
     upper_limit = question_data["max"]
-    helptext = question_data["helptext"]
-    if showhelp:
-        value = st.number_input(title, min_value=lower_limit, help=helptext, step=1)
-    else:
-        value = st.number_input(title, min_value=lower_limit, step=1)
+    helptext = question_data["helptext"] if showhelp else None
+    value = st.number_input(title, min_value=lower_limit, help=helptext, step=1)
+    if show_mark:
+        mark = global_slookup(question_data['key'],value,_standard_df)
+        st.caption(mark)
     return value
 
 def verify_time(t):
@@ -161,7 +154,7 @@ def daily_filling(qnadict, show_help_text,_show_marks,_standard_database):
     result["shloka"] = st.radio(
         qnadict["shloka"]["title"], options=[0, 1, 2, 3], horizontal=True
     )
-    result["shayan_kirtan"] = mycheckbox(qnadict["shayan_kirtan"], show_help_text,_show_marks,_standard_dict)
+    result["shayan_kirtan"] = mycheckbox(qnadict["shayan_kirtan"], show_help_text,False,_standard_dict)
 
     # body
     with st.expander("Shayan", expanded=True):

@@ -90,7 +90,7 @@ main_app = st.session_state['bdv_app']
 if main_app.in_development:
     PAGE_DEVELOPING = 'sadhana_card'
     PAGE_CLASS = sadhana_card_class()
-    SUB_PAGE_DEVELOPING = 'dashboard'
+    SUB_PAGE_DEVELOPING = 'filling'
 
 
     # tell which is my developement class
@@ -112,6 +112,7 @@ try:
 
 except Exception as e:
     st.error("Haribol!! Got some error")
+    st.write(e)
 
     if main_app.in_development:
         st.write(e)
