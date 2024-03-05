@@ -203,6 +203,8 @@ class sadhana_card_class:
             return self._scstandard
     
     def filling(self):
+        st.title(":rainbow[Sadhana Card]")
+        st.header(f":rainbow[for {self.user_name} Pr]")
         scdatabase = self.scdb
         if not scdatabase:
             # this will happend when devotee do not have name added in the sadhana card
@@ -281,7 +283,7 @@ class sadhana_card_class:
         scmetadata = scdatabase['meta']
         
         # for creating next week's container
-        if 'yacc_ic' in self.bdvuserinfo['roles']:
+        if 'y_sc_ic' in self.bdvuserinfo['roles']:
             # generate next week
             def create_next_week(metadata):
                 update_date = [[metadata['next_year']],
@@ -355,7 +357,14 @@ class sadhana_card_class:
                                format_func=fillformatfunc,
                                index=len(availabledays)-1).strftime("%b %d %a")
 
-        st.markdown(f"### Date :violet[{fillingdate}]")
+        st.markdown(f"### Date :orange[{fillingdate}]")
+        # show reading and hearing targets
+        # with st.container():
+        if len(weekreport.keys())!=0:
+            st.markdown(f"#### Reading: :violet[{weekreport['summary']['reading']['achieved']} min] Target: :orange[{weekreport['summary']['reading']['target']} min]")
+            st.markdown(f"#### Hearing: :violet[{weekreport['summary']['hearing']['achieved']} min] Target: :orange[{weekreport['summary']['hearing']['target']} min]")
+        st.divider()
+
         if fillingdate in weekdata.keys():
             _format_message = scuserinfo['formatted_msg']
             if _format_message == 'empty':
@@ -388,10 +397,6 @@ class sadhana_card_class:
                 return
         
         
-        # show reading and hearing targets
-        if len(weekreport.keys())!=0:
-            st.markdown(f"Reading: :violet[{weekreport['summary']['reading']['achieved']} min] Target: :orange[{weekreport['summary']['reading']['target']} min]")
-            st.markdown(f"Hearing: :violet[{weekreport['summary']['hearing']['achieved']} min] Target: :orange[{weekreport['summary']['hearing']['target']} min]")
         
         # get the sadhana card filled for the selected week and date
         left,right = st.columns(2)
@@ -519,10 +524,21 @@ class sadhana_card_class:
                     if _value < 1:
                         _value = f'{int(_value * 100)} %'
                     st.markdown(f"#### {i}: :green[{_topper}] ({_value})")
-
+                
+                percentcols = ['Japa','Body','Soul','Total','To Bed','Wake Up','Day Rest']
+                alddf[percentcols] = alddf[percentcols]*100
+                mycolumn_config = {col:st.column_config.NumberColumn(col,format="%.0f %%") for col in percentcols}
+                mycolumn_config = {**mycolumn_config,
+                                   'Reading':st.column_config.NumberColumn("Reading",format="%.0f min"),
+                                   'Hearing':st.column_config.NumberColumn("Hearing",format="%.0f min"),
+                                   'Days filled':st.column_config.NumberColumn("days filled",format="%.0f days"),
+                                   }
                 scorecard.data_editor(alddf,
-                            disabled=True,hide_index=True)                        
-
+                           disabled=True,hide_index=True,
+                            column_config=mycolumn_config)
+                alldays_filled = alddf.loc[alddf['Days filled']==7,'Name'].tolist()
+                st.caption("Filled all 7 days")
+                st.write(alldays_filled)
 
         with _allsc:
             # st.write(all_sc_this_week)
@@ -553,10 +569,25 @@ class sadhana_card_class:
                     _value = alddf.loc[alddf['Name']==_topper,i].tolist()[0]
                     if _value < 1:
                         _value = f'{int(_value * 100)} %'
+                    else:
+                        _value = f"{round(_value)} minutes"
                     st.markdown(f"#### {i}: :green[{_topper}] ({_value})")
-
+                
+                # now for displaying the summary
+                percentcols = ['Japa','Body','Soul','Total','To Bed','Wake Up','Day Rest']
+                alddf[percentcols] = alddf[percentcols]*100
+                mycolumn_config = {col:st.column_config.NumberColumn(col,format="%.0f %%") for col in percentcols}
+                mycolumn_config = {**mycolumn_config,
+                                   'Reading':st.column_config.NumberColumn("Reading",format="%.0f min"),
+                                   'Hearing':st.column_config.NumberColumn("Hearing",format="%.0f min"),
+                                   'Days filled':st.column_config.NumberColumn("days filled",format="%.0f days"),
+                                   }
                 scorecard.data_editor(alddf,
-                           disabled=True,hide_index=True)                        
+                           disabled=True,hide_index=True,
+                            column_config=mycolumn_config)   
+                alldays_filled = alddf.loc[alddf['Days filled']==7,'Name'].tolist()
+                st.caption("Filled all 7 days")
+                st.write(alldays_filled)                     
 
         with _standards:
             st.markdown("This section describes various targets for the two Sadhana Card")
