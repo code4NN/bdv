@@ -123,10 +123,13 @@ class sadhana_card_class:
                     upload_data(self.dbi,metadatainsertrange,[[userdatadump]])
                     st.snow()
                     st.success("Successful!")
-                    self._scstandard_refresh = True
+                    self._scdb_refresh = True
 
-                st.header(f"Hare Krishna {devotee_name} Pr!!, you do not have a sadhana card yet!!")
-                sctype = st.radio("Choose your Sadhana Card Type",
+                st.markdown(f"## Hare Krishna :green[{devotee_name} Pr!!]")
+                st.markdown(f"### You do not have a sadhana card yet!!")
+                st.markdown("#### Let's create one 🏃‍♂️")
+                
+                sctype = st.radio("Please Choose your Sadhana Card Type",
                                   ['gt3h','le3h'],
                                   format_func=lambda x: 'Working Hour > 3hours' if x=='gt3h' else "Working Hour <= 3 hours"
                                   )
@@ -158,7 +161,8 @@ class sadhana_card_class:
             qnadf = pd.DataFrame(qnaraw[1:],columns=qnaraw[0])
             qnadict = {}
             for index,row in qnadf.iterrows():
-                qnadict[row['key']] = {"title":row['title'],
+                qnadict[row['key']] = {'key':row['key'],
+                                        "title":row['title'],
                                        'type':row['type'],
                                        'helptext':row['help_message'],
                                        'min':row['min'],
@@ -170,7 +174,8 @@ class sadhana_card_class:
             lt3hdf.query("name !='' ",inplace=True)
             lt3hdf.fillna(-1,inplace=True)
             lt3hdict = {}
-            for _,item in lt3hdf.query("name not in ['japa_time','to_bed','wake_up','day_rest']").iterrows():
+            for _,item in lt3hdf\
+            .query("name not in ['japa_time','to_bed','wake_up','day_rest']").iterrows():
                 lt3hdict[item['name']] = {'value':int(item['value']),
                                           'mark':int(item['mark'])}
             
@@ -180,7 +185,8 @@ class sadhana_card_class:
             gt3hdf.query("name !='' ",inplace=True)
             gt3hdf.fillna(-1,inplace=True)
             gt3hdict = {}
-            for _,item in gt3hdf.query("name not in ['japa_time','to_bed','wake_up','day_rest']").iterrows():
+            for _,item in gt3hdf\
+            .query("name not in ['japa_time','to_bed','wake_up','day_rest']").iterrows():
                 gt3hdict[item['name']] = {'value':int(item['value']),
                                           'mark':int(item['mark'])}
             
@@ -293,7 +299,7 @@ class sadhana_card_class:
             st.button(f"Create {scmetadata['upcoming_week']}",on_click=create_next_week,args=[scmetadata])
         
         # get the current week's details
-        list_of_week = scdatabase['allsc']['week_id'].tolist()
+        list_of_week = scdatabase['allsc']['week_id'].tolist()[-5:]
         active_weekname = st.radio("Choose the week",
                                    options=list_of_week,
                                    index=len(list_of_week)-1)
@@ -317,9 +323,11 @@ class sadhana_card_class:
             # create the schema for data
             weekdatabase = {'data':{},'summary':{}}
             weekdata = weekdatabase['data']
+            weekreport = weekdatabase['summary']
         else:
             weekdatabase = json.loads(active_week_scdata[self.user_name][0])
-            weekdata = weekdatabase['data']
+            weekdata = weekdatabase['data']            
+            weekreport = weekdatabase['summary']
             weekdf = pd.DataFrame.from_dict(weekdata, orient="index")
             display_weekly_filling(weekdf)
         
@@ -379,27 +387,38 @@ class sadhana_card_class:
             if not st.checkbox("I know and I wish to refill"):
                 return
         
+        
+        # show reading and hearing targets
+        if len(weekreport.keys())!=0:
+            st.markdown(f"Reading: :violet[{weekreport['summary']['reading']['achieved']} min] Target: :orange[{weekreport['summary']['reading']['target']} min]")
+            st.markdown(f"Hearing: :violet[{weekreport['summary']['hearing']['achieved']} min] Target: :orange[{weekreport['summary']['hearing']['target']} min]")
+        
         # get the sadhana card filled for the selected week and date
-        _show_help_text = st.checkbox("Show help text",value=True)
-        incomplete,dailydata = daily_filling(qna,show_help_text=_show_help_text)
+        left,right = st.columns(2)
+        _show_help_text = left.checkbox("Show help text",value=True)
+        _show_marks = right.checkbox("Show Marks",value=True)
+        
+        _devotee_standard_database =  scstandards['sc_fast'] if scuserinfo['info']['sctype'] == 'le3h' else scstandards['sc_std']
+        incomplete,dailydata = daily_filling(qna,_show_help_text,_show_marks,_devotee_standard_database)
 
         if incomplete:
-            st.button("Submit",type='primary',disabled=True,help="some required filleds are blank")
+            st.button("Submit",type='primary',disabled=True,help="some required fieleds are blank")
+            st.caption("Some required fields are blank")
         else:
             def dailyscreport(weekdata,data_2_upload,filldate,range_name):
                 # in the base case weekdata will be {}
                 # final structure would be {"data":{weekdata},"summary":reportdata}
                 weekdata[filldate] = data_2_upload
                 weekdatabase['data'] = weekdata
-                devotee_standard_dict =  scstandards['sc_fast'] if scuserinfo['info']['sctype'] == 'le3h' else scstandards['sc_std']
-                weekdatabase['summary'] = evaluate_weekly_summary(weekdata,devotee_standard_dict)
+                devotee_standard_database =  scstandards['sc_fast'] if scuserinfo['info']['sctype'] == 'le3h' else scstandards['sc_std']
+                weekdatabase['summary'] = evaluate_weekly_summary(weekdata,devotee_standard_database)
                 # st.write(weekdatabase)
                 jsonifieddf = json.dumps(weekdatabase)
                 upload_data(self.dbi,range_name,[[jsonifieddf]])
                 st.balloons()
                 self._scdb_refresh= True
 
-            st.button("Submit",on_click=dailyscreport, 
+            st.button("Submit",on_click=dailyscreport,
                       args=[weekdata,dailydata,fillingdate,active_range])
     
     def dashboard(self):
@@ -412,7 +431,7 @@ class sadhana_card_class:
         scdata = scdb['allsc']
         # mysc = scdb['mysc']
         
-        list_of_week = scdata['week_id'].tolist()
+        list_of_week = scdata['week_id'].tolist()[-5:]
         active_weekname = st.radio("Choose the week",
                                    options=list_of_week,
                                    index=len(list_of_week)-1)
@@ -459,9 +478,9 @@ class sadhana_card_class:
                         f"{weeksummary['all']['japa_time']['%']:.0%}")
                 
                 st.markdown(
-        f"""#### Hearing :green[{weeksummary['summary']['hearing']['achieved']}] out of :red[{weeksummary['summary']['hearing']['target']}] minutes""")
+        f"""#### Hearing :green[{weeksummary['summary']['hearing']['achieved']} min] out of :red[{weeksummary['summary']['hearing']['target']}] min""")
                 st.markdown(
-        f"""#### Reading :green[{weeksummary['summary']['reading']['achieved']}] out of :red[{weeksummary['summary']['reading']['target']}] minutes""")
+        f"""#### Reading :green[{weeksummary['summary']['reading']['achieved']} min] out of :red[{weeksummary['summary']['reading']['target']}] min""")
 
         with _mygroup:
             userinfo = self.scuserinfo
@@ -614,7 +633,6 @@ class sadhana_card_class:
             
             st.markdown(f"### Personal Cleanliness full marks for a day: {scdict['pc']['mark']}")
             st.markdown(f"### Filling Sadhana Card full marks for a day: {scdict['fsc']['mark']}")
-
 
     def run(self):
         st.markdown(

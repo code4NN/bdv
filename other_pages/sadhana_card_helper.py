@@ -1,14 +1,31 @@
 import streamlit as st
 import pandas as pd
 
-def mycheckbox(question_data, showhelp):
+def global_slookup(name,value,dfstd):
+        sdf = dfstd.query(f"name == '{name}'").copy()
+        sdf[['value','mark']] = sdf[['value','mark']].astype('float')
+        sdf.sort_values(by=['value'],inplace=True)
+        for _, row in sdf.iterrows():
+            if value <= row['value']:
+                return row['mark']
+            
+def mycheckbox(question_data, showhelp,show_mark,standard):
     title = question_data["title"]
     helptext = question_data["helptext"]
+    fullmark = standard[question_data['key']]['mark']
 
     if not showhelp:
-        return st.checkbox(label=title, value=False)
+        if show_mark:
+            userinput = st.checkbox(label=title, value=False)
+            marks = fullmark if userinput else 0
+            st.caption(marks)
+            return userinput
     else:
-        return st.checkbox(label=title, help=helptext, value=False)
+        if show_mark:
+            userinput = st.checkbox(label=title, value=False,help=helptext)
+            marks = fullmark if userinput else 0
+            st.caption(marks)
+            return userinput
 
 def mynuminput(question_data, showhelp):
     title = question_data["title"]
@@ -56,9 +73,10 @@ def verify_time(t):
         valid = False
     return [valid,time]
 
-def mytimeinput(question_data, showhelp):
+def mytimeinput(question_data, showhelp,showmarks,_standardf):
     title = question_data["title"]
     helptext = question_data["helptext"]
+    
     if showhelp:
         value = st.number_input(title, min_value=0, max_value=2359, help=helptext)
     else:
@@ -74,6 +92,9 @@ def mytimeinput(question_data, showhelp):
             return -1
         else:
             st.caption(displaytime)
+            if showmarks:
+                marks = global_slookup(question_data['key'],value,_standardf)
+                st.caption(marks)
             return value
 
 def display_weekly_filling(weekdf):
@@ -92,8 +113,11 @@ def display_weekly_filling(weekdf):
     dfdisplay.columns = [i.replace('_'," ").upper() for i in dfdisplay.columns]
     st.data_editor(dfdisplay,disabled=True)
 
-def daily_filling(qnadict, show_help_text=False):
+def daily_filling(qnadict, show_help_text,_show_marks,_standard_database):
 
+    _standard_dict = _standard_database['dict']
+    _standard_df = _standard_database['df']
+    
     result = {}
     incomplete = False
     # morning program
@@ -101,9 +125,9 @@ def daily_filling(qnadict, show_help_text=False):
         cols = st.columns(4)
         for i, item in enumerate(["on_time", "sa", "morning_class", "mangal_aarti"]):
             with cols[i]:
-                result[item] = mycheckbox(qnadict[item], show_help_text)
+                result[item] = mycheckbox(qnadict[item], show_help_text,_show_marks,_standard_dict)
 
-    result["japa_time"] = mytimeinput(qnadict["japa_time"], show_help_text)
+    result["japa_time"] = mytimeinput(qnadict["japa_time"], show_help_text,_show_marks,_standard_df)
 
     # reading
     with st.expander("Reading", expanded=True):
@@ -137,24 +161,24 @@ def daily_filling(qnadict, show_help_text=False):
     result["shloka"] = st.radio(
         qnadict["shloka"]["title"], options=[0, 1, 2, 3], horizontal=True
     )
-    result["shayan_kirtan"] = mycheckbox(qnadict["shayan_kirtan"], show_help_text)
+    result["shayan_kirtan"] = mycheckbox(qnadict["shayan_kirtan"], show_help_text,_show_marks,_standard_dict)
 
     # body
     with st.expander("Shayan", expanded=True):
         columns = st.columns(3)
         with columns[0]:
-            result["wake_up"] = mytimeinput(qnadict["wake_up"], show_help_text)
+            result["wake_up"] = mytimeinput(qnadict["wake_up"], show_help_text,_show_marks,_standard_df)
         with columns[1]:
-            result["to_bed"] = mytimeinput(qnadict["to_bed"], show_help_text)
+            result["to_bed"] = mytimeinput(qnadict["to_bed"], show_help_text,_show_marks,_standard_df)
         with columns[2]:
-            result["day_rest"] = mynuminput(qnadict["day_rest"], show_help_text)
+            result["day_rest"] = mynuminput(qnadict["day_rest"], show_help_text,_show_marks,_standard_df)
 
     with st.expander("", expanded=True):
         left, right = st.columns(2)
         with left:
-            result["pc"] = mycheckbox(qnadict["pc"], show_help_text)
+            result["pc"] = mycheckbox(qnadict["pc"], show_help_text,_show_marks,_standard_dict)
         with right:
-            result["fsc"] = mycheckbox(qnadict["fsc"], show_help_text)
+            result["fsc"] = mycheckbox(qnadict["fsc"], show_help_text,_show_marks,_standard_dict)
 
     required_columns = ["japa_time", "wake_up", "to_bed"]
     for column in required_columns:
@@ -213,22 +237,15 @@ def evaluate_weekly_summary(weekdata, standard):
     # on time, Sa, MA, MC
     def mpscore(row):
         """ "Get the row and ontime, sa, mc, ma"""
-        ontime, sa, mc, ma = (
-            row["on_time"],
-            row["sa"],
-            row["morning_class"],
-            row["mangal_aarti"]
-        )
-        if ontime * sa * ma * mc == 1:
-            fullmark = dictstd["full_mp"]["mark"] / 4
-            return pd.Series([fullmark, fullmark, fullmark, fullmark],dtype='float')
-        else:
-            return pd.Series([
-                dictstd[i]["mark"]
-                for i in ["on_time", "sa", "morning_class", "mangal_aarti"]
+        # we have done as_type ('float')
+        # so it is 1 or 0 for True and False
+        return pd.Series([
+                dictstd[i]["mark"] if row[i] else 0
+                for i in ["on_time", "sa", "morning_class", "mangal_aarti",'pc','fsc']
             ],dtype='float')
-    st.dataframe(weekdf)
-    weekdf[['on_time','sa','morning_class','mangal_aarti']] = weekdf.apply(mpscore, axis=1)
+        
+    # st.dataframe(weekdf)
+    weekdf[['on_time','sa','morning_class','mangal_aarti','pc','fsc']] = weekdf.apply(mpscore, axis=1)
     # st.write(a)
     # print(a)
     
@@ -244,6 +261,16 @@ def evaluate_weekly_summary(weekdata, standard):
         "score": weekdf['mangal_aarti'].sum(),
         "maxs": 7*dictstd["mangal_aarti"]["mark"],
     }
+    
+    # personal cleanliness and filling sadhana card
+    scorepercent["pc"] = {
+        "score": weekdf['pc'].sum(),
+        "maxs": 7*dictstd["pc"]["mark"],
+    }
+    scorepercent["fsc"] = {
+        "score": weekdf['fsc'].sum(),
+        "maxs": 7*dictstd["fsc"]["mark"],
+    }
 
 
 
@@ -256,11 +283,11 @@ def evaluate_weekly_summary(weekdata, standard):
 
     # hearing scores
     for i in ["hearing_sp", "hearing_hhrnsm", "hearing_hgrsp", "hearing_councellor"]:
-        scorepercent[i] = {"value": weekdf[i].sum(),"maxs": dictstd[i]["mark"],}
+        scorepercent[i] = {"value": weekdf[i].sum(),"maxs": dictstd[i]["mark"]}
         scorepercent[i]["score"] = scorepercent[i]["maxs"] * min(
             1, scorepercent[i]["value"] / dictstd[i]["value"]
         )
-    scorepercent["hearing_other"] = {"value": weekdf["hearing_other"].sum(),}
+    scorepercent["hearing_other"] = {"value": weekdf["hearing_other"].sum()}
     
     
     # Shloka
@@ -269,19 +296,15 @@ def evaluate_weekly_summary(weekdata, standard):
     scorepercent["shloka"]["score"] = scorepercent["shloka"]["maxs"] * \
         min(1,scorepercent["shloka"]["value"] / dictstd["shloka"]["value"])
     
-    
-    # personal cleanliness, filling sadhana card
-    for i in ["pc", "fsc"]:
-        scorepercent[i] = {"value": weekdf[i].sum(), "maxs": 7*dictstd[i]["mark"]}
-        scorepercent[i]["score"] = (scorepercent[i]["maxs"]*scorepercent[i]['value'])/7
-
 
     # Shayan kirtan
     scorepercent['shayan_kirtan'] = {"value": weekdf["shayan_kirtan"].sum()}
+    
+    
     def slookup(name,value):
         sdf = dfstd.query(f"name == '{name}'").copy()
         sdf[['value','mark']] = sdf[['value','mark']].astype('float')
-        sdf.sort_values(by=['value'],inplace=True)
+        sdf.sort_values(by=['value'],ascending=True, inplace=True)        
         for _, row in sdf.iterrows():
             if value <= row['value']:
                 return row['mark']
@@ -323,7 +346,7 @@ def evaluate_weekly_summary(weekdata, standard):
     summary['soul'] = {'achieved':sum(soul)/len(soul)}
     summary['filled_days'] = {"achieved":len(weekdf)}
     summary['total'] = {"achieved":round((summary['body']['achieved'] + summary['soul']['achieved'])/2,2)}
-    print(summary['hearing']['achieved'])
+    # print(summary['hearing']['achieved'])
     return {
             "all":scorepercent,
             'summary':summary
