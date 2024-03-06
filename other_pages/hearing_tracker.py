@@ -105,6 +105,13 @@ class hearing_Class:
         unsafe_allow_html=True
         )
         # display the available series in the sidebar
+        # Until one have completed Vaani syllabus
+        # Show vaani syllabus
+        # else show the other view
+        with st.sidebar:
+            with st.expander("DD Series"):
+                pass
+        
         with st.sidebar:
             with st.expander("Srila Prabhupada",expanded=True):
                 st.button("SB Lectures",on_click=self.change_page,args=['SP_SB'],
