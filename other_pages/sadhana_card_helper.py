@@ -84,11 +84,11 @@ def mytimeinput(question_data, showhelp,showmarks,_standardf):
             st.caption("Put in 24 h format lik 1830 for 6:30 pm")
             return -1
         else:
+            marks = global_slookup(question_data['key'],value,_standardf)
             if showmarks:
-                marks = global_slookup(question_data['key'],value,_standardf)
-                st.caption(marks)
-            else:
                 st.caption(f"{displaytime} -- {marks}")
+            else:
+                st.caption(f"{displaytime}")
             return value
 
 def display_weekly_filling(weekdf):
