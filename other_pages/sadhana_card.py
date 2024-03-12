@@ -333,6 +333,11 @@ class sadhana_card_class:
             weekdf = pd.DataFrame.from_dict(weekdata, orient="index")
             display_weekly_filling(weekdf)
         
+        if len(weekreport.keys())!=0:
+            st.markdown(f"#### Reading: :violet[{weekreport['summary']['reading']['achieved']} min] Target: :orange[{weekreport['summary']['reading']['target']} min]")
+            st.markdown(f"#### Hearing: :violet[{weekreport['summary']['hearing']['achieved']} min] Target: :orange[{weekreport['summary']['hearing']['target']} min]")
+        st.divider()
+
         active_monday = active_weekname.split(" to ")[0]
 
         # weekstart = datetime(int(scmetadata['current_year']),
@@ -358,12 +363,9 @@ class sadhana_card_class:
                                index=len(availabledays)-1).strftime("%b %d %a")
 
         st.markdown(f"### Date :orange[{fillingdate}]")
+        st.divider()
         # show reading and hearing targets
         # with st.container():
-        if len(weekreport.keys())!=0:
-            st.markdown(f"#### Reading: :violet[{weekreport['summary']['reading']['achieved']} min] Target: :orange[{weekreport['summary']['reading']['target']} min]")
-            st.markdown(f"#### Hearing: :violet[{weekreport['summary']['hearing']['achieved']} min] Target: :orange[{weekreport['summary']['hearing']['target']} min]")
-        st.divider()
 
         if fillingdate in weekdata.keys():
             _format_message = scuserinfo['formatted_msg']
@@ -402,6 +404,7 @@ class sadhana_card_class:
         left,right = st.columns(2)
         _show_help_text = left.checkbox("Show help text",value=True)
         _show_marks = right.checkbox("Show Marks",value=True)
+        st.divider()
         
         _devotee_standard_database =  scstandards['sc_fast'] if scuserinfo['info']['sctype'] == 'le3h' else scstandards['sc_std']
         incomplete,dailydata = daily_filling(qna,_show_help_text,_show_marks,_devotee_standard_database)
@@ -481,7 +484,7 @@ class sadhana_card_class:
                 with soultab:
                     st.metric('japa_time'.replace("_"," ").title(),
                         f"{weeksummary['all']['japa_time']['%']:.0%}")
-                
+                st.divider()
                 st.markdown(
         f"""#### Hearing :green[{weeksummary['summary']['hearing']['achieved']} min] out of :red[{weeksummary['summary']['hearing']['target']}] min""")
                 st.markdown(
