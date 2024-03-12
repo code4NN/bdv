@@ -95,19 +95,18 @@ class login_Class:
 
                 # authenticated
                 def takemein(page):
-                    self.bdvapp.current_page = page
-                    
+                    self.bdvapp.current_page = page                    
                 
-                st.button("Login",on_click=takemein,args=['feed'],key='login_button_feed')                
-                st.divider()
-                st.markdown('#### :green[Direct login to]')
-
                 # for all devotees of HG PrGP
                 if 'hgprgp_councelle' in self.bdvapp.userinfo['group']:
+                    st.markdown('#### :green[Direct login to]')
                     st.button("Sadhana Card",on_click=takemein,args=['sadhana_card'])
                 
                 # for voice Devotees
                 if 'bdv' in self.bdvapp.userinfo['group']:
+                    st.button("Login",on_click=takemein,args=['feed'],key='login_button_feed')                
+                    st.divider()
+                    st.markdown('#### :green[Direct login to]')
                     left,middle,right = st.columns(3)
                     with left:
                         st.button('Settlements 💸',on_click=takemein,args=['settlement'],key='direct_login_settlement')
