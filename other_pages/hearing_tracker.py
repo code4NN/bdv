@@ -7,148 +7,89 @@ import datetime
 from other_pages.googleapi import download_data
 from other_pages.googleapi import upload_data
 
-import requests
-from streamlit.components.v1 import html as HTML
-
 class hearing_Class:
     def __init__(self) -> None:
         
-        self.page_config = {'page_title': "BDV",
-                            'page_icon':'☔',
+        self.page_config = {'page_title': "Shravanam",
+                            'page_icon':'💊',
                             'layout':'centered'}
         self.page_map = {
-            'SP':self.srila_prabhupada_page,
+            'SP_SB':self.sp_SB_lectures,
             }
-        self.current_page = 'SP'
-        # databases
-        # for Prabhupada
-        self._morning_walk_db = None
-        self._morning_walk_db_refresh = True
-        self._morning_walk_db_range = "SP-morning-walk!A2:J341"
-
-    @property
-    def morning_walk_db(self):
-        if self._morning_walk_db_refresh:
-
-            temp = download_data(5,self._morning_walk_db_range)
-            temp = pd.DataFrame(temp[1:],columns=temp[0])
-            for column in ['year','month','day',]:
-                temp[column] = pd.to_numeric(temp[column],errors='coerce')
-            
-            self._morning_walk_db = temp.copy()
-            self._morning_walk_db_refresh=False
-            return self._morning_walk_db
+        self.current_page = 'SP_SB'
         
-        else :
-            return self._morning_walk_db
-
-    
+        # databases
+        # for Prabhupada SB lectures
+        self._spsb_db_range = None
+        self._spsb_db = None
+        self._spsb_db_refresh = True                
+            
     @property
     def bdvapp(self):
-        return st.session_state.get('bdv_app',None)
+        return st.session_state['bdv_app']
 
 
-    def srila_prabhupada_page(self):
-        st.title("Srila Prabhupada Vaani")
-        section = st.radio("Choose",
-                           options=['Morning Walks'],
-                            horizontal=True,
-                            label_visibility='hidden',
-                            format_func=lambda x: f":green[{x}]")
+    def sp_SB_lectures(self):
+        st.header(":rainbow[Srila Prabhupada]")
+        st.title(":rainbow[SB Classes]")
         
-        if section == 'Morning Walks':
-            st.header(":blue[Morning Walks]")
-            
-            data = self.morning_walk_db
-            query_list = []
-
-            filteryear = st.select_slider("Year",
-                                         options=['all',*sorted(data.year.unique())]
-                                         )
-            if filteryear!='all':
-                data=data.query(f"year == {filteryear}")
-
-            filters = st.columns([1,1])
-
-            filtermonth = filters[0].selectbox("Month",
-                                               options=data['month-english'].unique())
-            
-            if filtermonth:
-                data = data.query(f" `month-english` == '{filtermonth}' ")
-            
-            filterplace = filters[1].selectbox("Place",
-                                                options=sorted(data.place.unique()),
-                                                )
-            if filterplace:
-                data = data.query(f" place == '{filterplace}' ")
-            
-            st.caption(f"Total {len(data)} records found")
-            data.insert(0,"Choose",False)
-
-            idf = st.data_editor(data,hide_index=True,
-                                 column_order=['Choose','place','date','title'])
-
-            idf=idf.query("Choose == True").reset_index(drop=True)
-            
-            if len(idf)>0:
-                
-                def freeze_status(status,timestamp,sheetrow):
-                    targetrange = f"SP-morning-walk!J{sheetrow}"
-                    data = download_data(5,targetrange)
-                    if data:
-                        data = json.loads(data[0][0])
-                    else:
-                        data={}
-                    data[self.bdvapp.userinfo['name']] = {'status':status,
-                                                            'timestamp':timestamp,
-                                                            'last_modified':datetime.datetime.now().strftime("%y-%b-%d-%a-%H:%M")}
-                    upload_data(5,
-                                targetrange,
-                                [[json.dumps(data)]])
-
-                    self._morning_walk_db_refresh=True
-
-                for row in range(len(idf)):
-                    if st.checkbox(idf.loc[row,'title']):
-                        st.audio(data = idf.loc[row,'URL'])
-                        left,middle,right = st.columns(3)
-                        status = left.radio("Status",
-                                          options=[':red[in progress]',
-                                                   ':green[completed]'],
-                                          key='statusradio'+str(row))
-                        with right:
-                            st.markdown("")
-                            st.markdown("")
-
-                        if status ==':red[in progress]':
-                            timestamp = middle.text_input("Timestamp",
-                                              key=f"timeinput{row}")
-                            if not timestamp:
-                                right.button("Freeze",disabled=True,
-                                             help='Must fill timestamp',
-                                             key=f"submit button {row}")
-                            else:
-                                right.button("Freeze",
-                                         on_click=freeze_status,
-                                         args=['iprogress',timestamp,idf.loc[row,'sheetrow']],
-                                         key=f"submit button {row}")
-                        else:
-                            middle.success("Jai Ho!!")
-                            value = download_data(5,f"SP-morning-walk!J9")
-                            right.button("Freeze Status",
-                                      on_click=freeze_status,
-                                      args=['done','full',idf.loc[row,'sheetrow']],
-                                      key=f"submit button {row}")
-                        
-                    st.divider()
-                                
-
-
-
-        else:
-            st.snow()
-            st.title("In progress...")
+        # Radio button for three pages
+        # 1. Your Selected playlist
+        # 2. SB Order as per canto, chapter text
+        # 3. Locate and hear
+        # 4. Lectures in progress
+        subsubpage_dict = {1:'Your Playlist',
+                           2:'Sorted by SB',
+                           3:'Lectures in Progress'}
+        subsubpage = st.radio("Choose a Section",
+                              options=range(1,len(subsubpage_dict.keys())-1),
+                              index=0,
+                              format_func=lambda x: subsubpage_dict[x],
+                              horizontal=True
+                              )
         
+        # now get the database for this series
+        # hearing database --> hdb
+        hdb = self._spsb_db
+        # and various values from these
+        # keep two broad division
+        # hearing db, and user 
+        if subsubpage == 1:
+            st.subheader(":rainbow[Your Playlist]")
+            # get the following functionality
+            """
+            Basically this is the currently active lecture which we plan to hear..
+            .. maybe in a week or in a month or as per devotee's choice
+            * create a new playlist
+            * reset a playlist (mark all as unheard)
+            * Empty the playlist
+            """
+            pass
+        elif subsubpage==2:
+            st.subheader(":rainbow[Sorted By Srimad Bhagavatam]")
+            """
+            * Show all canto, and how many remaining lectures
+            * Show active chapter and remaining lectures
+            * Show list of lectures based on active selection
+            """
+            pass
+        elif subsubpage ==3:
+            st.subheader(":rainbow[Lectures in Progress]")
+            """
+            Whatever lecture is marked as hearing will appear here
+            """
+            pass
+        
+        
+        
+    
+    def change_page(self,target_page):
+        """Change Page
+
+        Args:
+            target_page (page_id):
+        """
+        self.current_page = target_page
 
     def run(self):
         st.markdown(
@@ -163,6 +104,24 @@ class hearing_Class:
         """,
         unsafe_allow_html=True
         )
-        self.page_map[self.current_page]()
+        # display the available series in the sidebar
+        # Until one have completed Vaani syllabus
+        # Show vaani syllabus
+        # else show the other view
+        with st.sidebar:
+            with st.expander("DD Series"):
+                pass
+        
+        with st.sidebar:
+            with st.expander("Srila Prabhupada",expanded=True):
+                st.button("SB Lectures",on_click=self.change_page,args=['SP_SB'],
+                          type='primary' if self.current_page=='SP_SB' else 'secondary')
+                
+                st.button("Morning Walks",on_click=self.change_page,args=['SP_MW'],
+                          type='primary' if self.current_page=='SP_MW' else 'secondary')
 
+                st.button("Bhagwad Gita",on_click=self.change_page,args=['SP_BG'],
+                          type='primary' if self.current_page=='SP_BG' else 'secondary')
+        
+        self.page_map.get(self.current_page,'SP_SB')()
 # --------------- 
