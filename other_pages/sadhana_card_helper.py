@@ -84,10 +84,11 @@ def mytimeinput(question_data, showhelp,showmarks,_standardf):
             st.caption("Put in 24 h format lik 1830 for 6:30 pm")
             return -1
         else:
-            st.caption(displaytime)
+            marks = global_slookup(question_data['key'],value,_standardf)
             if showmarks:
-                marks = global_slookup(question_data['key'],value,_standardf)
-                st.caption(marks)
+                st.caption(f"{displaytime} -- {marks}")
+            else:
+                st.caption(f"{displaytime}")
             return value
 
 def display_weekly_filling(weekdf):
@@ -114,42 +115,44 @@ def daily_filling(qnadict, show_help_text,_show_marks,_standard_database):
     result = {}
     incomplete = False
     # morning program
-    with st.expander("Morning Program", expanded=True):
-        cols = st.columns(4)
-        for i, item in enumerate(["on_time", "sa", "morning_class", "mangal_aarti"]):
-            with cols[i]:
-                result[item] = mycheckbox(qnadict[item], show_help_text,_show_marks,_standard_dict)
+    st.markdown("#### :violet[Morning Program]")
+    cols = st.columns(4)
+    for i, item in enumerate(["on_time", "sa", "morning_class", "mangal_aarti"]):
+        with cols[i]:
+            result[item] = mycheckbox(qnadict[item], show_help_text,_show_marks,_standard_dict)
 
     result["japa_time"] = mytimeinput(qnadict["japa_time"], show_help_text,_show_marks,_standard_df)
 
     # reading
-    with st.expander("Reading", expanded=True):
-        left, right = st.columns(2)
-        with left:
-            result["sp_books"] = mynuminput(qnadict["sp_books"], show_help_text)
-        with right:
-            result["about_sp"] = mynuminput(qnadict["about_sp"], show_help_text)
+    st.markdown(":violet[Reading]")
+    left, right = st.columns(2)
+    with left:
+        result["sp_books"] = mynuminput(qnadict["sp_books"], show_help_text)
+    with right:
+        result["about_sp"] = mynuminput(qnadict["about_sp"], show_help_text)
+    
     # hearing
-    with st.expander("Hearing", expanded=True):
-        left, middle, right = st.columns(3)
-        with left:
-            result["hearing_sp"] = mynuminput(qnadict["hearing_sp"], show_help_text)
-            result["hearing_councellor"] = mynuminput(
-                qnadict["hearing_councellor"], show_help_text
-            )
+    st.markdown("#### :violet[Hearing]")
+    left, middle, right = st.columns(3)
+    with left:
+        result["hearing_sp"] = mynuminput(qnadict["hearing_sp"], show_help_text)
 
-        with middle:
-            result["hearing_hhrnsm"] = mynuminput(
-                qnadict["hearing_hhrnsm"], show_help_text
-            )
-            result["hearing_other"] = mynuminput(
-                qnadict["hearing_other"], show_help_text
-            )
+    with middle:
+        result["hearing_hhrnsm"] = mynuminput(
+            qnadict["hearing_hhrnsm"], show_help_text
+        )
+        result["hearing_hgrsp"] = mynuminput(
+            qnadict["hearing_hgrsp"], show_help_text
+        )
 
-        with right:
-            result["hearing_hgrsp"] = mynuminput(
-                qnadict["hearing_hgrsp"], show_help_text
-            )
+    with right:
+        result["hearing_councellor"] = mynuminput(
+            qnadict["hearing_councellor"], show_help_text
+        )
+        result["hearing_other"] = mynuminput(
+            qnadict["hearing_other"], show_help_text
+        )
+
     # shloka
     result["shloka"] = st.radio(
         qnadict["shloka"]["title"], options=[0, 1, 2, 3], horizontal=True
@@ -157,26 +160,27 @@ def daily_filling(qnadict, show_help_text,_show_marks,_standard_database):
     result["shayan_kirtan"] = mycheckbox(qnadict["shayan_kirtan"], show_help_text,False,_standard_dict)
 
     # body
-    with st.expander("Shayan", expanded=True):
-        columns = st.columns(3)
-        with columns[0]:
-            result["wake_up"] = mytimeinput(qnadict["wake_up"], show_help_text,_show_marks,_standard_df)
-        with columns[1]:
-            result["to_bed"] = mytimeinput(qnadict["to_bed"], show_help_text,_show_marks,_standard_df)
-        with columns[2]:
-            result["day_rest"] = mynuminput(qnadict["day_rest"], show_help_text,_show_marks,_standard_df)
+    st.markdown("#### :violet[Shayan]")
+    columns = st.columns(3)
+    with columns[0]:
+        result["wake_up"] = mytimeinput(qnadict["wake_up"], show_help_text,_show_marks,_standard_df)
+    with columns[1]:
+        result["to_bed"] = mytimeinput(qnadict["to_bed"], show_help_text,_show_marks,_standard_df)
+    with columns[2]:
+        result["day_rest"] = mynuminput(qnadict["day_rest"], show_help_text,_show_marks,_standard_df)
 
-    with st.expander("", expanded=True):
-        left, right = st.columns(2)
-        with left:
-            result["pc"] = mycheckbox(qnadict["pc"], show_help_text,_show_marks,_standard_dict)
-        with right:
-            result["fsc"] = mycheckbox(qnadict["fsc"], show_help_text,_show_marks,_standard_dict)
+    st.divider()
+    left, right = st.columns(2)
+    with left:
+        result["pc"] = mycheckbox(qnadict["pc"], show_help_text,_show_marks,_standard_dict)
+    with right:
+        result["fsc"] = mycheckbox(qnadict["fsc"], show_help_text,_show_marks,_standard_dict)
 
     required_columns = ["japa_time", "wake_up", "to_bed"]
     for column in required_columns:
         if result[column] == -1:
             incomplete = True
+            st.caption(f"Prabhuji you have not filled :red[{column.replace('_',' ')}]")
             break
     return incomplete, result
 
