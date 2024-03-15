@@ -539,7 +539,7 @@ class sadhana_card_class:
                                    }
                 scorecard.data_editor(alddf,
                            disabled=True,hide_index=True,
-                            column_config=mycolumn_config)
+                            column_config=mycolumn_config,key='_editor_df_group')
                 alldays_filled = alddf.loc[alddf['Days filled']==7,'Name'].tolist()
                 st.caption("Filled all 7 days")
                 st.write(alldays_filled)
@@ -588,7 +588,7 @@ class sadhana_card_class:
                                    }
                 scorecard.data_editor(alddf,
                            disabled=True,hide_index=True,
-                            column_config=mycolumn_config)   
+                            column_config=mycolumn_config,key='_editor_df_all_devotees')  
                 alldays_filled = alddf.loc[alddf['Days filled']==7,'Name'].tolist()
                 st.caption("Filled all 7 days")
                 st.write(alldays_filled)                     
