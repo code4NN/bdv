@@ -66,11 +66,16 @@ class login_Class:
         Loging page you could say
         """
         st.header(":green[Please Login to Continue]")
-
-        input_user_name = st.text_input("Enter Username",key='username').strip()
+        default_username = ''
+        default_password = ''
+        if self.bdv.userinfo:
+            default_username = self.bdv.userinfo['username']
+            default_password = self.bdv.userinfo['password']
+        input_user_name = st.text_input("Enter Username",key='username',value=default_username).strip()
         
         input_password = st.text_input("Enter Password",
                                         type='password',
+                                        value=default_password,
                                         key='password').strip()
         
         ## Verify username and password
@@ -83,7 +88,7 @@ class login_Class:
             if input_password == pswd:
                 
                 # get the user access details
-                self.bdvapp.userinfo = self.userdb[input_user_name]
+                self.bdvapp.userinfo = {'username':input_user_name,**self.userdb[input_user_name]}
                 try:
                     self.bdvapp.userinfo['roles'] = \
                     [role.strip() for role in self.bdvapp.userinfo['roles'].replace(" ","").split(",")]

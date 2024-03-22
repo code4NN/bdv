@@ -33,6 +33,12 @@ class myapp:
         # landing page
         self.current_page = 'login'
         
+        # query parameters
+        self.query_template = {'landing_page':'to',
+                             'username':'user',
+                             'password':'pass'}
+        self.handled_query_params = False
+        
         # User related data
         # Get's populated after login
         self.userinfo = None
@@ -64,8 +70,49 @@ class myapp:
                 # does not need login > directly run developer page
                 self.page_map[self.development_page].run()
 
-        # in production
+        # in production        
         else:
+            
+            # handling query parameters
+            if not self.handled_query_params:
+                query_params = st.query_params
+                
+                # for username and password
+                if self.query_template['username'] in query_params.keys() and \
+                    self.query_template['password'] in query_params.keys():
+                    username = query_params[self.query_template['username']]
+                    password = query_params[self.query_template['password']]
+                    
+                    login_page = self.page_map['login']
+                    userdb = login_page.userdb
+                    
+                    if username in userdb.keys():
+                        if password == userdb[username]:
+                            # success
+                            self.userdb = {'username':username,**userdb[username]}
+                            try:
+                                    self.userinfo['roles'] = \
+                                    [role.strip() for role in self.userinfo['roles'].replace(" ","").split(",")]
+                                    self.userinfo['group'] = \
+                                    [role.strip() for role in self.userinfo['group'].replace(" ","").split(",")]
+                            except:
+                                    self.userinfo['roles'] = ['some_error']
+                                    self.userinfo['group'] = ['some_error']
+                
+                # now allow access based on user access
+                if self.query_template['landing_page'] in query_params.keys():
+                    
+                    # for sadhana card ?to=sc
+                    if query_params[self.query_template['landing_page']] == 'sc':
+                        # prabhuji wants to go to sadhana card
+                        # check if he have the access
+                        if 'hgprgp_councelle' in self.userinfo['group']:
+                            # allows access
+                            self.current_page = 'sadhana_card'
+                
+                st.query_params.clear()
+                self.handled_query_params = True
+            
             self.page_map[self.current_page].run()
 
 # End of My App Class

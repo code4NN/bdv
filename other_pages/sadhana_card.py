@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from datetime import timedelta
 from other_pages.googleapi import download_data,upload_data
-from other_pages.sadhana_card_helper import daily_filling, evaluate_weekly_summary
+from other_pages.sadhana_card_helper import daily_filling, display_group_all_summary, evaluate_weekly_summary
 from other_pages.sadhana_card_helper import display_weekly_filling
 from other_pages.sadhana_card_helper import extract_week_summary
 from other_pages.sadhana_card_helper import verify_time
@@ -247,13 +247,22 @@ class sadhana_card_class:
             st.divider()
             update_formatted_msg = st.checkbox("Update Format Message",key='_chb_update_format_msg')
             if update_formatted_msg:
-                _default_ = '' if scuserinfo['formatted_msg'] == 'empty' else scuserinfo['formatted_msg']
+                _default_ = \
+                """So Prji
+                You create a template of the daily message you send to Prabhuji.
+                you can choose the placeholder from mandatory and optional fields
+                which are filled from the sadhana card you have filled.
+                you need not delete this. just write your message below this line
+                ------------------------------------""" if scuserinfo['formatted_msg'] == 'empty' else scuserinfo['formatted_msg']
                 messageinput = st.text_area("Enter your formatted message",height=800,
                                             value=_default_)
+                messageinput =  messageinput.replace(_default_,'')
+                
                 mandatory_field = ['<japa>',"<wake>",'<tobed>','<dr>']
                 mandatory_exists = [f':green[{i}]' if messageinput.__contains__(i) else f':red[{i}]' for i in mandatory_field]
                 
-                optional_field = ['<hear_hgrsp>','<hear_sp>','<hear_hhrnsm>']
+                optional_field = ['<hear_sp>','<hear_hhrnsm>','<hear_hgrsp>','<hear_Prji>','<total_hearing>',
+                                  '<reading_sp>','<reading_about_sp>','<total_reading>']
                 optional_exists = [f':green[{i}]' if messageinput.__contains__(i) else f':red[{i}]' for i in optional_field]
                 
                 # verify all the mandatory fields are present
@@ -279,6 +288,16 @@ class sadhana_card_class:
                     st.button("Update",on_click=_update_format_message,args=[scuserinfo,messageinput])
                 return
 
+            
+            # direct link to this page
+            if st.checkbox("Get direct link to Sadhana Card filling page"):
+                baseurl = 'https://bdv-voice.streamlit.app/?'
+                query_template = self.bdv.query_template
+                suffixes = '&'.join([f"{query_template['username']}={self.bdv.userinfo['username']}",
+                            f"{query_template['password']}={self.bdv.userinfo['password']}",
+                            f"{query_template['landing_page']}=sc",
+                            ])
+                st.markdown(f"Copy this [{baseurl}{suffixes}]({baseurl+suffixes})")
 
         scmetadata = scdatabase['meta']
         
@@ -384,13 +403,24 @@ class sadhana_card_class:
                 
                 # duration waale fields
                 for find,replace in {'<dr>':'day_rest',
-                                     '<hear_hgrsp>':'hearing_hgrsp',
                                      '<hear_sp>':'hearing_sp',
-                                     '<hear_hhrnsm>':'hearing_hhrnsm'}.items():
+                                     '<hear_hhrnsm>':'hearing_hhrnsm',
+                                     '<hear_hgrsp>':'hearing_hgrsp',
+                                     '<hear_Prji>':'hearing_councellor',
+                                     '<reading_sp':'sp_books',
+                                     '<reading_about_sp>':'about_sp',
+                                     }.items():
                     duration = todays_dict[replace]
                     _format_message = _format_message.replace(find,f'{duration} min')
+                
+                # the totals
+                total_reading = f"{int(todays_dict['sp_books']) + int(todays_dict['about_sp'])} min"
+                total_hearing = f"{int(todays_dict['hearing_sp']) + int(todays_dict['hearing_hhrnsm']) \
+                    +int(todays_dict['hearing_hgrsp']) + int(todays_dict['hearing_councellor'])} min"
+                _format_message.replace('<total_reading>',total_reading)
+                _format_message.replace('<total_hearing>',total_hearing)
                 # st.markdown(_format_message)
-                    prji_ka_phone = st.secrets['numbers']['hgprgp']
+                prji_ka_phone = st.secrets['numbers']['hgprgp']
                 st.markdown(f"[Send message](https://wa.me/91{prji_ka_phone}?text={quote_plus(_format_message)})")
 
             st.success("You have already filled for this date")
@@ -500,8 +530,10 @@ class sadhana_card_class:
                     ignore_list.append(key)
             not_filled = []
             all_devotee_together_dict = {}
+            filling_summary = {}
             # st.write(all_sc_this_week)
             _have_no_data = True
+            
             for name, data in all_sc_this_week.items():
                 if name in ignore_list:
                     continue
@@ -509,45 +541,27 @@ class sadhana_card_class:
                     not_filled.append(name)
                 else:
                     _have_no_data = False
-                    converted2dict = json.loads(data[0])['summary']
+                    week_ka_data = json.loads(data[0])
+                    converted2dict = week_ka_data['summary']
                     all_devotee_together_dict[name] = extract_week_summary(name,converted2dict)
+                    
+                    # get the exact days which are filled
+                    filled_days = [datetime.strptime(f"{d}-2024",'%b-%d-%Y').strftime("%a") for d in week_ka_data['data'].keys()]
+                    filling_summary[name] = [d in filled_days for d in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']]
+                    
             st.markdown(f"### Group: :green[{my_group_name}]")
-            st.markdown("Not Filled by")
-            st.write(not_filled)
             if _have_no_data == True:
                 st.warning("No one have filled")
             else:
-            # st.write(all_devotee_together_dict)
-                alddf = pd.DataFrame.from_dict(all_devotee_together_dict,orient='index')
-                scorecard = st.empty()
-                st.markdown("### Toppers")
-                for i in ['Japa','Reading','Hearing','Total']:
-                    _topper = alddf.at[alddf[i].idxmax(),'Name']
-                    _value = alddf.loc[alddf['Name']==_topper,i].tolist()[0]
-                    if _value < 1:
-                        _value = f'{int(_value * 100)} %'
-                    st.markdown(f"#### {i}: :green[{_topper}] ({_value})")
-                
-                percentcols = ['Japa','Body','Soul','Total','To Bed','Wake Up','Day Rest']
-                alddf[percentcols] = alddf[percentcols]*100
-                mycolumn_config = {col:st.column_config.NumberColumn(col,format="%.0f %%") for col in percentcols}
-                mycolumn_config = {**mycolumn_config,
-                                   'Reading':st.column_config.NumberColumn("Reading",format="%.0f min"),
-                                   'Hearing':st.column_config.NumberColumn("Hearing",format="%.0f min"),
-                                   'Days filled':st.column_config.NumberColumn("days filled",format="%.0f days"),
-                                   }
-                scorecard.data_editor(alddf,
-                           disabled=True,hide_index=True,
-                            column_config=mycolumn_config)
-                alldays_filled = alddf.loc[alddf['Days filled']==7,'Name'].tolist()
-                st.caption("Filled all 7 days")
-                st.write(alldays_filled)
+                # st.write(all_devotee_together_dict)
+                display_group_all_summary(all_devotee_together_dict,filling_summary)
 
         with _allsc:
             # st.write(all_sc_this_week)
             ignore_list = ['row_number','week_id','summary']
             not_filled = []
             all_devotee_together_dict = {}
+            filling_summary = {}
             _have_not_data = True
             for name, data in all_sc_this_week.items():
                 if name in ignore_list:
@@ -558,39 +572,16 @@ class sadhana_card_class:
                     _have_not_data = False
                     converted2dict = json.loads(data[0])['summary']
                     all_devotee_together_dict[name] = extract_week_summary(name,converted2dict)
-            # st.write(all_devotee_together_dict)
-            st.markdown("Not Filled by")
-            st.write(not_filled)
+                    
+                    # get the exact days which are filled
+                    filled_days = [datetime.strptime(f"{d}-2024",'%b-%d-%Y').strftime("%a") for d in week_ka_data['data'].keys()]
+                    filling_summary[name] = [d in filled_days for d in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']]
+                     
             if _have_not_data == True:
                 st.warning("No one have filled")
             else:
-                alddf = pd.DataFrame.from_dict(all_devotee_together_dict,orient='index')
-                scorecard = st.empty()
-                st.markdown("### Toppers")
-                for i in ['Japa','Reading','Hearing','Total']:
-                    _topper = alddf.at[alddf[i].idxmax(),'Name']
-                    _value = alddf.loc[alddf['Name']==_topper,i].tolist()[0]
-                    if _value < 1:
-                        _value = f'{int(_value * 100)} %'
-                    else:
-                        _value = f"{round(_value)} minutes"
-                    st.markdown(f"#### {i}: :green[{_topper}] ({_value})")
+                display_group_all_summary(all_devotee_together_dict,filling_summary)
                 
-                # now for displaying the summary
-                percentcols = ['Japa','Body','Soul','Total','To Bed','Wake Up','Day Rest']
-                alddf[percentcols] = alddf[percentcols]*100
-                mycolumn_config = {col:st.column_config.NumberColumn(col,format="%.0f %%") for col in percentcols}
-                mycolumn_config = {**mycolumn_config,
-                                   'Reading':st.column_config.NumberColumn("Reading",format="%.0f min"),
-                                   'Hearing':st.column_config.NumberColumn("Hearing",format="%.0f min"),
-                                   'Days filled':st.column_config.NumberColumn("days filled",format="%.0f days"),
-                                   }
-                scorecard.data_editor(alddf,
-                           disabled=True,hide_index=True,
-                            column_config=mycolumn_config)   
-                alldays_filled = alddf.loc[alddf['Days filled']==7,'Name'].tolist()
-                st.caption("Filled all 7 days")
-                st.write(alldays_filled)                     
 
         with _standards:
             st.markdown("This section describes various targets for the two Sadhana Card")

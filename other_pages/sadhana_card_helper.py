@@ -107,6 +107,51 @@ def display_weekly_filling(weekdf):
     dfdisplay.columns = [i.replace('_'," ").upper() for i in dfdisplay.columns]
     st.data_editor(dfdisplay,disabled=True)
 
+def display_group_all_summary(week_data_dict,filling_summary_dict):
+    """
+    input: data of a week in dictionary format
+    output: displays"""
+    # display the filling summary first
+    fillingdf = pd.DataFrame.from_dict(filling_summary_dict,orient='index')
+    fillingdf.columns = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+    
+    def red_green(val):
+        color = '#00FF00' if val else '#FF0000'  # Green: #00FF00, Red: #FF0000
+        return f'color: {color}'
+
+    # Apply style to DataFrame
+    st.data_editor(fillingdf.style.applymap(red_green),disabled=True)
+    fillingdf['total'] = fillingdf.sum(axis=1)
+    filled_7days = ":green[, ]".join([f":green[{i}]" for i in fillingdf.query("total==7").index.tolist()])
+    filled_01days = ":red[, ]".join([f":green[{i}]" for i in fillingdf.query("total<2").index.tolist()])
+    st.markdown(f"#### Filled 7 days: {filled_7days}")
+    st.markdown(f"#### Filled at max one day: {filled_01days}")
+    
+    #---------------------------------------------------
+    alddf = pd.DataFrame.from_dict(week_data_dict,orient='index')
+    scorecard = st.empty()
+    st.markdown("### Toppers")
+    for i in ['Japa','Reading','Hearing','Total']:
+        _topper = alddf.at[alddf[i].idxmax(),'Name']
+        _value = alddf.loc[alddf['Name']==_topper,i].tolist()[0]
+        if _value < 1:
+            _value = f'{int(_value * 100)} %'
+        st.markdown(f"#### {i}: :green[{_topper}] ({_value})")
+    
+    percentcols = ['Japa','Body','Soul','Total','To Bed','Wake Up','Day Rest']
+    alddf[percentcols] = alddf[percentcols]*100
+    mycolumn_config = {col:st.column_config.NumberColumn(col,format="%.0f %%") for col in percentcols}
+    mycolumn_config = {**mycolumn_config,
+                        'Reading':st.column_config.NumberColumn("Reading",format="%.0f min"),
+                        'Hearing':st.column_config.NumberColumn("Hearing",format="%.0f min"),
+                        'Days filled':st.column_config.NumberColumn("days filled",format="%.0f days"),
+                        }
+    
+    alddf.index = alddf['Name']
+    scorecard.data_editor(alddf.drop(columns='Name'),
+                disabled=True,
+                column_config=mycolumn_config)
+
 def daily_filling(qnadict, show_help_text,_show_marks,_standard_database):
 
     _standard_dict = _standard_database['dict']
