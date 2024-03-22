@@ -1,19 +1,24 @@
 import streamlit as st
 import pandas as pd
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+from streamlit.components.v1 import html
+st.markdown(
+    """
+    <style>
+    [data-testid="baseButton-header"] {
+        visibility: hidden;
+    }
+    [data-testid="stHeader"] {
+    background-color: #365069;
+    color: white;
+    }
+    footer {
+    background-color: #365069;
+    color: white;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 
 
