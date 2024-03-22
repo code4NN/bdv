@@ -27,6 +27,7 @@ db_list = {1:db_primary,
 
 # credentials
 credentials_info = st.secrets['service_account']
+sc_credentialinfo = st.secrets['service_acc_sc']
 SCOPE = [
     "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/drive",
@@ -36,7 +37,11 @@ SCOPE = [
 # ========================= Some constants end
 def _get_wb(db_id):
     if f'spreadsheet{db_id}' not in st.session_state:
-            gc = gspread.authorize(ServiceAccountCredentials.from_json_keyfile_dict(credentials_info,SCOPE))
+            if db_id ==2:
+                gc = gspread.authorize(ServiceAccountCredentials.from_json_keyfile_dict(sc_credentialinfo,SCOPE))
+            else:    
+                gc = gspread.authorize(ServiceAccountCredentials.from_json_keyfile_dict(credentials_info,SCOPE))
+
             workbook = gc.open_by_key(db_list[db_id])
             st.session_state[f'spreadsheet{db_id}'] = workbook
             # workbook.worksheet('jai').update(values=[[]],range_name='',raw=False)

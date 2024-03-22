@@ -76,6 +76,7 @@ class sadhana_card_class:
             _userinfo_db['other_users'] = finaluserdict
 
             self._userinfo_db = _userinfo_db
+            self._userinfo_db_refresh = False
             return self._userinfo_db
         else:
             return self._userinfo_db
