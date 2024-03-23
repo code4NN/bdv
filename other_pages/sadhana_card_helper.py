@@ -166,7 +166,7 @@ def display_group_all_summary(week_data_dict,filling_summary_dict,display_key):
         st.data_editor(alddf.drop(columns='Name'),
                     disabled=True,
                     column_config=mycolumn_config,
-                    key=display_key+"score_table")
+                    key=display_key+"score_table",)
 
 def daily_filling(qnadict, show_help_text,_show_marks,_standard_database):
 
