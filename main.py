@@ -169,6 +169,9 @@ try:
     background-color: #365069;
     color: white;
     }
+    a[href="https://streamlit.io/cloud"] {
+    display: none;
+    }
     </style>
     """,
     unsafe_allow_html=True
