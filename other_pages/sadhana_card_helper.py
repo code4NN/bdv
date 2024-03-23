@@ -106,7 +106,7 @@ def display_weekly_filling(weekdf):
     dfdisplay = weekdf[batch]
     dfdisplay.columns = [i.replace('_'," ").upper() for i in dfdisplay.columns]
     st.data_editor(dfdisplay,disabled=True)
-    st.markdown(f"##### birds eye view")
+    st.markdown(f"##### :gray[birds eye view]")
     st.markdown(f"""* :gray[Srila Prabhupada:] :orange[{weekdf['hearing_sp'].sum()} min]""")
     st.markdown(f"* :gray[HH Radhanath Swami Maharaj:] :orange[{weekdf['hearing_hhrnsm'].sum()} min]")
     st.markdown(f"* :gray[HG Radheshyam Pr:] :orange[{weekdf['hearing_hgrsp'].sum()} min]")
