@@ -486,7 +486,7 @@ class sadhana_card_class:
             weekdata = weekdatabase['data']
             weeksummary = weekdatabase['summary']
         
-        st.header(f"For :green[{active_weekname}]")
+        st.header(f":gray[For] :green[{active_weekname}]")
         _mysc,_mygroup,_allsc,_standards =st.tabs(["My Sadhana Scores",'Group',"All", "Standards"])
         
         with _mysc:
@@ -516,19 +516,22 @@ class sadhana_card_class:
                         f"{weeksummary['all']['japa_time']['%']:.0%}")
                 st.divider()
                 st.markdown(
-        f"""#### Hearing :green[{weeksummary['summary']['hearing']['achieved']} min] out of :red[{weeksummary['summary']['hearing']['target']}] min""")
+        f"""#### :gray[Hearing] :green[{weeksummary['summary']['hearing']['achieved']} min] out of :red[{weeksummary['summary']['hearing']['target']}] min""")
                 st.markdown(
-        f"""#### Reading :green[{weeksummary['summary']['reading']['achieved']} min] out of :red[{weeksummary['summary']['reading']['target']}] min""")
+        f"""#### :gray[Reading] :green[{weeksummary['summary']['reading']['achieved']} min] out of :red[{weeksummary['summary']['reading']['target']}] min""")
 
         with _mygroup:
             userinfo = self.scuserinfo
             my_group_name = userinfo['info']['scgroup']
+            selected_group = st.radio("Choose Group",
+                                      options=['Govind','Gopinath','Damodar'],
+                                      horizontal=True,
+                                      format_func=lambda x: x if x!=my_group_name else f"{x} (your group)")
             ignore_list  = ['row_number','week_id','summary']
 
             for key,value in userinfo['other_users'].items():
-                if value != my_group_name:
+                if value != selected_group:
                     ignore_list.append(key)
-            not_filled = []
             all_devotee_together_dict = {}
             filling_summary = {}
             # st.write(all_sc_this_week)
@@ -536,10 +539,13 @@ class sadhana_card_class:
             
             for name, data in all_sc_this_week.items():
                 if name in ignore_list:
+                    # ignore this column
                     continue
                 elif data[0] == '':
-                    not_filled.append(name)
+                    # not filled even single day
+                    filling_summary[name] = [False for d in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']]
                 else:
+                    # regular case
                     _have_no_data = False
                     week_ka_data = json.loads(data[0])
                     converted2dict = week_ka_data['summary']
@@ -549,9 +555,10 @@ class sadhana_card_class:
                     filled_days = [d.split(" ")[-1] for d in week_ka_data['data'].keys()]
                     filling_summary[name] = [d in filled_days for d in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']]
                     
-            st.markdown(f"### Group: :green[{my_group_name}]")
+            st.markdown(f"### :gray[Group:] :green[{selected_group}]")
             if _have_no_data == True:
                 st.warning("No one have filled")
+                st.caption("At least one devotee should fill then only any score will appear")
             else:
                 # st.write(all_devotee_together_dict)
                 display_group_all_summary(all_devotee_together_dict,filling_summary,display_key='groupwise_display')
@@ -559,7 +566,6 @@ class sadhana_card_class:
         with _allsc:
             # st.write(all_sc_this_week)
             ignore_list = ['row_number','week_id','summary']
-            not_filled = []
             all_devotee_together_dict = {}
             filling_summary = {}
             _have_not_data = True
@@ -567,10 +573,11 @@ class sadhana_card_class:
                 if name in ignore_list:
                     continue
                 elif data[0] == '':
-                    not_filled.append(name)
+                    filling_summary[name] = [False for d in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']]
                 else:
                     _have_not_data = False
-                    converted2dict = json.loads(data[0])['summary']
+                    week_ka_data = json.loads(data[0])
+                    converted2dict = week_ka_data['summary']
                     all_devotee_together_dict[name] = extract_week_summary(name,converted2dict)
                     
                     # get the exact days which are filled
@@ -579,6 +586,7 @@ class sadhana_card_class:
                      
             if _have_not_data == True:
                 st.warning("No one have filled")
+                st.caption("At least one devotee should fill then only any score will appear")
             else:
                 display_group_all_summary(all_devotee_together_dict,filling_summary,display_key="all_sc")
                 

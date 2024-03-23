@@ -121,48 +121,57 @@ def display_group_all_summary(week_data_dict,filling_summary_dict,display_key):
     output: displays"""
     # display the filling summary first
     fillingdf = pd.DataFrame.from_dict(filling_summary_dict,orient='index')
+    if 'Sample' in fillingdf.index.tolist():
+        fillingdf = fillingdf.drop(index='Sample')
     fillingdf.index = fillingdf.index + " Pr"
     fillingdf.columns = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
     
     def color_true_green_false_red(val):
         # color = 'green' if val else 'red'
-        color = '#87ad7d' if val else '#e0a596'  # Green: #00FF00, Red: #FF0000        
+        color = '#076602' if val else '#660902'  # Green: #00FF00, Red: #FF0000        
         return f"background-color: {color}"
 
     # Apply style to DataFrame
     st.markdown("#### :gray[Sadhana Card filling summary]")
+    fillingdf.sort_index(ascending=True,inplace=True)
     st.data_editor(fillingdf.style.applymap(color_true_green_false_red),disabled=True,key=display_key+"_fill_table")
 
     fillingdf['total'] = fillingdf.astype('int').sum(axis=1)
-    filled_7days = ":green[, ]".join([f":green[{i}]" for i in fillingdf.query("total==7").index.tolist()])
-    filled_01days = ":red[, ]".join([f":green[{i}]" for i in fillingdf.query("total<2").index.tolist()])
-    st.markdown(f"#### :green[Filled 7 days:] {filled_7days}")
-    st.markdown(f"#### :red[Filled at max one day:] {filled_01days}")
+    filled_7days = ":gray[, ]".join([f":green[{i}]" for i in fillingdf.query("total==7").index.tolist()])
+    filled_01days = ":gray[, ]".join([f":red[{i}]" for i in fillingdf.query("total<2").index.tolist()])
+    st.markdown(f"#### :gray[Filled 7 days:] {filled_7days}")
+    st.markdown(f"#### :gray[Filled at max one day:] {filled_01days}")
     
     #---------------------------------------------------
     alddf = pd.DataFrame.from_dict(week_data_dict,orient='index')
     scorecard = st.empty()
-    st.markdown("### Toppers")
+    st.markdown("### :gray[Toppers]")
     for i in ['Japa','Reading','Hearing','Total']:
         _topper = alddf.at[alddf[i].idxmax(),'Name']
         _value = alddf.loc[alddf['Name']==_topper,i].tolist()[0]
         if _value < 1:
             _value = f'{int(_value * 100)} %'
-        st.markdown(f"#### {i}: :green[{_topper}] ({_value})")
+        st.markdown(f"#### :gray[{i}:] :rainbow[{_topper}] :orange[{_value}]")
     
-    percentcols = ['Japa','Body','Soul','Total','To Bed','Wake Up','Day Rest']
+    percentcols = ['Japa','Body','Soul','Total','To Bed','Wake Up']
     alddf[percentcols] = alddf[percentcols]*100        
-    mycolumn_config = {col:st.column_config.NumberColumn(col,format="%.0f %%") for col in percentcols}
+    # mycolumn_config = {col:st.column_config.NumberColumn(col,format="%.0f %%") for col in percentcols}
+    mycolumn_config = {col:st.column_config.ProgressColumn(col,
+                                                           format="%.0f %%",
+                                                           min_value=0,
+                                                           max_value=100,
+                                                           width='small') for col in percentcols}
     
     mycolumn_config = {**mycolumn_config,
                         'Reading':st.column_config.NumberColumn("Reading",format="%.0f min"),
                         'Hearing':st.column_config.NumberColumn("Hearing",format="%.0f min"),
-                        'Days filled':st.column_config.NumberColumn("days filled",format="%.0f days"),
+                        'Days filled':st.column_config.ProgressColumn("filled days",format="%.0f",width='small',min_value=0,max_value=7)
                         }
     
     alddf.index = alddf['Name']
     with scorecard.container():
         st.markdown("#### :gray[Sadhana Card Summary]")
+        alddf.sort_index(ascending=True,inplace=True)
         st.data_editor(alddf.drop(columns='Name'),
                     disabled=True,
                     column_config=mycolumn_config,
