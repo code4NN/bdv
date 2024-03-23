@@ -68,9 +68,9 @@ class login_Class:
         st.header(":green[Please Login to Continue]")
         default_username = ''
         default_password = ''
-        if self.bdv.userinfo:
-            default_username = self.bdv.userinfo['username']
-            default_password = self.bdv.userinfo['password']
+        if self.bdvapp.userinfo:
+            default_username = self.bdvapp.userinfo['username']
+            default_password = self.bdvapp.userinfo['password']
         input_user_name = st.text_input("Enter Username",key='username',value=default_username).strip()
         
         input_password = st.text_input("Enter Password",

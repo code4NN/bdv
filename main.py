@@ -74,6 +74,7 @@ class myapp:
         else:
             
             # handling query parameters
+            # st.write(st.query_params)
             if not self.handled_query_params:
                 query_params = st.query_params
                 
@@ -85,11 +86,11 @@ class myapp:
                     
                     login_page = self.page_map['login']
                     userdb = login_page.userdb
-                    
+
                     if username in userdb.keys():
-                        if password == userdb[username]:
+                        if password == userdb[username]['password']:
                             # success
-                            self.userdb = {'username':username,**userdb[username]}
+                            self.userinfo = {'username':username,**userdb[username]}
                             try:
                                     self.userinfo['roles'] = \
                                     [role.strip() for role in self.userinfo['roles'].replace(" ","").split(",")]
@@ -99,20 +100,19 @@ class myapp:
                                     self.userinfo['roles'] = ['some_error']
                                     self.userinfo['group'] = ['some_error']
                 
-                # now allow access based on user access
-                if self.query_template['landing_page'] in query_params.keys():
-                    
-                    # for sadhana card ?to=sc
-                    if query_params[self.query_template['landing_page']] == 'sc':
-                        # prabhuji wants to go to sadhana card
-                        # check if he have the access
-                        if 'hgprgp_councelle' in self.userinfo['group']:
-                            # allows access
-                            self.current_page = 'sadhana_card'
+                            # now allow access based on user access
+                            if self.query_template['landing_page'] in query_params.keys():
+                                
+                                # for sadhana card ?to=sc
+                                if query_params[self.query_template['landing_page']] == 'sc':
+                                    # prabhuji wants to go to sadhana card
+                                    # check if he have the access
+                                    if 'hgprgp_councelle' in self.userinfo['group']:
+                                        # allows access
+                                        self.current_page = 'sadhana_card'
                 
                 st.query_params.clear()
                 self.handled_query_params = True
-            
             self.page_map[self.current_page].run()
 
 # End of My App Class
@@ -155,6 +155,24 @@ st.set_page_config(**main_app.page_config)
 
 
 try:
+    st.markdown(
+    """
+    <style>
+    [data-testid="baseButton-header"] {
+        visibility: hidden;
+    }
+    [data-testid="stHeader"] {
+    background-color: #365069;
+    color: white;
+    }
+    footer {
+    background-color: #365069;
+    color: white;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
     main_app.run()
 
 except Exception as e:

@@ -106,26 +106,38 @@ def display_weekly_filling(weekdf):
     dfdisplay = weekdf[batch]
     dfdisplay.columns = [i.replace('_'," ").upper() for i in dfdisplay.columns]
     st.data_editor(dfdisplay,disabled=True)
+    st.markdown(f"##### birds eye view")
+    st.markdown(f"""* :gray[Srila Prabhupada:] :orange[{weekdf['hearing_sp'].sum()} min]""")
+    st.markdown(f"* :gray[HH Radhanath Swami Maharaj:] :orange[{weekdf['hearing_hhrnsm'].sum()} min]")
+    st.markdown(f"* :gray[HG Radheshyam Pr:] :orange[{weekdf['hearing_hgrsp'].sum()} min]")
+    st.markdown(f"* :gray[Reading SP books: ] :orange[{weekdf['sp_books'].sum()} min]")
+    st.markdown(f"* :gray[About SP: ] :orange[{weekdf['about_sp'].sum()} min]")
+    st.markdown(f"* :gray[Shloka:] :orange[{weekdf['shloka'].sum()}]")
+    st.markdown(f"* :gray[Total Day rest:] :orange[{weekdf['day_rest'].sum()} min]")
 
-def display_group_all_summary(week_data_dict,filling_summary_dict):
+def display_group_all_summary(week_data_dict,filling_summary_dict,display_key):
     """
     input: data of a week in dictionary format
     output: displays"""
     # display the filling summary first
     fillingdf = pd.DataFrame.from_dict(filling_summary_dict,orient='index')
+    fillingdf.index = fillingdf.index + " Pr"
     fillingdf.columns = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
     
-    def red_green(val):
-        color = '#00FF00' if val else '#FF0000'  # Green: #00FF00, Red: #FF0000
-        return f'color: {color}'
+    def color_true_green_false_red(val):
+        # color = 'green' if val else 'red'
+        color = '#87ad7d' if val else '#e0a596'  # Green: #00FF00, Red: #FF0000        
+        return f"background-color: {color}"
 
     # Apply style to DataFrame
-    st.data_editor(fillingdf.style.applymap(red_green),disabled=True)
-    fillingdf['total'] = fillingdf.sum(axis=1)
+    st.markdown("#### :gray[Sadhana Card filling summary]")
+    st.data_editor(fillingdf.style.applymap(color_true_green_false_red),disabled=True,key=display_key+"_fill_table")
+
+    fillingdf['total'] = fillingdf.astype('int').sum(axis=1)
     filled_7days = ":green[, ]".join([f":green[{i}]" for i in fillingdf.query("total==7").index.tolist()])
     filled_01days = ":red[, ]".join([f":green[{i}]" for i in fillingdf.query("total<2").index.tolist()])
-    st.markdown(f"#### Filled 7 days: {filled_7days}")
-    st.markdown(f"#### Filled at max one day: {filled_01days}")
+    st.markdown(f"#### :green[Filled 7 days:] {filled_7days}")
+    st.markdown(f"#### :red[Filled at max one day:] {filled_01days}")
     
     #---------------------------------------------------
     alddf = pd.DataFrame.from_dict(week_data_dict,orient='index')
@@ -139,8 +151,9 @@ def display_group_all_summary(week_data_dict,filling_summary_dict):
         st.markdown(f"#### {i}: :green[{_topper}] ({_value})")
     
     percentcols = ['Japa','Body','Soul','Total','To Bed','Wake Up','Day Rest']
-    alddf[percentcols] = alddf[percentcols]*100
+    alddf[percentcols] = alddf[percentcols]*100        
     mycolumn_config = {col:st.column_config.NumberColumn(col,format="%.0f %%") for col in percentcols}
+    
     mycolumn_config = {**mycolumn_config,
                         'Reading':st.column_config.NumberColumn("Reading",format="%.0f min"),
                         'Hearing':st.column_config.NumberColumn("Hearing",format="%.0f min"),
@@ -148,9 +161,12 @@ def display_group_all_summary(week_data_dict,filling_summary_dict):
                         }
     
     alddf.index = alddf['Name']
-    scorecard.data_editor(alddf.drop(columns='Name'),
-                disabled=True,
-                column_config=mycolumn_config)
+    with scorecard.container():
+        st.markdown("#### :gray[Sadhana Card Summary]")
+        st.data_editor(alddf.drop(columns='Name'),
+                    disabled=True,
+                    column_config=mycolumn_config,
+                    key=display_key+"score_table")
 
 def daily_filling(qnadict, show_help_text,_show_marks,_standard_database):
 

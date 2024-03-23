@@ -416,8 +416,7 @@ class sadhana_card_class:
                 
                 # the totals
                 total_reading = f"{int(todays_dict['sp_books']) + int(todays_dict['about_sp'])} min"
-                total_hearing = f"{int(todays_dict['hearing_sp']) + int(todays_dict['hearing_hhrnsm']) \
-                    +int(todays_dict['hearing_hgrsp']) + int(todays_dict['hearing_councellor'])} min"
+                total_hearing = f"{int(todays_dict['hearing_sp']) + int(todays_dict['hearing_hhrnsm'])+int(todays_dict['hearing_hgrsp']) + int(todays_dict['hearing_councellor'])} min"
                 _format_message.replace('<total_reading>',total_reading)
                 _format_message.replace('<total_hearing>',total_hearing)
                 # st.markdown(_format_message)
@@ -547,7 +546,7 @@ class sadhana_card_class:
                     all_devotee_together_dict[name] = extract_week_summary(name,converted2dict)
                     
                     # get the exact days which are filled
-                    filled_days = [datetime.strptime(f"{d}-2024",'%b-%d-%Y').strftime("%a") for d in week_ka_data['data'].keys()]
+                    filled_days = [d.split(" ")[-1] for d in week_ka_data['data'].keys()]
                     filling_summary[name] = [d in filled_days for d in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']]
                     
             st.markdown(f"### Group: :green[{my_group_name}]")
@@ -555,7 +554,7 @@ class sadhana_card_class:
                 st.warning("No one have filled")
             else:
                 # st.write(all_devotee_together_dict)
-                display_group_all_summary(all_devotee_together_dict,filling_summary)
+                display_group_all_summary(all_devotee_together_dict,filling_summary,display_key='groupwise_display')
 
         with _allsc:
             # st.write(all_sc_this_week)
@@ -575,13 +574,13 @@ class sadhana_card_class:
                     all_devotee_together_dict[name] = extract_week_summary(name,converted2dict)
                     
                     # get the exact days which are filled
-                    filled_days = [datetime.strptime(f"{d}-2024",'%b-%d-%Y').strftime("%a") for d in week_ka_data['data'].keys()]
+                    filled_days = [d.split(" ")[-1] for d in week_ka_data['data'].keys()]
                     filling_summary[name] = [d in filled_days for d in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']]
                      
             if _have_not_data == True:
                 st.warning("No one have filled")
             else:
-                display_group_all_summary(all_devotee_together_dict,filling_summary)
+                display_group_all_summary(all_devotee_together_dict,filling_summary,display_key="all_sc")
                 
 
         with _standards:
