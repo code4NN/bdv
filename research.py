@@ -37,12 +37,12 @@ if 'mydb' not in st.session_state:
                                         #   'amount':[],
                                         #   'date':[],
                                         #   'remark':[]}
-                                        {'category':[None],
+                                        {'$category':[None],
                                           'amount':[1],
                                           'date':[2],
                                           'remark':[3]}
                                         ),
-                        "mdata":{'category':{}},
+                        "mdata":{'$category':{}},
                         'root_bucket':['Kitchen',
                                        'Preaching',
                                         'Maintenance']}
@@ -62,7 +62,8 @@ def insert_new_category(parent_column,active_value):
     active value: the value in the column
     a new column will be generated with active_value
     """
-    new_column_name = active_value
+    previous_prefix,column_name = parent_column.split("$")
+    new_column_name = f"{previous_prefix+column_name[0].upper()}${active_value}"
     
     mdata[parent_column][active_value] = new_column_name
     mdata[new_column_name] = {}
@@ -137,10 +138,10 @@ def filter_dashboard(column_name,
 #                               input_df = df,
 #                               is_first_call = True)
 queries,selections = filter_dashboard(
-                column_name='category',
+                column_name='$category',
                 input_df = df,
                 is_first_call = True,
-                selection_list=['category'])
+                selection_list=['$category'])
 column_name,action = selections[-2:]
 is_last_column = True if column_name not in mdata.keys() or mdata[column_name] else False
 # st.write(queries)
