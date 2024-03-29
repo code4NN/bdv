@@ -1,24 +1,23 @@
 import streamlit as st
 import pandas as pd
-from streamlit.components.v1 import html
-st.markdown(
-    """
-    <style>
-    [data-testid="baseButton-header"] {
-        visibility: hidden;
-    }
-    [data-testid="stHeader"] {
-    background-color: #365069;
-    color: white;
-    }
-    footer {
-    background-color: #365069;
-    color: white;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+# st.markdown(
+#     """
+#     <style>
+#     [data-testid="baseButton-header"] {
+#         visibility: hidden;
+#     }
+#     [data-testid="stHeader"] {
+#     background-color: #365069;
+#     color: white;
+#     }
+#     footer {
+#     background-color: #365069;
+#     color: white;
+#     }
+#     </style>
+#     """,
+#     unsafe_allow_html=True
+# )
 
 
 
@@ -31,24 +30,6 @@ st.markdown(
 # st.write(df.columns.get_loc("category"))
 # df.insert(1,'newcolumn',-1)
 # st.dataframe(df)
-st.markdown(
-        f"""
-        <div style="position:relative;">
-            <input type="text" value="some random cate" id="copyText" readonly style="opacity:0;pointer-events:none;position:absolute;left:0;top:0;height:0;width:0;z-index:-1;">
-            <button onclick="copyToClipboard()" style="background-color:#4CAF50;color:white;padding:10px 20px;text-align:center;text-decoration:none;display:inline-block;font-size:16px;margin:4px 2px;cursor:pointer;border-radius:5px;">Copy Text</button>
-        </div>
-        <script>
-            function copyToClipboard() {{
-                var copyText = document.getElementById("copyText");
-                copyText.select();
-                copyText.setSelectionRange(0, 99999);
-                document.execCommand("copy");
-                alert("Text copied to clipboard: " + copyText.value);
-            }}
-        </script>
-        """,
-        unsafe_allow_html=True
-    )
 
 if 'mydb' not in st.session_state:
     sample_database = {"df":pd.DataFrame(
@@ -56,17 +37,18 @@ if 'mydb' not in st.session_state:
                                         #   'amount':[],
                                         #   'date':[],
                                         #   'remark':[]}
-                                        {'category':[None],
+                                        {'$category':[None],
                                           'amount':[1],
                                           'date':[2],
                                           'remark':[3]}
                                         ),
-                        "mdata":{'category':{'empty':True}},
+                        "mdata":{'$category':{}},
                         'root_bucket':['Kitchen',
-                                    #    'Preaching',
+                                       'Preaching',
                                         'Maintenance']}
     st.session_state['mydb'] = sample_database
-    
+
+st.caption("session_state")
 st.write(st.session_state)
 
 db = st.session_state['mydb']
@@ -75,36 +57,25 @@ mdata = db['mdata']
 df = db['df']
 
 def insert_new_category(parent_column,active_value):
-    if mdata[parent_column]['empty']:
-        mdata[parent_column] = {'empty':False,
-                                active_value:active_value}
-    else:
-        mdata[parent_column][active_value] = active_value
+    """
+    parent_column: the column for which we have put the filter
+    active value: the value in the column
+    a new column will be generated with active_value
+    """
+    previous_prefix,column_name = parent_column.split("$")
+    new_column_name = f"{previous_prefix+column_name[0].upper()}${active_value}"
+    
+    mdata[parent_column][active_value] = new_column_name
+    mdata[new_column_name] = {}
+        
     st.session_state['mydb']['mdata'] = mdata.copy()
     
     insert_index = df.columns.get_loc(parent_column) + 1
-    df.insert(insert_index,active_value,None)
+    df.insert(insert_index,new_column_name,None)
     st.session_state['mydb']['df'] = df.copy()
 
+st.caption("df")
 st.dataframe(df)
-st.write(df.category.unique().tolist())
-
-def ui_option_to_add_category(parent_name,option_selected):
-    pass
-    # if st.checkbox("Crete new Category"):
-        # if option_selected:
-        # if user_selection in input_df.columns:
-        #     st.caption(f":red[a column named `{user_selection}` already exists]")
-        #     st.caption("please modify the name")
-        #     new_category_name = left.text_input("category name",value=user_selection)
-        #     if new_category_name in input_df.columns:
-        #         st.caption("this name also already exists")
-        #     else:
-        #         right.button(f"+ {new_category_name} in {column_name}",on_click=insert_new_category,
-        #                 args=[column_name,new_category_name])
-        # else:
-        #     right.button(f"+ {user_selection} in {column_name}",on_click=insert_new_category,
-        #             args=[column_name,user_selection])
 
 def filter_dashboard(column_name,
                      input_df,
@@ -116,36 +87,70 @@ def filter_dashboard(column_name,
         - query_list
         - selection_list
     """
-    mydata = input_df.copy()
-    unique_values = mydata[column_name].unique().tolist() if mydata[column_name].nunique()>0 else []
-    unique_values = ['all',*unique_values] if is_first_call else ['all',*unique_values,'+']
+    unique_values = list(mdata[column_name].keys()) \
+                if column_name in mdata.keys() else []
+    unique_values = ['agg',*root_columns] if is_first_call else ['agg','raw',*unique_values,'+']
         
     user_selection = st.radio("label",
                                 options=unique_values,
                                 horizontal=True,
-                                label_visibility='hidden')
+                                label_visibility='hidden',
+                                format_func=lambda x: {'agg':":orange[Σ]",
+                                                       'raw':':green[i]',
+                                                       '+':":blue[\+ new]"}.get(x,f":gray[{x}]"))
     
+    # Show aggregate values on column_name
+    if user_selection == 'agg':
+        return query_list,[*selection_list,'agg']
+        
+    # show aggregate values on column_name
+    # Option to add sibling category
+    elif user_selection =='+':
+        new_category_name = st.text_input("Category _name")
+        if new_category_name:
+            st.button("Add",on_click=insert_new_category,args=[column_name,new_category_name])
+        
+        return query_list,[*selection_list,user_selection]
     
-    if mdata[column_name]['empty']:
+    elif user_selection == 'raw':
+        return query_list,[*selection_list,'raw']
+    
+    # Show aggregate values on column_name
+    # only comes on root_buckets
+    elif user_selection not in mdata[column_name].keys():
         # this column is a leaf node
         # add the option to insert new column
-        return [],[user_selection]
-    # 
-    if user_selection == 'all':
-        query_list = [*query_list]
-        selection_list = [*selection_list]
-        return query_list,selection_list
+        st.button("Add",on_click=insert_new_category,args=[column_name,user_selection])
+        return query_list,[*selection_list,'raw']
     
-    elif user_selection == '+':
-        pass
+    # sub_category possible
     else:
-        query_list = query_list.append(f" (`{column_name}` == '{user_selection}') ")
+        next_column = mdata[column_name][user_selection]
+        next_data = input_df.query(f"`{column_name}` == '{user_selection}' ")
         
-        next_data = mydata.query(query_list[-1])
-        next_column = mdata[user_selection]
-        next_unique_values = mydata[mdata].unique()
-        
-query,user_selection_list = filter_dashboard(
-                                column_name='category',
-                              input_df = df,
-                              is_first_call = True)
+        q2, s2 = filter_dashboard(column_name=next_column,
+                        input_df=next_data,
+                        is_first_call=False)
+        return [f"(`{column_name}`=='{user_selection}')",*q2],[user_selection,*s2]
+                            
+# query,user_selection_list = filter_dashboard(
+#                               column_name='category',
+#                               input_df = df,
+#                               is_first_call = True)
+queries,selections = filter_dashboard(
+                column_name='$category',
+                input_df = df,
+                is_first_call = True,
+                selection_list=['$category'])
+column_name,action = selections[-2:]
+is_last_column = True if column_name not in mdata.keys() or mdata[column_name] else False
+# st.write(queries)
+# st.write(selections)
+# st.caption(action)
+if action in ['agg','+']:
+    st.info(f"Show aggregate values on {column_name}")
+elif action == 'raw':
+    if is_last_column:
+        st.info("Show raw values ")
+    else:
+        st.info("get all the sub columns and show uptil raw")
