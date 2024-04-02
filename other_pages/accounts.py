@@ -10,7 +10,7 @@ from other_pages.googleapi import upload_data
 from other_pages.googleapi import append_data
 
 class account_Class:
-    def __init__(self) -> None:
+    def __init__(self):
         
         # sub page related information
         self.page_config = {'page_title': "BDV",
@@ -59,7 +59,10 @@ class account_Class:
             _income_database = download_data(4,self._income_database_range)
             _income_database = pd.DataFrame(_income_database[1:],columns=_income_database[0])
             
-            self._income_database = _income_database.copy()
+            metadata = dict(zip(_income_database['key'],_income_database['value']))
+            
+            self._income_database = {'df':_income_database.copy(),
+                                     'mdata':metadata}
             self._income_database_refresh = False
 
             return self._income_database
@@ -107,16 +110,18 @@ class account_Class:
         unsafe_allow_html=True
         )
 
-        incomedata = self.income_database
+        incomedatabase = self.income_database
+        incomedata = incomedatabase['df']
+        imdta = incomedatabase['mdata']
         # st.dataframe(incomedata)
 
-        metadata = dict(zip(incomedata['key'],incomedata['value']))        
+                
         # st.write(metadata)
         with st.sidebar:
             all_months = { index:monthname for index,monthname in enumerate(incomedata['month'].tolist()) if monthname!=''}
             active_index = st.radio("Choose Month",options=all_months.keys(),
                      format_func=lambda x: all_months[x],
-                     index=int(metadata['active_row']))
+                     index=int(imdta['active_row']))
             
         
         active_month_name = incomedata.month.tolist()[active_index]
@@ -296,11 +301,11 @@ class account_Class:
         
         with st.sidebar:
             st.divider()
-            st.header(f"Prepare Data for {metadata['next_month_name']}")
+            st.header(f"Prepare Data for {imdta['next_month_name']}")
             def update_next_month():
-                next_meta_data = [[metadata['next_month']],
-                                [metadata['next_year']],
-                                [metadata['next_row']]]
+                next_meta_data = [[imdta['next_month']],
+                                [imdta['next_year']],
+                                [imdta['next_row']]]
                 upload_data(4,'income!B2:B4',next_meta_data)
                 
 
@@ -313,15 +318,14 @@ class account_Class:
                 nextmonthdfjson = f"{nextmonthdf.to_json(orient='records')}"
 
                 upload_data(4,f"income!C{active_index+3}:E{active_index+3}",
-                            [[metadata['next_month_name'],nextmonthdfjson,f"{[]}"]])
+                            [[imdta['next_month_name'],nextmonthdfjson,f"{[]}"]])
                 self._income_database_refresh=True
                 st.session_state['next_month_checkbox'] = False
                 
             if st.checkbox("Are you Sure",key='next_month_checkbox'):
                 st.caption("This will create next month's data and activate also")
 
-                st.button(f"Create {metadata['next_month_name']}",on_click=update_next_month)
-            
+                st.button(f"Create {imdta['next_month_name']}",on_click=update_next_month)
 
     def expense_page(self):
         st.markdown(
