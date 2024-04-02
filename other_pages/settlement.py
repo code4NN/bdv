@@ -436,10 +436,13 @@ class settlement_Class:
                                     ])
         
         timelinedf = pd.DataFrame(timeline_array[1:],columns=timeline_array[0])
-        
-        timelinedf['date_actual'] = pd.to_datetime(timelinedf['date'],format="%b-%d, %a")
-        timelinedf.sort_values(by='date_actual',ascending=True,inplace=True)
-        timelinedf.drop(columns='date_actual',inplace=True)
+        # st.dataframe(timelinedf)
+        # print(timelinedf)
+        # print(pd.to_datetime(timelinedf['date'],errors='coerce'))
+        # timelinedf['date_actual'] = pd.to_datetime(timelinedf['date'],format="%b-%d, %a")
+
+        # timelinedf.sort_values(by='date_actual',ascending=True,inplace=True)
+        # timelinedf.drop(columns='date_actual',inplace=True)
         # timelinedf.index=timelinedf['date']
         # timelinedf.drop(columns=['date'],inplace=True)
         balance = [0]

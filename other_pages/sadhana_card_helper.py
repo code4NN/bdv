@@ -115,6 +115,42 @@ def display_weekly_filling(weekdf):
     st.markdown(f"* :gray[Shloka:] :orange[{weekdf['shloka'].sum()}]")
     st.markdown(f"* :gray[Total Day rest:] :orange[{weekdf['day_rest'].sum()} min]")
 
+def __sadhana_bands(val):
+    """
+    1. 6 hours and above
+    2. 4-6 hours
+    3. 2-4 hours
+    4. till 2 hours
+    """
+    if val >=360 :
+        color = '#68fc0d'
+    elif val >=240:
+        color = '#d9d336'
+    elif val >=120:
+        color ='#f06969'
+    else:
+        # less than 2 hours
+        color = '#fc000d'
+    return f"""background-color: {color}"""
+
+def __shloka_bands(val):
+    if val >= 3:
+        color ='#68fc0d'
+    elif val ==2:
+        color = '#d9d336'
+    elif val == 1:
+        color = '#f06969'
+    else :
+        color = '#fc000d'
+    return f"background-color: {color}"
+def __day_filled(val):
+    if val == 7:
+        color ='#68fc0d'
+    elif val <3:
+        color = '#fc000d'
+    else :
+        color = color = '#d9d336'
+    return f"background-color: {color}"
 def display_group_all_summary(week_data_dict,filling_summary_dict,display_key):
     """
     input: data of a week in dictionary format
@@ -134,7 +170,7 @@ def display_group_all_summary(week_data_dict,filling_summary_dict,display_key):
     # Apply style to DataFrame
     st.markdown("#### :gray[Sadhana Card filling summary]")
     fillingdf.sort_index(ascending=True,inplace=True)
-    st.data_editor(fillingdf.style.applymap(color_true_green_false_red),disabled=True,key=display_key+"_fill_table")
+    st.data_editor(fillingdf.style.map(color_true_green_false_red),disabled=True,key=display_key+"_fill_table")
 
     fillingdf['total'] = fillingdf.astype('int').sum(axis=1)
     filled_7days = ":gray[, ]".join([f":green[{i}]" for i in fillingdf.query("total==7").index.tolist()])
@@ -153,29 +189,61 @@ def display_group_all_summary(week_data_dict,filling_summary_dict,display_key):
             _value = f'{int(_value * 100)} %'
         st.markdown(f"#### :gray[{i}:] :rainbow[{_topper}] :orange[{_value}]")
     
-    percentcols = ['Japa','Body','Soul','Total','To Bed','Wake Up']
+    percentcols = ['Japa','Body','Soul','Total','To Bed','Wake Up','Day Rest']
     alddf[percentcols] = alddf[percentcols]*100        
     # mycolumn_config = {col:st.column_config.NumberColumn(col,format="%.0f %%") for col in percentcols}
-    mycolumn_config = {col:st.column_config.ProgressColumn(col,
-                                                           format="%.0f %%",
-                                                           min_value=0,
-                                                           max_value=100,
-                                                           width='small') for col in percentcols}
+    # mycolumn_config = {col:st.column_config.ProgressColumn(col,
+    #                                                        format="%.0f %%",
+    #                                                        min_value=0,
+    #                                                        max_value=100,
+    #                                                        width='small') for col in percentcols}
     
-    mycolumn_config = {**mycolumn_config,
-                        'Reading':st.column_config.NumberColumn("Reading",format="%.0f min"),
-                        'Hearing':st.column_config.NumberColumn("Hearing",format="%.0f min"),
-                        'Days filled':st.column_config.ProgressColumn("filled days",format="%.0f",width='small',min_value=0,max_value=7)
-                        }
+    # mycolumn_config = {**mycolumn_config,
+    #                     'Reading':st.column_config.NumberColumn("Reading",format="%.0f min"),
+    #                     'Hearing':st.column_config.NumberColumn("Hearing",format="%.0f min"),
+    #                     'Days filled':st.column_config.ProgressColumn("filled days",format="%.0f",width='small',min_value=0,max_value=7)
+    #                     }
     
     alddf.index = alddf['Name']
+    def format_percentage(value):
+        return '{:.0f}%'.format(value)
+
+    # for light theme
+    alddf[percentcols] = alddf[percentcols].astype('int')
+    styled_df = alddf[percentcols].style.map(lambda x: 'color:black;text-align:center')\
+    .highlight_between(left=80,right=100,color='#68fc0d',inclusive='both')\
+    .highlight_between(left=60,right=79,color='#d9d336',inclusive='both')\
+    .highlight_between(left=30,right=59,color='#f06969',inclusive='both')\
+    .highlight_between(left=-1000,right=29,color='#fc000d',inclusive='both').format(format_percentage)
     with scorecard.container():
+        markdown_text = """
+        ### :gray[Color Scheme]
+
+        - **80-100**: ![80-100](https://via.placeholder.com/15/68fc0d/000000?text=+) Green
+        - **60-79**: ![60-79](https://via.placeholder.com/15/d9d336/000000?text=+) Yellow
+        - **30-59**: ![30-59](https://via.placeholder.com/15/f06969/000000?text=+) Red
+        - **0-29**: ![0-29](https://via.placeholder.com/15/fc000d/000000?text=+) Dark Red
+        """
+
+        st.markdown(markdown_text, unsafe_allow_html=True)
+
+        st.markdown
         st.markdown("#### :gray[Sadhana Card Summary]")
         alddf.sort_index(ascending=True,inplace=True)
-        st.data_editor(alddf.drop(columns='Name'),
+        st.data_editor(styled_df,
                     disabled=True,
-                    column_config=mycolumn_config,
+                    # column_config=mycolumn_config,
                     key=display_key+"score_table",)
+        
+        if 'Shloka' in alddf.columns:
+            styled_df = alddf[['Reading', 'Hearing', 'Shloka', 'Days filled']].astype('int')
+            styled_df = styled_df.style.map(lambda x: 'color:black;text-align:center')\
+                        .map(subset=['Reading','Hearing'],func=__sadhana_bands)\
+                        .map(subset=['Shloka'],func=__shloka_bands)\
+                        .map(subset = ['Days filled'],func=__day_filled)
+            st.data_editor(styled_df,
+                           disabled=True,
+                           key=display_key + 'score_table_additional')
 
 def daily_filling(qnadict, show_help_text,_show_marks,_standard_database):
 
@@ -435,6 +503,7 @@ def extract_week_summary(name,wd):
 
     summary['Reading'] = wd['summary']['reading']['achieved']
     summary['Hearing'] = wd['summary']['hearing']['achieved']
+    summary['Shloka'] = wd['summary']['shloka']['achieved']
     summary['Days filled'] = wd['summary']['filled_days']['achieved']
     
     return summary
