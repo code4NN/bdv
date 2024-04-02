@@ -354,6 +354,8 @@ class account_Class:
 
         
         active_month_name = expensedata.month.tolist()[active_index]
+        
+        # divide from here
         active_monthdf = pd.read_json(expensedata['data'].tolist()[active_index],orient='records')
         department_dict = json.loads(metadata['department_dict'])
 
