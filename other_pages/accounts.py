@@ -23,7 +23,6 @@ class account_Class:
         }
         self.current_page = 'dashboard'
 
-
         # databases
         self._income_database = None
         self._income_database_refresh = True
@@ -31,12 +30,7 @@ class account_Class:
         # changes in db
         self._change_in_income_regular_db = 0
         self._change_in_income_others_db = 0
-    
-        self._expense_database = None
-        self._expense_database_refresh = True
-        self._expense_database_range = 'expense!A:D'
-        # Changes in db
-        self._chance_in_expense_db = 0
+
     
     @property
     def bdvapp(self):
@@ -69,30 +63,7 @@ class account_Class:
         else:
             return self._income_database
    
-    @property
-    def expense_database(self):
-        """
-        1. downloads the data if refresh is True
-        2. else returns the database
-        Actions
-            1. download and save in the class
-            3. set the refresh to False
-            4. return
-        """
-        if self._expense_database_refresh:
-            # download a fresh data
-            # update database and refresh to False
-            # return
-            _expense_database = download_data(4,self._expense_database_range)
-            _expense_database = pd.DataFrame(_expense_database[1:],columns=_expense_database[0])
-            
-            self._expense_database = _expense_database.copy()
-            self._expense_database_refresh = False
-
-            return self._expense_database
-        else:
-            return self._expense_database
-    
+   
     def _switch_page(self,page):
         self.current_page = page
     
@@ -340,24 +311,25 @@ class account_Class:
         """,
         unsafe_allow_html=True
         )
-        expensedata = self.expense_database
-        metadata = dict(zip(expensedata['key'],expensedata['value']))        
+        
+        expensedatbase = self.expense_database
+        metadata = expensedatbase['mdata']
+        month_list = expensedatbase['months']
+        data_list = expensedatbase['datas']
+        templatedb = expensedatbase['templatedb']
 
-        with st.sidebar:
-            all_months = { index:monthname for index,monthname in enumerate(expensedata['month'].tolist()) if monthname!=''}
-            active_index = st.radio("Choose Month",options=all_months.keys(),
-                     format_func=lambda x: all_months[x],
-                     index=int(metadata['active_row']))
+        with st.popover("⬅"):
+            active_index = st.radio("Choose Month",options=list(range(len(month_list))),
+                     format_func=lambda x: month_list[x],
+                     index=len(month_list)-1)
+            active_month_name = month_list[active_index]
 
         
         # st.write(metadata)
 
-        
-        active_month_name = expensedata.month.tolist()[active_index]
-        
+        return
         # divide from here
         active_monthdf = pd.read_json(expensedata['data'].tolist()[active_index],orient='records')
-        department_dict = json.loads(metadata['department_dict'])
 
         cols = st.columns(2)
         cols[0].button("Go to Income Page",on_click=self._switch_page,args=['income'])
@@ -377,7 +349,7 @@ class account_Class:
                     self._chance_in_expense_db = 0
             def _count_changes():
                 self._chance_in_expense_db +=1
-
+            return
             # def highlight_rows(row):
             #     light_green = '#1b6924'  # Light green color
             #     light_red = '#5e132a'    # Light red color
@@ -446,38 +418,7 @@ class account_Class:
             else:
                 st.button(f"Sync {self._chance_in_expense_db} Changes",
                           on_click=push_changes,args=[modified_month_df])
-            # st.button(f"Sync {self._chance_in_expense_db} Changes",
-            #             on_click=push_changes,args=[modified_month_df])
 
-
-        st.divider()
-        st.markdown("## :orange[New Entry]")
-        input_department=st.radio('Department',
-                 options=department_dict.keys(),
-                 horizontal=True
-        )
-        left,right = st.columns(2)
-        with left:
-            input_sub_department = st.radio("Sub Department",
-                                            options=[*department_dict[input_department],"OTHER"]
-                                            )
-            input_agenda = st.text_input("Agenda ",key='inp_agenda')
-            input_agenda = input_agenda.strip()
-
-        with right:
-            input_amount = st.number_input("How much ₹",
-                                           min_value=1,key='inp_amount')
-            
-            input_payment_date = st.date_input("Paid on")
-            input_payment_date = input_payment_date.strftime("%d-%b-%a-%y")
-            st.caption(input_payment_date)
-
-            input_remark = st.text_area("Remarks",height=30,key='inp_remark')
-            if not input_remark:
-                input_remark = "No remarks"
-            if not input_agenda:
-                st.button("Submit",disabled=True,help = 'Agenda cannot be blank')
-            else:
                 def add_an_expense(dpt,sb_dpt,agenda,amount,pmt_date,
                                    remark,is_first=False):
                     if is_first:
@@ -519,14 +460,6 @@ class account_Class:
                             st.session_state['inp_remark'] = ''                                                                                                
                             self._chance_in_expense_db = 0
                         
-                st.button("Submit",on_click=add_an_expense,
-                          args=[input_department,input_sub_department,
-                          input_agenda,input_amount,input_payment_date,input_remark,
-                          len(active_monthdf) == 0])
-        
-        matchingdf = active_monthdf.query(f" department == '{input_department}' and `sub department` == '{input_sub_department}' ")
-        st.caption(f" You have {len(matchingdf)} similar Previous expenses")
-        st.data_editor(matchingdf,disabled=True)
         
         with st.sidebar:
             st.divider()

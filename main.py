@@ -135,9 +135,9 @@ if 'bdv_app' not in st.session_state:
 # For development
 main_app = st.session_state['bdv_app']
 if main_app.in_development:
-    PAGE_DEVELOPING = 'sadhana_card'
-    PAGE_CLASS = sadhana_card_class()
-    SUB_PAGE_DEVELOPING = 'dashboard'
+    PAGE_DEVELOPING = 'dpt_accounts'
+    PAGE_CLASS = account_Class()
+    SUB_PAGE_DEVELOPING = 'expense'
 
 
     # tell which is my developement class
@@ -155,27 +155,28 @@ st.set_page_config(**main_app.page_config)
 
 
 try:
-    st.markdown(
-    """
-    <style>
-    [data-testid="baseButton-header"] {
-        visibility: hidden;
-    }
-    [data-testid="stHeader"] {
-    background-color: #365069;
-    color: white;
-    }
-    footer {
-    background-color: #365069;
-    color: white;
-    }
-    a[href="https://streamlit.io/cloud"] {
-    display: none;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+    if not main_app.in_development:
+        st.markdown(
+        """
+        <style>
+        [data-testid="baseButton-header"] {
+            visibility: hidden;
+        }
+        [data-testid="stHeader"] {
+        background-color: #365069;
+        color: white;
+        }
+        footer {
+        background-color: #365069;
+        color: white;
+        }
+        a[href="https://streamlit.io/cloud"] {
+        display: none;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
     main_app.run()
 
 except Exception as e:
