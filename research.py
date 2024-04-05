@@ -1,3 +1,4 @@
+from datetime import datetime
 import json
 import streamlit as st
 import pandas as pd
@@ -13,7 +14,7 @@ class monthdbclass:
       self.metadata = None
       self.new_column_id = None
       self.root_buckets = None
-      self._change_in_schema = 0
+      self._change_in_df = 0
 
       # cloud connect
       self._expense_database = None
@@ -34,6 +35,7 @@ class monthdbclass:
     finaldf = json.dumps({'df':dfjson,'metadata':metadatajson,'new_column_id':newcolidjson,
                           'root_bucket':buckets},indent=None)
     return finaldf  
+  
   @property
   def expense_database(self):
         """
@@ -58,11 +60,6 @@ class monthdbclass:
             # get the template month_database
             template_monthdb = json.loads(metadata['template_db'])
             template_monthdf = pd.read_json(template_monthdb['df'],orient='index')
-            # # 'agenda','amount','date','remark','paid_by'
-            # template_monthdf.insert(len(template_monthdf.columns),'agenda',None)
-            # # template_monthdf.insert(len(template_monthdf.columns),'amount',None)
-            # # template_monthdf.insert(len(template_monthdf.columns),'date',None)
-            # # template_monthdf.insert(len(template_monthdf.columns),'remark',None)
             # template_monthdf.insert(len(template_monthdf.columns),'paid_by',None)
             
             template_monthdb['df'] = template_monthdf
@@ -83,6 +80,7 @@ class monthdbclass:
             return self._expense_database
         else:
             return self._expense_database
+  
   def parse_month_db(self,monthdb):
     # get the dict
     monthdb = json.loads(monthdb)
@@ -117,7 +115,7 @@ class monthdbclass:
     
     insert_index = self.df.columns.get_loc(parent_column) + 1
     self.df.insert(insert_index,new_column_name,None)
-    self._change_in_schema += 1
+    self._change_in_df += 1
       
   def filter_dashboard(self,
                        column_name,
@@ -181,6 +179,13 @@ class monthdbclass:
     else:
       return {option:user_selection,**self.get_user_choice(user_selection,self.metadata[user_selection])}
   
+  def insert_an_entry(self,records):
+    newentry = {k:records[k] for k in self.df.keys()}
+    newentrydf = pd.DataFrame.from_records(newentry)
+    self.df = pd.concat([self.df, newentrydf],axis=0).reset_index(drop=True)
+    self._change_in_df += 1
+    st.session_state['enter_agenda'] = ''
+  
   def display(self):
     expensedatbase = self.expense_database
     templatedb = expensedatbase['templatedb']
@@ -199,7 +204,7 @@ class monthdbclass:
         self.metadata = None
         self.new_column_id = None
         self.root_buckets = None
-        self._change_in_schema = 0
+        self._change_in_df = 0
         
         # parse the db
         self._have_active_month_db = False
@@ -240,7 +245,7 @@ class monthdbclass:
         self.new_column_id = input_database['new_column_id']
         self.root_buckets = input_database['root_bucket']
         # st.write(json.loads(self.root_buckets))
-        self._change_in_schema = 0
+        self._change_in_df = 0
         
         # for column_name in self.root_buckets:
         #   self.insert_new_category('1Qcategory',column_name)
@@ -251,23 +256,24 @@ class monthdbclass:
                               self.df.copy(deep=True),True)
         st.dataframe(self.df)
       with right:
-        if self._change_in_schema >0:
+        if self._change_in_df >0:
           def sync_templatedb():
             current_database = self.current_database
             upload_data(4,self._template_database_range,[[current_database]])
-            self._change_in_schema = 0
-          st.button(f"Sync {self._change_in_schema} changes",type='primary',on_click=sync_templatedb)
+            self._change_in_df = 0
+          st.button(f"Sync {self._change_in_df} changes",type='primary',on_click=sync_templatedb)
         else:
           st.success("All up to date")
         st.write(self.current_database)
     else:
       active_month_database = self.active_month_db
+      
       if not self.data_defined:
         self.df = active_month_database['df']
         self.metadata = active_month_database['metadata']
         self.new_column_id = active_month_database['new_column_id']
         self.root_buckets = active_month_database['root_bucket']
-        self._change_in_schema = 0
+        self._change_in_df = 0
         self.data_defined = True
         
       with left:
@@ -279,13 +285,13 @@ class monthdbclass:
         if action in ['agg','+']:
             st.info(f"Show aggregate values on {column_name}")
             
-        elif action == 'raw':
-            if is_last_column:
-                st.info("Show raw values")
-            else:
-                st.info("get all the sub columns and show uptil raw")
         else:
-          pass
+          assert action == 'raw'
+          if is_last_column:
+              st.info("Show raw values")
+          else:
+              st.info("get all the sub columns and show uptil raw")
+        
         displaybox = st.empty()
       with right:
         requestbody = {}
@@ -302,7 +308,7 @@ class monthdbclass:
         
         # Typical inputs from user
         incomplete = 1
-        requestbody['agenda'] = st.text_input("Agenda")
+        requestbody['agenda'] = st.text_input("Agenda",key='enter_agenda')
         if not requestbody['agenda']:
           st.caption(":red[cannot be blank]")
           incomplete *=0
@@ -320,15 +326,28 @@ class monthdbclass:
             incomplete *=0
         requestbody['paid_by'] = paidby
         
+        requestbody['timestamp'] = datetime.now().strftime("%d-%b-%y %H%M")
+        
+        if incomplete==0:
+          st.button("Submit 🚀",disabled=True)
+        else:
+          st.button("Submit 🚀", on_click=self.insert_an_entry, args=[requestbody])
         # combine the results
         columns_to_show = [i for i in remaining_option.keys()]
-        columns_to_show = [*columns_to_show,'agenda','amount','date','remark','paid_by']
+        columns_to_show = [*columns_to_show,'agenda','amount','date','remark','paid_by','timestamp']
+        
         st.caption("have columns")
         st.write(columns_to_show)
         unusedbody = {i:-1 for i in self.df if i not in requestbody.keys()}
+        
         st.write(unusedbody)
         with displaybox:
-          st.dataframe(self.df)
+          if action == 'raw':
+            with st.popover("Customise columns"):
+              display_columns = st.multiselect("Choose Columns to display",options=columns_to_show,
+                                               default=columns_to_show)
+              columns_to_show = [i for i in columns_to_show if i in display_columns]            
+            st.dataframe(self.df)
                 
         
         
