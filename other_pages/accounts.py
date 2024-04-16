@@ -8,7 +8,7 @@ from st_aggrid import AgGrid, GridOptionsBuilder
 from other_pages.googleapi import download_data
 from other_pages.googleapi import upload_data
 from other_pages.googleapi import append_data
-from acc_expense_page import monthdbclass
+from other_pages.acc_expense_page import monthdbclass
 
 class account_Class:
     def __init__(self):
