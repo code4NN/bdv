@@ -9,6 +9,7 @@ from other_pages.finder import finder_Class
 from other_pages.accounts import account_Class
 from other_pages.hearing_tracker import hearing_Class
 from other_pages.lecture_notes import class_notes_Class
+from other_pages.thematic_encyclopaedia import sskkb
 
 
 
@@ -28,7 +29,8 @@ class myapp:
                          'finder': finder_Class(),
                          'dpt_accounts': account_Class(),
                          'heart_medicine': hearing_Class(),
-                         'revision': class_notes_Class()
+                         'revision': class_notes_Class(),
+                         'article_tag':sskkb()
                           }
         # landing page
         self.current_page = 'login'

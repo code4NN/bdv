@@ -125,7 +125,9 @@ class login_Class:
                         if 'acc_ic' in self.bdvapp.userinfo['roles']:
                             st.button("Accounts 📝",on_click=takemein,args=['dpt_accounts'],key='direct_login_accounts')
 
-
+                if self.bdvapp.userinfo['username'] == 'Shiven':
+                    st.divider()
+                    st.button("Article_tagging",on_click=takemein,args=['article_tag'])
 
             else:
                 st.error("Incorrect Password!!")
