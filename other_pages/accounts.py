@@ -8,6 +8,7 @@ from st_aggrid import AgGrid, GridOptionsBuilder
 from other_pages.googleapi import download_data
 from other_pages.googleapi import upload_data
 from other_pages.googleapi import append_data
+from acc_expense_page import monthdbclass
 
 class account_Class:
     def __init__(self):
@@ -21,6 +22,7 @@ class account_Class:
             'expense':self.expense_page,
             'dashboard':self.dashboard_page,
         }
+        self.expense_class = monthdbclass()
         self.current_page = 'dashboard'
 
         # databases
@@ -161,12 +163,13 @@ class account_Class:
              if name:
                 def add_new_name(name):
                     mydf = active_regular_df.copy()
-                    mydf=mydf.append({'Name':name,
-                                 'Amount':0,
-                                 'Account':'',
-                                 'Date of Payment':'',
-                                 'Remark':'',
-                                 'Status':'pending'},ignore_index=True)
+                    newdf = pd.DataFrame.from_dict({'Name':[name],
+                                 'Amount':[0],
+                                 'Account':[''],
+                                 'Date of Payment':[''],
+                                 'Remark':[''],
+                                 'Status':['pending']},orient='columns')
+                    mydf = pd.concat([mydf,newdf],axis=0).reset_index(drop=True)
                     if upload_data(4,
                                  f'income!D{active_index+2}',
                                  [[f"{mydf.to_json(orient='records')}"]]
@@ -246,11 +249,13 @@ class account_Class:
                                 st.session_state['other_key_5'] = ''
 
                         else:
-                            df = active_othersdf.append({"Name":name,
-                                    'Amount':amount,
-                                    'Account':account,
-                                    'Date of Payment':dateofpayment,
-                                    'Agenda or Remark':agenda},ignore_index=True)
+                            df = active_othersdf
+                            newdf = pd.DataFrame.from_dict({"Name":[name],
+                                    'Amount':[amount],
+                                    'Account':[account],
+                                    'Date of Payment':[dateofpayment],
+                                    'Agenda or Remark':[agenda]},orient='columns')
+                            df = pd.concat([active_othersdf,newdf],axis=0)
                             df.reset_index(drop=True,inplace=True)
 
                             dfjson = f"{df.to_json(orient='records')}"
@@ -299,189 +304,13 @@ class account_Class:
                 st.button(f"Create {imdta['next_month_name']}",on_click=update_next_month)
 
     def expense_page(self):
-        st.markdown(
-        """
-        <style>
-        .step-up,
-        .step-down {
-            display: none;
-        }
-        </style>
-        </style>
-        """,
-        unsafe_allow_html=True
-        )
-        
-        expensedatbase = self.expense_database
-        metadata = expensedatbase['mdata']
-        month_list = expensedatbase['months']
-        data_list = expensedatbase['datas']
-        templatedb = expensedatbase['templatedb']
-
-        with st.popover("⬅"):
-            active_index = st.radio("Choose Month",options=list(range(len(month_list))),
-                     format_func=lambda x: month_list[x],
-                     index=len(month_list)-1)
-            active_month_name = month_list[active_index]
-
-        
-        # st.write(metadata)
-
-        return
-        # divide from here
-        active_monthdf = pd.read_json(expensedata['data'].tolist()[active_index],orient='records')
-
+        self.expense_class.display()
+        st.divider()
         cols = st.columns(2)
         cols[0].button("Go to Income Page",on_click=self._switch_page,args=['income'])
         cols[1].button("Go to Dashboard Page",on_click=self._switch_page,args=['dashboard'])
-
-        st.markdown(f"## Expenses for :violet[{active_month_name}]")
         
-        if len(active_monthdf) == 0:
-            st.write("NO DATA")
-        else:
-            def push_changes(modified_data):
-                data2upload = f"{modified_data.to_json(orient='records')}"
-                if upload_data(4,
-                            f'expense!D{active_index+2}',
-                            [[data2upload]]):
-                    self._expense_database_refresh = True
-                    self._chance_in_expense_db = 0
-            def _count_changes():
-                self._chance_in_expense_db +=1
-            return
-            # def highlight_rows(row):
-            #     light_green = '#1b6924'  # Light green color
-            #     light_red = '#5e132a'    # Light red color
-            #     color = light_green if row['status'] !='pending' else light_red
-            #     return ['background-color: {}'.format(color) for _ in row]
-            show_only_pending = st.checkbox("Show Only Pending")
-            condition = []
-            if show_only_pending:
-                condition.append(" ( `status` == 'pending') ")
-            cols = st.columns([4,1])
-            with cols[0]:
-                # get the department wise sum
-                departmentdf = active_monthdf.groupby(by='department').agg({'amount':sum}).reset_index()
-                departmentdf.rename(columns={'amount':"Sum of all (including pending)"},inplace=True)
-                # st.dataframe(departmentdf)
-                
-                grid_builder = GridOptionsBuilder.from_dataframe(departmentdf)
-                grid_builder.configure_selection(selection_mode='single',
-                                         use_checkbox=True,
-                                         pre_selected_rows=[0])
-                gridresult = AgGrid(departmentdf,gridOptions=grid_builder.build()).selected_rows
-                show_department=None
-                # st.write(gridresult)
-                if gridresult:
-                    show_department = gridresult[0]['department']
-                    condition.append(f" ( `department` == '{show_department}' ) ")
-
-                # dpt_list = active_monthdf['department'].unique() if not condition else active_monthdf.query("status == 'pending'")['department'].unique()
-                
-                
-                # show_department = st.radio("Show Department",
-                #                            options=["ALL",*dpt_list],
-                #                            index=0,
-                #                            horizontal=True)
-            with cols[1]:
-                if show_department:
-                    sub_department = st.radio("Sub Dept",
-                                            options=['ALL',
-                                                     *active_monthdf.query(f" `department` == '{show_department}' ")['sub department'].unique()],
-                                            index=0)
-                    if sub_department !="ALL":
-                        condition.append(f" (`sub department` == '{sub_department}' ) ")
-            if condition:
-                query_string = "and".join(condition)
-                filtereddf = active_monthdf.query(query_string)
-                remaingdf = active_monthdf.query(f" not ({query_string})")
-                # st.dataframe(filtereddf)
-                # st.dataframe(remaingdf)
-                # st.write(query_string)
-                # st.write(active_monthdf.shape)
-                modified_month_df = st.data_editor(filtereddf,
-                                                hide_index=True,
-                                                on_change=_count_changes,
-                                                column_config={
-                                                    "status":st.column_config.SelectboxColumn("status",options=['pending','done','dropped'])})
-                modified_month_df = pd.concat([remaingdf,modified_month_df],axis=0)
-            else:
-                modified_month_df = st.data_editor(active_monthdf,
-                                                hide_index=True,
-                                                on_change=_count_changes,
-                                                column_config={
-                                                    "status":st.column_config.SelectboxColumn("status",options=['pending','done','dropped'])})
-
-            if self._chance_in_expense_db==0:
-                st.success("You are up to date")
-            else:
-                st.button(f"Sync {self._chance_in_expense_db} Changes",
-                          on_click=push_changes,args=[modified_month_df])
-
-                def add_an_expense(dpt,sb_dpt,agenda,amount,pmt_date,
-                                   remark,is_first=False):
-                    if is_first:
-                        data = {'department':[dpt],
-                                'sub department':[sb_dpt],
-                                'agenda':[agenda],
-                                'amount':[amount],
-                                'payment date':[pmt_date],
-                                'remark':[remark],
-                                'status':['done']
-                                }
-                        data = pd.DataFrame(data)
-                        data2upload = f"{data.to_json(orient='records')}"
-                        if upload_data(4,
-                                    f'expense!D{active_index+2}',
-                                    [[data2upload]]):
-                            self._expense_database_refresh = True
-                            st.session_state['inp_agenda'] = ''
-                            st.session_state['inp_remark'] = ''
-                            self._chance_in_expense_db = 0
-                    else:
-                        data = active_monthdf.copy()
-                        data=data.append({'department':dpt,
-                                'sub department':sb_dpt,
-                                'agenda':agenda,
-                                'amount':amount,
-                                'payment date':pmt_date,
-                                'remark':remark,
-                                'status':'done'
-                                },ignore_index=True)
-                        data=data.reset_index(drop=True)
-                        data2upload = f"{data.to_json(orient='records')}"
-                        
-                        if upload_data(4,
-                                    f'expense!D{active_index+2}',
-                                    [[data2upload]]):
-                            self._expense_database_refresh = True
-                            st.session_state['inp_agenda'] = ''
-                            st.session_state['inp_remark'] = ''                                                                                                
-                            self._chance_in_expense_db = 0
-                        
-        
-        with st.sidebar:
-            st.divider()
-            st.header("Upcoming month")
-            if st.checkbox("Sure? This will create Next Month Data",key='nextmonthgen'):
-
-                def update_next_month():
-                    next_meta_data = [[metadata['next_month']],
-                                    [metadata['next_year']],
-                                    [metadata['next_row']]]
-                    upload_data(4,'expense!B2:B4',next_meta_data)
-                    
-
-                    nextmonthdfjson = metadata['next_month_prefill']
-
-                    upload_data(4,f"expense!C{active_index+3}:D{active_index+3}",
-                                [[metadata['next_month_name'],nextmonthdfjson]])
-                    self._expense_database_refresh=True
-                    st.session_state['nextmonthgen'] = False
-
-                st.button(f"Go Ahead and Create for {metadata['next_month_name']}",on_click=update_next_month)
-
+    
     def dashboard_page(self):
 
         # incomedata = self.income_database
