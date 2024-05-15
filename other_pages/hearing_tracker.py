@@ -14,9 +14,9 @@ class hearing_Class:
                             'page_icon':'💊',
                             'layout':'centered'}
         self.page_map = {
-            'SP_SB':self.sp_SB_lectures,
+            'SP_lecs':self.sp_lectures,
             }
-        self.current_page = 'SP_SB'
+        self.current_page = 'SP_lecs'
         
         # databases
         # for Prabhupada SB lectures
@@ -29,7 +29,7 @@ class hearing_Class:
         return st.session_state['bdv_app']
 
 
-    def sp_SB_lectures(self):
+    def sp_lectures(self):
         st.header(":rainbow[Srila Prabhupada]")
         st.title(":rainbow[SB Classes]")
         
