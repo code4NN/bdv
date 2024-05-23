@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import json
 import datetime
-# from st_aggrid import AgGrid, GridOptionsBuilder
 
 from other_pages.googleapi import download_data
 from other_pages.googleapi import upload_data
@@ -14,9 +13,9 @@ class hearing_Class:
                             'page_icon':'💊',
                             'layout':'centered'}
         self.page_map = {
-            'SP_lecs':self.sp_lectures,
+            'SP':self.sp_lectures,
             }
-        self.current_page = 'SP_lecs'
+        self.current_page = 'SP'
         
         # databases
         # for Prabhupada SB lectures
@@ -30,58 +29,75 @@ class hearing_Class:
 
 
     def sp_lectures(self):
-        st.header(":rainbow[Srila Prabhupada]")
-        st.title(":rainbow[SB Classes]")
+        st.header(":rainbow[Srila Prabhupada Ki Jai!!]")
         
-        # Radio button for three pages
-        # 1. Your Selected playlist
-        # 2. SB Order as per canto, chapter text
-        # 3. Locate and hear
-        # 4. Lectures in progress
-        subsubpage_dict = {1:'Your Playlist',
-                           2:'Sorted by SB',
-                           3:'Lectures in Progress'}
-        subsubpage = st.radio("Choose a Section",
-                              options=range(1,len(subsubpage_dict.keys())-1),
+        
+        subsubpage_dict = {1:'SB',
+                           2:'BG',
+                           3:'MW, RC etc',
+                           4:'Locate a Lecture'}
+        
+        section_index = st.radio("Choose a Section",
+                              options=range(1,len(subsubpage_dict.keys())+1),
                               index=0,
                               format_func=lambda x: subsubpage_dict[x],
                               horizontal=True
                               )
-        
-        # now get the database for this series
-        # hearing database --> hdb
-        hdb = self._spsb_db
-        # and various values from these
-        # keep two broad division
-        # hearing db, and user 
-        if subsubpage == 1:
-            st.subheader(":rainbow[Your Playlist]")
-            # get the following functionality
-            """
-            Basically this is the currently active lecture which we plan to hear..
-            .. maybe in a week or in a month or as per devotee's choice
-            * create a new playlist
-            * reset a playlist (mark all as unheard)
-            * Empty the playlist
-            """
+        if section_index == 1:
+            # SB corner
+            # 1. first display as many tabs as bookmarks in the file (if logged in)
+            # 2. Show a search-box for searching lectures plus a display of results
+            # 3. selector
+            #     -> Canto
+            #     -> Chapter
+            #     -> Location
+            #     -> Date (popover year, month and day)
+            #    -> results
             pass
-        elif subsubpage==2:
-            st.subheader(":rainbow[Sorted By Srimad Bhagavatam]")
-            """
-            * Show all canto, and how many remaining lectures
-            * Show active chapter and remaining lectures
-            * Show list of lectures based on active selection
-            """
+        elif section_index == 2:
+            # BG corner
+            # 1. first display as many tabs as bookmarks in the file (if logged in)
+            # 2. Show a search-box for searching lectures plus a display of results
+            # 3. selector
+            #     -> Chapter
+            #     -> Location
+            #     -> Date (popover year, month and day)
+            #    -> results
             pass
-        elif subsubpage ==3:
-            st.subheader(":rainbow[Lectures in Progress]")
-            """
-            Whatever lecture is marked as hearing will appear here
-            """
+        elif section_index == 3:
+            # All other
+            # Level 2 filter
+            # Choose among the other series
+            sub_section_dict = {1:'Morning Walks',
+                                2:'Room Conversations',
+                                3:'Interviews',
+                                4:'Public Lectures',
+                                5:'Festival'
+                                # some more
+                                }
+            sub_section_index = st.radio("Choose a Sub-Section",
+                              options=range(1, len(sub_section_dict.keys())+1),
+                              index=0,
+                              format_func=lambda x: sub_section_dict[x],
+                              horizontal=True
+                              )
+            if sub_section_index == 1:
+                # follow this template for all...
+                # 0. heading for Morning Walks
+                # 1. first display as many tabs as bookmarks in the file (if logged in)
+                
+                # 2. display a table with filters of (location, year)
+                pass
+        
+        elif section_index == 4:
+            # Locate a lecture
+            # 1. Show a search-box for searching lectures plus a display of results
+            # 2. keep following filters in order
+            #       > Date
+            #       > Section (SB, BG etc) (also canto chapter for SB and BG )
+            #       > Locationx
             pass
-        
-        
-        
+            
     
     def change_page(self,target_page):
         """Change Page
@@ -123,5 +139,7 @@ class hearing_Class:
                 st.button("Bhagwad Gita",on_click=self.change_page,args=['SP_BG'],
                           type='primary' if self.current_page=='SP_BG' else 'secondary')
         
+        # have a varible which is activated while playing a lecture
+        # and deactivated when pressed back button
         self.page_map.get(self.current_page,'SP_SB')()
 # --------------- 
