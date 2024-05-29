@@ -55,22 +55,23 @@ class finder_Class:
                 st.button("Go",on_click=fetch_search_results,args=[query_text])
                 def download_video(url,filename):
                     vid = pytube.YouTube(url).streams.get_highest_resolution()
-                    vid.download("./data",filename)
+                    vid.download("./",filename)
                     
                 if len(self._search_results) > 0:
                     for t,u in self._search_results.items():
                         st.markdown(f"[{t}]({u})")
                         st.button("Download",on_click=download_video,
-                                  args=[u,f"{len(os.listdir('./data'))}.mp4"],key="download_"+t)
+                                  args=[u,f"{len(os.listdir('.'))}.mp4"],key="download_"+t)
             with watch:
                 def clearall():
-                    for files in os.listdir("./data"):
-                        os.unlink(f"./data{files}")
+                    for files in os.listdir("./"):
+                        if files[-1]=='4':
+                            os.unlink(f"./{files}")
                 st.button("Clear all",on_click=clearall)
-                available_vide = os.listdir("./data")
+                available_vide = os.listdir("./")
                 for v in available_vide:
                     if st.checkbox("Show "+v):
-                        st.video(f"./data/{v}",format='video/mp4')
+                        st.video(f"./{v}",format='video/mp4')
                     
             
 
