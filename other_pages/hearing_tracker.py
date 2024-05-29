@@ -3,8 +3,9 @@ import pandas as pd
 import json
 import datetime
 
-from other_pages.googleapi import download_data
-from other_pages.googleapi import upload_data
+# from other_pages.googleapi import download_data
+# from other_pages.googleapi import upload_data
+from streamlit.components.v1 import html as display_html
 
 class hearing_Class:
     def __init__(self) -> None:
@@ -54,6 +55,42 @@ class hearing_Class:
             #     -> Date (popover year, month and day)
             #    -> results
             pass
+            url = st.text_input("Enter url")
+            # Define the URL you want to embed
+
+            # HTML code for the iframe with scrollable and styled border
+            html_code = f"""
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <style>
+                    .iframe-container {{
+                        position: relative;
+                        overflow: auto;
+                        padding-top: 56.25%; /* 16:9 Aspect Ratio */
+                    }}
+                    .iframe-container iframe {{
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        border: 5px solid gray; /* Thick gray border */
+                        border-radius: 10px;
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class="iframe-container">
+                    <iframe src="{url}" frameborder="0" allowfullscreen></iframe>
+                </div>
+            </body>
+            </html>
+            """
+
+            # Embed the HTML in Streamlit
+            display_html(html_code, height=500)
+
         elif section_index == 2:
             # BG corner
             # 1. first display as many tabs as bookmarks in the file (if logged in)
@@ -143,3 +180,8 @@ class hearing_Class:
         # and deactivated when pressed back button
         self.page_map.get(self.current_page,'SP_SB')()
 # --------------- 
+
+if 'app' not in st.session_state:
+    st.session_state.app = hearing_Class()
+
+st.session_state['app'].run()

@@ -137,9 +137,9 @@ if 'bdv_app' not in st.session_state:
 # For development
 main_app = st.session_state['bdv_app']
 if main_app.in_development:
-    PAGE_DEVELOPING = 'heart_medicine'
-    PAGE_CLASS = hearing_Class()
-    SUB_PAGE_DEVELOPING = 'SP_lecs'
+    PAGE_DEVELOPING = 'finder'
+    PAGE_CLASS = finder_Class()
+    SUB_PAGE_DEVELOPING = 'other'
 
 
     # tell which is my developement class
