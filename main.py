@@ -136,7 +136,7 @@ if 'bdv_app' not in st.session_state:
 main_app = st.session_state['bdv_app']
 if main_app.in_development:
     PAGE_DEVELOPING = 'finder'
-    PAGE_CLASS = finder_Class()
+    PAGE_CLASS = settlement_Class()
     SUB_PAGE_DEVELOPING = 'other'
 
 
