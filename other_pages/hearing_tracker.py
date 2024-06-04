@@ -181,7 +181,7 @@ class hearing_Class:
         self.page_map.get(self.current_page,'SP_SB')()
 # --------------- 
 
-if 'app' not in st.session_state:
-    st.session_state.app = hearing_Class()
+# if 'app' not in st.session_state:
+#     st.session_state.app = hearing_Class()
 
-st.session_state['app'].run()
+# st.session_state['app'].run()

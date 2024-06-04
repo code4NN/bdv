@@ -124,10 +124,12 @@ class login_Class:
                         st.button("Class Notes",on_click=takemein,args=['revision'],key='direct_login_revision')
                         if 'acc_ic' in self.bdvapp.userinfo['roles']:
                             st.button("Accounts 📝",on_click=takemein,args=['dpt_accounts'],key='direct_login_accounts')
-
+                
+                # just for developer
                 if self.bdvapp.userinfo['username'] == 'Shiven':
                     st.divider()
                     st.button("Article_tagging",on_click=takemein,args=['article_tag'])
+                    st.button("Shloka and Songs",on_click=takemein,args=['ssong'])
 
             else:
                 st.error("Incorrect Password!!")

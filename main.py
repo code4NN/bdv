@@ -9,6 +9,7 @@ from other_pages.accounts import account_Class
 from other_pages.hearing_tracker import hearing_Class
 from other_pages.lecture_notes import class_notes_Class
 from other_pages.thematic_encyclopaedia import sskkb
+from other_pages.song_shloka import memorize_song_shloka
 
 
 
@@ -28,7 +29,8 @@ class myapp:
                          'dpt_accounts': account_Class(),
                          'heart_medicine': hearing_Class(),
                          'revision': class_notes_Class(),
-                         'article_tag':sskkb()
+                         'article_tag':sskkb(),
+                         'ssong':memorize_song_shloka()
                           }
         # landing page
         self.current_page = 'login'
@@ -135,9 +137,9 @@ if 'bdv_app' not in st.session_state:
 # For development
 main_app = st.session_state['bdv_app']
 if main_app.in_development:
-    PAGE_DEVELOPING = 'finder'
-    PAGE_CLASS = settlement_Class()
-    SUB_PAGE_DEVELOPING = 'other'
+    PAGE_DEVELOPING = 'ssong'
+    PAGE_CLASS = memorize_song_shloka()
+    SUB_PAGE_DEVELOPING = 'shloka'
 
 
     # tell which is my developement class

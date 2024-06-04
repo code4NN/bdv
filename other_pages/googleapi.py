@@ -15,6 +15,7 @@ db_accounts = sheets_dict['accounts']
 db_hearing = sheets_dict['hearing_tracker']
 db_plan4krsna = sheets_dict['plan4krishna']
 db_psadhana_encyclopaedia = sheets_dict['p_reading_hearing_notes']
+db_ssong = sheets_dict['ssong']
 
 db_list = {1:db_primary,
            2:db_sadhana_card,
@@ -22,7 +23,8 @@ db_list = {1:db_primary,
            4:db_accounts,
            5:db_hearing,
            6:db_plan4krsna,
-           7:db_psadhana_encyclopaedia
+           7:db_psadhana_encyclopaedia,
+           8:db_ssong
             }
 
 # credentials
