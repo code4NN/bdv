@@ -23,7 +23,11 @@ class memorize_song_shloka:
         self._shlokadb = None
         self._have_shlokadb = False
         self.user_data_df = None # This we will keep updating
-    
+        
+        # shloka page related
+        self.SCQ_filter_dfs = {'SB_canto':None,
+                               'SB_chapter':None,
+                               'BG_chapter':None}
     @property
     def get_songdb(self):
         """
@@ -48,13 +52,36 @@ class memorize_song_shloka:
     
     @property
     def get_shlokadb(self):
+        """
+        * fulldf
+        also populates SB_canto_df and BG_chapter_df
+        """
         if not self._have_shlokadb:
+            self._have_shlokadb = True
+            
             shloka_df_array = download_data(8,"shlokadb!A:M")
             shloka_df = pd.DataFrame(shloka_df_array[1:],columns=shloka_df_array[0])
             
             shloka_df[['canto','chapter']] = shloka_df[['canto','chapter']].fillna(-1).replace("",-1)
             shloka_df[['canto','chapter','text_start']] = shloka_df[['canto','chapter','text_start']].astype("int")
+            
             self._shlokadb = {'fulldf':shloka_df}
+            # initialize the SB_canto_df and BG_chapter_df
+            # SB related
+            SB_canto_df = shloka_df[['source','canto']].query("source=='SB' and canto != -1").drop(columns='source')\
+                            .drop_duplicates(keep='first').copy(deep=True)
+            SB_canto_df.sort_values(by='canto',ascending=True,inplace=True)
+            SB_canto_df.insert(0, 'select', False)
+            SB_canto_df.iloc[random.randint(0, len(SB_canto_df)-1),0] = True
+            self.SCQ_filter_dfs['SB_canto'] = SB_canto_df.copy()
+            # BG related
+            BG_chapter_df = shloka_df[['source','chapter']].query("source=='BG' and chapter != -1").drop(columns='source')\
+                            .drop_duplicates(keep='first').copy(deep=True)
+            BG_chapter_df.sort_values(by='chapter', ascending=True, inplace=True)
+            BG_chapter_df.insert(0, 'select', False)
+            BG_chapter_df.iloc[random.randint(0, len(BG_chapter_df)-1),0] = True
+            self.SCQ_filter_dfs['BG_chapter'] = BG_chapter_df.copy()
+            
         return self._shlokadb
             
     
@@ -63,7 +90,6 @@ class memorize_song_shloka:
         allsongdf.sort_values(by='stanza',ascending=True,inplace=True)
         
         return allsongdf.reset_index(drop=True)
-        
         
     def vsong(self):
         vsong_db = self.get_songdb
@@ -129,13 +155,37 @@ class memorize_song_shloka:
                         st.markdown(a_line)
                     # display the translation based on setting
                     st.markdown(f":gray[{content['translation']}]")
-                    
+    
+    def __SCQ_handler(self,editor_key,original_key,checkbox_column):
+        """
+        * editor_key = key for the st.data_editor
+        * original_key = the df should be stored in st.session_state[original_key]
+        * checkbox_column = name of the checkbox column
+        * It must be the first column"""
+        edited_rows = st.session_state[editor_key]['edited_rows']
+        if len(edited_rows)==1:
+            row_num = list(edited_rows.keys())[0]
+            # df = st.session_state[original_key].copy(deep=True)
+            df = self.SCQ_filter_dfs[original_key].copy()
+            
+            set_2_True = list(edited_rows.values())[0][checkbox_column]        
+            if set_2_True:
+                df[checkbox_column] = False
+                df.iloc[row_num,0] = True
+                self.SCQ_filter_dfs[original_key]= df.copy()
+            else:
+                df[checkbox_column] = False
+                self.SCQ_filter_dfs[original_key]= df.copy()
+                st.session_state[editor_key]['edited_rows'] = {}
+        
     def shloka(self):
         shlokadb = self.get_shlokadb
         df = shlokadb['fulldf'].copy(deep=True)
         st.dataframe(df)
-        left,right = st.columns(2)
-        source_name = left.radio("Source",options=['SB','BG','CC','BS','MM'],index=1,horizontal=True)
+        
+        source_name = st.radio("Source",options=['SB','BG','CC','BS','MM'],
+                               index=1,
+                               horizontal=True)
         df = df.query(f"source=='{source_name}'")
         
         # if use have logged in then add a filter of status will do in phase-2
@@ -144,42 +194,51 @@ class memorize_song_shloka:
         # if status_chosen != 'show all':
         #     df = df.query(f"status=='{status_chosen}'")
             
-        with right.popover("➕ more filter"):
-            if source_name == 'SB':
-                # Select a canto
-                chosen_canto = st.slider("Canto",min_value=1,max_value=12,value=1)
-                df = df.query(f"canto=={chosen_canto}")
-                
-                # Select a chapter
-                chapter_range = [df.chapter.min(),df.chapter.max()]
-                chapter = st.number_input(f"Choose a chapter [{chapter_range[0]},{chapter_range[1]}]",
-                                          min_value=chapter_range[0], max_value=chapter_range[1],
-                                          value=chapter_range[0])
-                df = df.query(f"chapter=={chapter}")
-                
-                # Select a section
-                section_option = df['SB_Playlist'].unique().tolist()
-                chosen_playlist = st.radio("Choose a section", options=['all',*section_option], index=0)
-                if chosen_playlist != 'all':
-                    df = df.query(f"SB_Playlist=='{chosen_playlist}'")
-                
-            elif source_name == 'BG':
-                # select a chapter
-                bgchapter = st.select_slider("BG Chapter",options=[i for i in range(1,19)])
-                df = df.query(f"chapter=={bgchapter}")
-                
-                # Select a section
-                section_option = df['BG_Playlist'].unique().tolist()
-                chosen_playlist = st.radio("Choose a section", options=['all', *section_option], index=0)
-                if chosen_playlist != 'all':
-                    df = df.query(f"BG_Playlist=='{chosen_playlist}'")
+        if source_name == 'SB':
+            # Select a canto
+            chosen_canto_list = st.data_editor(self.SCQ_filter_dfs['SB_canto'],hide_index=True,
+                                            column_config={'select':st.column_config.CheckboxColumn("Select"),
+                                                           'canto':st.column_config.TextColumn("Canto")},
+                                            disabled=['canto'],
+                                            key='SB_canto_df',
+                                            on_change=self.__SCQ_handler,
+                                            args=['SB_canto_df','SB_canto','select']).query("select==True")['canto'].tolist()
+            if not chosen_canto_list:
+                st.caption("You have not selected any canto")
+                st.stop()
+            else:
+                df = df.query(f"canto=={chosen_canto_list[0]}")
             
-            elif source_name == 'CC':
-                st.info("in progress")
-            elif source_name == 'BS':
-                pass
-            elif source_name == 'MM':
-                pass
+            # Select a chapter
+            chapter_range = [df.chapter.min(),df.chapter.max()]
+            chapter = st.number_input(f"Choose a chapter [{chapter_range[0]},{chapter_range[1]}]",
+                                        min_value=chapter_range[0], max_value=chapter_range[1],
+                                        value=chapter_range[0])
+            df = df.query(f"chapter=={chapter}")
+            
+            # Select a section
+            section_option = df['SB_Playlist'].unique().tolist()
+            chosen_playlist = st.radio("Choose a section", options=['all',*section_option], index=0)
+            if chosen_playlist != 'all':
+                df = df.query(f"SB_Playlist=='{chosen_playlist}'")
+            
+        elif source_name == 'BG':
+            # select a chapter
+            bgchapter = st.select_slider("BG Chapter",options=[i for i in range(1,19)])
+            df = df.query(f"chapter=={bgchapter}")
+            
+            # Select a section
+            section_option = df['BG_Playlist'].unique().tolist()
+            chosen_playlist = st.radio("Choose a section", options=['all', *section_option], index=0)
+            if chosen_playlist != 'all':
+                df = df.query(f"BG_Playlist=='{chosen_playlist}'")
+        
+        elif source_name == 'CC':
+            st.info("in progress")
+        elif source_name == 'BS':
+            pass
+        elif source_name == 'MM':
+            pass
         
         # now display the shlokas with title
         hide_index = st.toggle("Hide verse Number",value=False)
