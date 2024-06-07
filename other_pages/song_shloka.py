@@ -1,8 +1,18 @@
 import random
 import streamlit as st
 import pandas as pd
-from other_pages.googleapi import download_data
+from other_pages.googleapi import download_data, upload_data
 
+# for vedabase shloka etc
+import requests
+from bs4 import BeautifulSoup
+def url_fetch(url):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    alltext = {
+        a_match.find_all("a")[0].text.lower().replace("text ",'').replace("texts ",''):
+            a_match for a_match in soup.find_all(class_='bb r-verse')}
+    return alltext
 
 class memorize_song_shloka:
     def __init__(self):
@@ -12,8 +22,9 @@ class memorize_song_shloka:
         self.page_dict = {
             'shloka':self.shloka,
             'vsong':self.vsong,
+            'add_shloka':self.addshloka
         }
-        self.current_page = 'vsong'
+        self.current_page = 'add_shloka'
         
         # database related to Vaishnva Songs
         self._vsong_db = None
@@ -192,6 +203,7 @@ class memorize_song_shloka:
                 available_chapter_df.iloc[random.randint(0, len(available_chapter_df)-1),0] = True
                 
                 self.SCQ_filter_dfs['SB_chapter'] = available_chapter_df.copy()
+    
     def shloka(self):
         shlokadb = self.get_shlokadb
         df = shlokadb['fulldf'].copy(deep=True)
@@ -292,7 +304,36 @@ class memorize_song_shloka:
                 # also add a link to go to the top
                 # if _index >10 then also link to previous anchor
                 if not st.checkbox(f"Show {len(df)-_index} more shlokas",key=f"{_index}_cnf_show"):
-                    break                                            
+                    break                                                
     
+    def addshloka(self):
+        url = st.text_input("Enter URL").strip()
+        if url:
+            resultdict = {}
+            for key,a_match in url_fetch(url).items():
+                # get the text number
+                verse_index = key
+                
+                # get the devnagri
+                devnagri = a_match.find_next_sibling(class_='wrapper-devanagari')\
+                .find("div",class_='r r-devanagari').getText(separator='\n')
+                
+                # get english
+            #     eng = a_match.find_next_sibling(class_='wrapper-verse-text')\
+            #     .find('div',class_='r r-lang-en r-verse-text').getText(separator='\n')
+                eng = '\n\n'.join([i.getText(separator='\n') for i in a_match.find_next_sibling(class_='wrapper-verse-text')\
+                .findAll('div',class_='r r-lang-en r-verse-text')])
+                
+                # get purport
+                translation = a_match.find_next_sibling(class_='wrapper-translation')\
+                .find("div",class_='r r-lang-en r-translation').getText()
+                
+                # now store
+                resultdict[verse_index] = {'verse_index':verse_index,"verse_dev":devnagri,'verse_eng':eng,'verse_translation':translation}
+            # create a dataframe
+            resultdf = pd.DataFrame.from_dict(resultdict,orient='index')
+            st.dataframe(resultdf)
+            
+        
     def run(self):
         self.page_dict[self.current_page]()

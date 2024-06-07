@@ -1,3 +1,4 @@
+import random
 import streamlit as st
 import pandas as pd
 import json
@@ -12,7 +13,7 @@ class hearing_Class:
         
         self.page_config = {'page_title': "Shravanam",
                             'page_icon':'💊',
-                            'layout':'centered'}
+                            'layout':'wide'}
         self.page_map = {
             'SP':self.sp_lectures,
             'Vani':self.vaani_syllabus,
@@ -22,8 +23,7 @@ class hearing_Class:
         
         # ===================================databases=================================
         # for Prabhupada lectures------------------------------------------------------
-        self._spsb_db = None
-        self._spsb_db_refresh = True
+        self.sp_sindhu_df = pd.read_csv("./local_data/SP_sindhu_config.csv")
         # user data (this is used if logged in)
         self._sp_userdb = None
         self._sp_userdb_refresh = True
@@ -33,10 +33,41 @@ class hearing_Class:
                                      'SB_chapter':None,
                                      'SB_location':None,
                                      
+                                     'update_post_date':True,
+                                     'update_post_canto':True,
+                                     'update_post_chapter':True,
+                                     
                                      'BG_chapter':None,
                                      'BG_location':None
                                      }
+        self.update_sp_sindhu_finder("category == 'SB'",['canto','chapter','location'])
         
+    
+    def get_sp_sindhu_value_count(self,query,column_name,new_name):
+        df = self.sp_sindhu_df.copy(deep=True)
+        dfsummary = df.query(query)[column_name]\
+        .value_counts().reset_index().sort_values(column_name,ascending=True)
+        dfsummary.columns = [new_name,'count']
+        dfsummary.insert(0,'select',False)
+        return dfsummary.copy()
+    
+    def update_sp_sindhu_finder(self,query,update_list):
+        """
+        * canto
+        * chapter
+        * location
+        """
+        
+        if 'canto' in update_list:
+            self._sp_single_choice_dfdict['SB_canto'] = self.get_sp_sindhu_value_count(query,'sb_canto','canto')
+        
+        if 'chapter' in update_list:
+            self._sp_single_choice_dfdict['SB_chapter'] = self.get_sp_sindhu_value_count(query,'sb_ch','chapter')
+            
+        if 'location' in update_list:
+            self._sp_single_choice_dfdict['SB_location'] = self.get_sp_sindhu_value_count(query,'location','location')
+            
+            
             
     @property
     def bdvapp(self):
@@ -63,19 +94,18 @@ class hearing_Class:
                 df[checkbox_column] = False
                 self._sp_single_choice_dfdict[original_key]= df.copy()
                 st.session_state[editor_key]['edited_rows'] = {}
-
+        
         if editor_key == 'sb_canto_selector':
-            # update the self._sp_singl_choice_dfdict['chapter']
-            pass
+            self._sp_single_choice_dfdict['update_post_canto'] = True
+        
         elif editor_key == 'sb_chapter_selector':
-            # update the self._sp_singl_choice_dfdict['location']
-            pass
+            self._sp_single_choice_dfdict['update_post_chapter'] = True        
         
     def sp_lectures(self):
         st.header(":rainbow[Srila Prabhupada Ki Jai!!]")
         
-        spdf = None # load the lecture config file
-        
+        spdf = self.sp_sindhu_df # load the lecture config file
+        st.dataframe(spdf)
         subsubpage_dict = {1:'SB',
                            2:'BG',
                            3:'MW, RC etc',
@@ -97,19 +127,37 @@ class hearing_Class:
             #     -> Chapter
             #     -> Location
             #    -> results in data frame
-            
-            # search box and search filter
-            search_query = st.text_input("Search a lecture").strip()
-            if st.checkbox("Add date filter"):
+            date_filter = []
+            def checkbox_handler():
+                if not st.session_state['date_filter_checkbox']:
+                    self.update_sp_sindhu_finder("category == 'SB'",
+                                                 ['canto','chapter','location'])
+            if st.checkbox("Add date filter",key='date_filter_checkbox',on_change=checkbox_handler):
+                def sp_date_handler():
+                    self._sp_single_choice_dfdict['update_post_date'] = True
                 chosen_date = st.date_input("Enter date", 
                                             format="YYYY-MM-DD",
-                                            min_value=datetime.date(1966,1,1),
-                                            max_value=datetime.date(1977,12,31),
-                                            value=datetime.date(1970,1,1))
+                                            min_value=datetime.date(1966,2,19), # hardcoded from excel
+                                            max_value=datetime.date(1977,7,1), # hardcoded from excel
+                                            value=datetime.date(1972,
+                                                                datetime.datetime.today().month,
+                                                                datetime.datetime.today().day),
+                                            on_change=sp_date_handler)
+                chosen_year = chosen_date.year
+                chosen_month = chosen_date.month
+                chosen_day = chosen_date.day
                 
-                ignore_day = st.toggle("Ignore day", value=True)
-
-                # filter spdf usign date
+                date_filter = ["category == 'SB' ",f"year == {chosen_year}", f"month == {chosen_month}"]
+                if not st.toggle("Ignore day", value=True,on_change=sp_date_handler):
+                    date_filter.append(f"day == {chosen_day}")
+                
+                spdf = spdf.query(" and ".join(date_filter))
+                if self._sp_single_choice_dfdict['update_post_date']:
+                    self.update_sp_sindhu_finder(' and '.join(date_filter),
+                                                 ['canto','chapter','location'])
+                    self._sp_single_choice_dfdict['update_post_date'] = False
+                st.caption(f"found {len(spdf)} records from 1849")
+                
                 
             # further filters of canto- chapter location
             st.divider()
@@ -124,8 +172,21 @@ class hearing_Class:
                                                    on_change=self.__single_select_chb_sp,
                                                    args=['sb_canto_selector','SB_canto','select']
                                                    ).query("select == True")['canto'].tolist()
+                
                 if list_chosen_canto :
-                    spdf = spdf.query(f"canto == {list_chosen_canto[0]}")
+                    cantoquery = f"sb_canto == {list_chosen_canto[0]}"
+                    spdf = spdf.query(cantoquery)
+                    
+                # update only when canto is changed
+                if self._sp_single_choice_dfdict['update_post_canto']:
+                    querylist = ["category == 'SB'",*date_filter]
+                    if list_chosen_canto:
+                        querylist.append(cantoquery)
+                    self.update_sp_sindhu_finder(' and '.join(querylist),
+                                                ['chapter','location'])
+                    self._sp_single_choice_dfdict['update_post_canto'] = False
+                    
+                st.caption(len(spdf))
             
             with middle:
                 st.markdown("Choose Chapter")
@@ -138,7 +199,21 @@ class hearing_Class:
                                                    args=['sb_chapter_selector','SB_chapter','select']
                                                    ).query("select == True")['chapter'].tolist()
                 if list_chosen_chapter:
-                    spdf = spdf.query(f"chapter == {list_chosen_chapter[0]}")
+                    chapterquery = f" sb_ch == {list_chosen_chapter[0]}"
+                    spdf = spdf.query(chapterquery)
+                
+                # update only if chapter edited
+                if self._sp_single_choice_dfdict['update_post_chapter']:
+                    querylist = ["category == 'SB' ",*date_filter]
+                    if list_chosen_canto:
+                        querylist.append(cantoquery)
+                    if list_chosen_chapter:
+                        querylist.append(chapterquery)
+                    chapterquery = "" if not list_chosen_canto else f"{chapterquery}"
+                    self.update_sp_sindhu_finder(' and '.join(querylist),
+                                                 update_list=['location'])
+                    self._sp_single_choice_dfdict['update_post_chapter'] = False
+                    
             
             with right:
                 st.markdown("Choose Location")
@@ -243,10 +318,10 @@ class hearing_Class:
         
         # have a varible which is activated while playing a lecture
         # and deactivated when pressed back button
-        self.page_map.get(self.current_page,'SP_SB')()
+        self.page_map.get(self.current_page,'SP')()
 # --------------- 
 
-if 'app' not in st.session_state:
-    st.session_state.app = hearing_Class()
+# if 'app' not in st.session_state:
+#     st.session_state.app = hearing_Class()
 
-st.session_state['app'].run()
+# st.session_state['app'].run()

@@ -137,9 +137,9 @@ if 'bdv_app' not in st.session_state:
 # For development
 main_app = st.session_state['bdv_app']
 if main_app.in_development:
-    PAGE_DEVELOPING = 'ssong'
-    PAGE_CLASS = memorize_song_shloka()
-    SUB_PAGE_DEVELOPING = 'shloka'
+    PAGE_DEVELOPING = 'heart_medicine'
+    PAGE_CLASS = hearing_Class()
+    SUB_PAGE_DEVELOPING = 'SP'
 
 
     # tell which is my developement class
@@ -147,7 +147,7 @@ if main_app.in_development:
     # Set the subpage
     PAGE_CLASS.current_page = SUB_PAGE_DEVELOPING
     # update the page_map
-    main_app.page_map[PAGE_DEVELOPING] = PAGE_CLASS
+    # main_app.page_map[PAGE_DEVELOPING] = PAGE_CLASS
 
 
 st.set_page_config(**main_app.page_config)

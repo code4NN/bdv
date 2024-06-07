@@ -130,6 +130,7 @@ class login_Class:
                     st.divider()
                     st.button("Article_tagging",on_click=takemein,args=['article_tag'])
                     st.button("Shloka and Songs",on_click=takemein,args=['ssong'])
+                    st.button("Hearing Tracker",on_click=takemein,args=['heart_medicine'])
 
             else:
                 st.error("Incorrect Password!!")
