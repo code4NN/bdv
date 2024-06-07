@@ -41,8 +41,12 @@ class hearing_Class:
                                      'BG_location':None
                                      }
         self.update_sp_sindhu_finder("category == 'SB'",['canto','chapter','location'])
-        
     
+    @property
+    def bdvapp(self):
+        return st.session_state['bdv_app']
+    
+# ================functions related to Srila Prabhupada Sindhu hearing
     def get_sp_sindhu_value_count(self,query,column_name,new_name):
         df = self.sp_sindhu_df.copy(deep=True)
         dfsummary = df.query(query)[column_name]\
@@ -67,12 +71,6 @@ class hearing_Class:
         if 'location' in update_list:
             self._sp_single_choice_dfdict['SB_location'] = self.get_sp_sindhu_value_count(query,'location','location')
             
-            
-            
-    @property
-    def bdvapp(self):
-        return st.session_state['bdv_app']
-    
     def __single_select_chb_sp(self,editor_key,original_key,checkbox_column):
         """
         * editor_key = key for the st.data_editor
@@ -277,6 +275,8 @@ class hearing_Class:
             #       > Locationx
             pass
 
+
+# ================ functions related to Vaani Syllabus
 
     def vaani_syllabus(self):
         pass
