@@ -17,7 +17,7 @@ class sskkb:
             'search':self.search,
             'tagging':self.tagme,
         }
-        self.current_page = 'tagging'
+        self.current_page = 'search'
         
         self._database_range = 'SKKB!A:F'
         self._database_refresh = True
