@@ -9,8 +9,8 @@ def process_query_parameters(app,qdict):
     
     if target =='login':
         # login page
-        username = qdict['user']
-        password = qdict['pass']
+        username = qdict.get('user',"nouser")
+        password = qdict.get('pass','blank')
         login_page = app.page_map['login']
         userdb = login_page.userdb
         
