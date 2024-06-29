@@ -61,6 +61,21 @@ class login_Class:
     def bdvapp(self):
         return st.session_state.get("bdv_app",None)
     
+    def parse_userinfo(self,username):
+        userdb = {'username':username,**self.userdb[username]}
+        try:
+            userdb['roles'] = \
+            [role.strip() for role in userdb['roles'].replace(" ","").split(",")]
+            
+            userdb['group'] = \
+            [role.strip() for role in userdb['group'].replace(" ","").split(",")]
+        except:
+            st.error("problem in user data roles or group")
+            st.caption("please convey to app maintainer")
+            
+        return userdb
+        
+    
     def home(self):
         """ 
         Loging page you could say
@@ -71,6 +86,7 @@ class login_Class:
         if self.bdvapp.userinfo:
             default_username = self.bdvapp.userinfo['username']
             default_password = self.bdvapp.userinfo['password']
+        
         input_user_name = st.text_input("Enter Username",key='username',value=default_username).strip()
         
         input_password = st.text_input("Enter Password",
@@ -87,16 +103,8 @@ class login_Class:
             pswd = self.userdb[input_user_name]['password']
             if input_password == pswd:
                 
-                # get the user access details
-                self.bdvapp.userinfo = {'username':input_user_name,**self.userdb[input_user_name]}
-                try:
-                    self.bdvapp.userinfo['roles'] = \
-                    [role.strip() for role in self.bdvapp.userinfo['roles'].replace(" ","").split(",")]
-                    self.bdvapp.userinfo['group'] = \
-                    [role.strip() for role in self.bdvapp.userinfo['group'].replace(" ","").split(",")]
-                except:
-                    self.bdvapp.userinfo['roles'] = ['some_error']
-                    self.bdvapp.userinfo['group'] = ['some_error']
+                # get the user details
+                self.bdvapp.userinfo = self.parse_userinfo(input_user_name)
 
                 # authenticated
                 def takemein(page):
@@ -142,7 +150,6 @@ class login_Class:
         st.markdown("""<p><a href="http://wa.me/917260869161?text=Hare%20Krishna%20Pr%20I%20forgot%20my%20password%20please%20">
     <img src="https://icon-library.com/images/change-password-icon/change-password-icon-28.jpg" width="90" height="50">
     </a></p>""",unsafe_allow_html=True)
-
 
     def run(self):
         """

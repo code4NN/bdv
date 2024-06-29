@@ -1,8 +1,12 @@
+import os
 import random
+import numpy as np
 import streamlit as st
 import pandas as pd
 import json
 import datetime
+
+from custom_module.mega.mega.mega import Mega
 
 # from other_pages.googleapi import download_data
 # from other_pages.googleapi import upload_data
@@ -16,14 +20,20 @@ class hearing_Class:
                             'layout':'wide'}
         self.page_map = {
             'SP':self.sp_lectures,
+            'SP_lec_player':self.hear_sp_now,
             'Vani':self.vaani_syllabus,
             'HHRNSM':self.HHRNSM_vaani
             }
         self.current_page = 'SP'
+        self.mega = Mega()
         
         # ===================================databases=================================
         # for Prabhupada lectures------------------------------------------------------
         self.sp_sindhu_df = pd.read_csv("./local_data/SP_sindhu_config.csv")
+        self.sp_sindhu_df.insert(0,"select",False)
+        self.sp_sindhu_df['name'] = np.where(self.sp_sindhu_df['category'].isin(['Bg','SB']),
+                                             self.sp_sindhu_df['prefix'] + " "+self.sp_sindhu_df['name'],
+                                             self.sp_sindhu_df['name'])
         # user data (this is used if logged in)
         self._sp_userdb = None
         self._sp_userdb_refresh = True
@@ -56,7 +66,9 @@ class hearing_Class:
                                      }
         self.update_sp_sindhu_finder("category == 'SB'",['canto','chapter','location'])
         self.update_sp_sindhu_finder("category == 'Bg' ",['BG_chapter','BG_location'])
-    
+        
+        # for hear now
+        self.play_now_info_dict = None
     @property
     def bdvapp(self):
         return st.session_state['bdv_app']
@@ -157,9 +169,22 @@ class hearing_Class:
             
     def sp_lectures(self):
         st.header(":rainbow[Srila Prabhupada Ki Jai!!]")
+        spdf = self.sp_sindhu_df.copy(deep=True) # load the lecture config file
+        displayconfig = {
+            'select':st.column_config.CheckboxColumn('pick'),
+            'category':st.column_config.TextColumn("type",width='small'),
+            # 'prefix':st.column_config.TextColumn("id"),
+            'name':st.column_config.TextColumn("title"),
+            'name_1':st.column_config.TextColumn("title"),
+            'url':st.column_config.LinkColumn("url",display_text="download"),
+            'duration':st.column_config.NumberColumn("⏳min"),
+            'month_Eng':st.column_config.TextColumn("month"),
+            'mmm_dd':st.column_config.TextColumn("day"),
+            'yy_mmm_dd':st.column_config.TextColumn("date")
+        }
         
-        spdf = self.sp_sindhu_df # load the lecture config file
-        st.dataframe(spdf)
+        st.dataframe(spdf,column_config=displayconfig)
+        
         subsubpage_dict = {1:'SB',
                            2:'BG',
                            3:'MW, RC etc'
@@ -182,11 +207,11 @@ class hearing_Class:
             #     -> Location
             # 2. Show a search-box for searching lectures plus a display of results
             #    -> results in data frame
+        
         if section_index==1:
             querysofar = ["category == 'SB'"]
         
         elif section_index ==2:
-            # BG
             querysofar = ["category == 'Bg' "]
             
         elif section_index == 3:
@@ -209,11 +234,14 @@ class hearing_Class:
             querysofar = [f"category =='{further_type}'"]
             if further_type == 'Addr':
                 querysofar = [f"((category == 'Arr') or  (category == 'Addr')) "]
+            
             if self._sp_single_choice_dfdict['update_post_radio']:
                 self.update_sp_sindhu_finder(" and ".join(querysofar),
                                              ['yeardf','monthdf','locationdf'])
                 self._sp_single_choice_dfdict['update_post_radio'] = False
         
+        # this filters based on section selection
+        spdf = spdf.query(" and ".join(querysofar))
         
         # -------------provision for date filter
         def checkbox_handler():
@@ -229,11 +257,13 @@ class hearing_Class:
                                                  ['yeardf','monthdf','locationdf'])
         if section_index==3 and further_type=="Story":
             pass
+        
         elif st.checkbox("Add date filter",
                         key='date_filter_checkbox',
                         on_change=checkbox_handler):
             def sp_date_handler():
                 self._sp_single_choice_dfdict['update_post_date'] = True
+            
             chosen_date = st.date_input("Enter date", 
                                         format="YYYY-MM-DD",
                                         min_value=datetime.date(1966,2,19), # hardcoded from excel
@@ -266,12 +296,12 @@ class hearing_Class:
         
         # date filter ends here
         
-        if section_index == 1:    
+        if section_index == 1:
             # further filters of canto- chapter location
             st.divider()
             left,middle,right = st.columns(3)
             with left:
-                st.markdown("Choose Canto")                
+                st.markdown("Choose Canto")
                 list_chosen_canto = st.data_editor(self._sp_single_choice_dfdict['SB_canto'],
                                                     hide_index=True,
                                                     column_config={'select':st.column_config.CheckboxColumn("Select"),
@@ -280,6 +310,8 @@ class hearing_Class:
                                                     on_change=self.__single_select_chb_sp,
                                                     args=['sb_canto_selector','SB_canto','select']
                                                     ).query("select == True")['canto'].tolist()
+                # st.write(st.session_state['sb_canto_selector'])
+                # st.dataframe(self._sp_single_choice_dfdict['SB_canto'])
                 
                 if list_chosen_canto :
                     querysofar.append(f"sb_canto == {list_chosen_canto[0]}")
@@ -292,9 +324,7 @@ class hearing_Class:
                     #     querylist.append(cantoquery)
                     self.update_sp_sindhu_finder(' and '.join(querysofar),
                                                 ['chapter','location'])
-                    self._sp_single_choice_dfdict['update_post_canto'] = False
-                    
-                st.caption(len(spdf))
+                    self._sp_single_choice_dfdict['update_post_canto'] = False        
             
             with middle:
                 st.markdown("Choose Chapter")
@@ -328,16 +358,13 @@ class hearing_Class:
                 list_chosen_location = st.data_editor(self._sp_single_choice_dfdict['SB_location'],
                                                     hide_index=True,
                                                     column_config={'select':st.column_config.CheckboxColumn("Select"),
-                                                                    'location':st.column_config.NumberColumn('Location')},
+                                                                    'location':st.column_config.TextColumn('Location')},
                                                     key='sb_location_selector',
                                                     on_change=self.__single_select_chb_sp,
                                                     args=['sb_location_selector','SB_location','select']
                                                     ).query("select == True")['location'].tolist()
                 if list_chosen_location:
-                    spdf = spdf.query(f"location == {list_chosen_location[0]}")
-            
-            # now we have all the filters applied. Just display the filtered
-            st.divider()
+                    spdf = spdf.query(f"location == {list_chosen_location[0]}")            
         
         elif section_index==2:
             # BG
@@ -440,6 +467,76 @@ class hearing_Class:
                     )
             #now display the list of filtered lectures
             # spdf
+        
+        # now we have all the filters applied. Just display the filtered
+        st.divider()
+        st.caption(f"found {len(spdf)} records")
+        sb_column_config = {k:v for k,v in displayconfig.items() if k in 
+                            ['select','prefix','name','yy_mmm_dd','duration']}
+        choice = st.checkbox("Pick ",value=True)
+        spdf['select'] = choice
+        response = st.data_editor(spdf,column_config=sb_column_config,
+                        column_order=list(sb_column_config.keys()),
+                        hide_index=True,
+                        disabled=list(set(sb_column_config.keys())-{'select'})).query("select==True")
+        
+        for _row,row in response.reset_index(drop=True).iterrows():
+            with st.expander(
+            f"{_row+1}\. {row['full_name'][:-4]}  :violet[{row['duration']}min]",
+            expanded=False):
+                cols = st.columns(2)
+                cols[0].link_button("Hear in new tab",
+                    url="https://bdv-voice.streamlit.app/?target=hear-now"\
+                        +f"&mega-id={row['url'].replace('https://mega.co.nz/#!','')}"\
+                    +f"&sp-id={row['id']}&name={row['full_name']}")
+                cols[1].markdown(f"[download from mega]({row['url']})")
+            
+            if (_row+1)%15 ==0:
+                placeholder = st.empty()
+                if not placeholder.checkbox(f"Show {len(spdf)-1-_row} more",
+                                    key=f'showmore_{_row}',
+                                    value=False):
+                    break
+                else:
+                    placeholder.empty()
+
+    def hear_sp_now(self):
+        url = f"https://mega.co.nz/#!{self.play_now_info_dict['megaid']}"
+        destination = './local_data/sp_storage'
+        filename = f"{self.play_now_info_dict['spid']}.mp3"
+        displayname = self.play_now_info_dict['name']
+        available_files = os.listdir(destination)
+        
+        msgbox = st.empty()
+        if filename not in available_files:
+            # keep the latest 10 files and delete the older ones
+            # reverse = True sorted in decending order
+            available_files = sorted(available_files,
+                                     key=lambda x: os.path.getmtime(f"{destination}/{x}"),reverse=True)
+            for one_file in available_files[5:]:
+                os.remove(f"{destination}/{one_file}")
+                
+            with msgbox.container():
+                st.markdown(f"downloading from mega ")
+                st.caption(displayname)
+                st.caption("This may take a while please wait ...")
+                self.mega.download_url(url,destination,dest_filename=filename)
+                st.success("completed")
+                
+        msgbox.markdown(f"## :rainbow[{displayname}]")
+        st.markdown("")
+        st.markdown("")
+        st.markdown("")
+        foward_min = st.number_input("forward (in min)",step=1,min_value=0)
+        
+        st.markdown("")
+        st.markdown("")
+        st.markdown("")
+        st.audio(f"{destination}/{filename}",format="audio/wav",
+                 start_time=foward_min*60)
+            
+        
+
 # ================ functions related to Vaani Syllabus
 
     def vaani_syllabus(self):
@@ -482,7 +579,7 @@ class hearing_Class:
         
         # have a varible which is activated while playing a lecture
         # and deactivated when pressed back button
-        self.page_map.get(self.current_page,'SP')()
+        self.page_map[self.current_page]()
 # --------------- 
 
 # if 'app' not in st.session_state:
