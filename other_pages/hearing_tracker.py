@@ -486,7 +486,7 @@ class hearing_Class:
             expanded=False):
                 cols = st.columns(2)
                 cols[0].link_button("Hear in new tab",
-                    url="https://bdv-voice.streamlit.app/?target=hear-now"\
+                    url="https://bdv-voice-dev.streamlit.app/?target=hear-now"\
                         +f"&mega-id={row['url'].replace('https://mega.co.nz/#!','')}"\
                     +f"&sp-id={row['id']}&name={row['full_name']}")
                 cols[1].markdown(f"[download from mega]({row['url']})")
