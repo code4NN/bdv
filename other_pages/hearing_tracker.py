@@ -17,7 +17,7 @@ class hearing_Class:
         
         self.page_config = {'page_title': "Shravanam",
                             'page_icon':'💊',
-                            'layout':'wide'}
+                            'layout':'centered'}
         self.page_map = {
             'SP':self.sp_lectures,
             'SP_lec_player':self.hear_sp_now,
