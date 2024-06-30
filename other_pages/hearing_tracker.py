@@ -183,7 +183,7 @@ class hearing_Class:
             'yy_mmm_dd':st.column_config.TextColumn("date")
         }
         
-        st.dataframe(spdf,column_config=displayconfig)
+        # st.dataframe(spdf,column_config=displayconfig)
         
         subsubpage_dict = {1:'SB',
                            2:'BG',
@@ -364,7 +364,7 @@ class hearing_Class:
                                                     args=['sb_location_selector','SB_location','select']
                                                     ).query("select == True")['location'].tolist()
                 if list_chosen_location:
-                    spdf = spdf.query(f"location == {list_chosen_location[0]}")            
+                    spdf = spdf.query(f"location == '{list_chosen_location[0]}' ")            
         
         elif section_index==2:
             # BG

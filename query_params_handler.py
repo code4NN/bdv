@@ -22,7 +22,7 @@ def process_query_parameters(app,qdict):
     elif target == 'dev':
         page = qdict['page']
         subpage = qdict.get('subpage','blank')
-        refresh = qdict.get('refresh','yes')
+        refresh = qdict.get('refresh','no')
         
         # if refresh, create a fresh instance of the class
         if refresh == 'yes':
