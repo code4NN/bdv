@@ -13,7 +13,7 @@ from other_pages.googleapi import append_data
 
 class settlement_Class:
     def __init__(self):
-        self._settlement_app_version = 'v3'
+        self._settlement_app_version = 'v4'
         # sub page related information
         self.page_config = {'page_title': "BDV",
                             'page_icon':'☔',
@@ -200,8 +200,8 @@ class settlement_Class:
         )
 
         # --------------- page
-        st.header(" :green[settlement form] :red[V3]")
-        st.caption("Please Note that this is 3rd Version of settlement platform")
+        st.header(f" :green[settlement form] :red[{self._settlement_app_version}]")
+        st.caption("Please Note that this is 4rd Version of settlement platform")
         st.text_area(":green[Changes are]",value="""1. by Default date is set to current date, \n2. Selection of department is mandatory from a list\nSo in case of any query please text me""",disabled=True)
         st.markdown('---')
 
@@ -246,9 +246,10 @@ class settlement_Class:
                                     value=current_day,
                                     key=f'input_table_day{i}')
                 spent_date = datetime.datetime(current_year,request_month,one_entry['day'])
-                if (datetime.datetime.now() -spent_date).days > 8:
+                
+                if (datetime.datetime.now() -spent_date).days > 10:
                     requestform['error'] = True
-                    col_day.markdown(":red[Older than 7 days not accepted]")
+                    col_day.markdown(":red[Older than 10 days not accepted]")
                 col_day.caption(datetime.datetime(current_year,request_month,one_entry['day']).strftime("%b %d %a"))
                 one_entry['day'] = datetime.datetime(current_year,request_month,one_entry['day']).strftime("%b-%d, %a")
                     
@@ -514,18 +515,21 @@ class settlement_Class:
         grouped_summary.index = range(1,1+len(grouped_summary))
         # grouped_summary.insert(0,'Select',False)
         
-        grid_builder = GridOptionsBuilder.from_dataframe(grouped_summary)
-        grid_builder.configure_selection(selection_mode='single',
-                                         use_checkbox=True,
-                                         pre_selected_rows=[0])
+        # grid_builder = GridOptionsBuilder.from_dataframe(grouped_summary)
+        # grid_builder.configure_selection(selection_mode='single',
+        #                                  use_checkbox=True,
+        #                                  pre_selected_rows=[0])
         left,right = st.columns(2)
         with left:
-            grid_result = AgGrid(data = grouped_summary,
-                                gridOptions=grid_builder.build())
-        if not grid_result.selected_rows:
+            # grid_result = AgGrid(data = grouped_summary,
+            #                     gridOptions=grid_builder.build())
+            grouped_summary.insert(0,'Select',False)
+            grid_result = st.data_editor(grouped_summary,
+                                         disabled=['devotee name','amount']).query("Select==True")['devotee name'].tolist()
+        if not grid_result:
             right.error("Must Select a devotee")
-            return
-        devotee = grid_result.selected_rows[0]['devotee name']
+            st.stop()
+        devotee = grid_result[0]
 
         st.markdown('---')
         st.markdown(f"## :blue[Let's Do settlement of -]:orange[{devotee} Pr]")
@@ -566,12 +570,16 @@ class settlement_Class:
         def notedsir(r):
             upload_data(1,f"{self.REQUEST_SHEET}I{r}",[['yes']])
             self._request_db_refresh = True
-
+        
+        paymentdf_placeholder = st.empty()
+        payment_df = []
+        
         for r in range(len(dworkbook)):
             st.divider()
             title = f"[{1+r}/{len(dworkbook)}] (id: {dworkbook.loc[r,'uniqueid'].lower()}) → Total :orange[₹ {dworkbook.loc[r,'amount']}] "            
             payment_array = json.loads(dworkbook.loc[r,'details'])
             payment_dataframe = pd.DataFrame(payment_array[1:],columns=payment_array[0])
+            payment_df.append(payment_dataframe)
 
             if stage_filter_selection == 'pending':
                 st.markdown(f"### {title}")
@@ -603,7 +611,8 @@ class settlement_Class:
                 middle.write(dworkbook.loc[r,'any comments'])
                 right.text(f"""Settled on {status['date_of_paymnt']} \n {status['paymnt_info']}""")
                 
-                
+        payment_df = pd.concat(payment_df,axis=0)
+        paymentdf_placeholder.dataframe(payment_df)
         
 
 
