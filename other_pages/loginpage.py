@@ -44,18 +44,18 @@ class login_Class:
             self._userdb = json.loads(raw_data)
             # set refresh to false
             self._userdb_refresh = False
-            # return
-            return self._userdb
             
-        else :
-            # refresh not required
-            return self._userdb
+        return self._userdb
 
     @property
     def bdvapp(self):
         return st.session_state.get("bdv_app",None)
     
     def parse_userinfo(self,username):
+        """
+        uses the userdb to parse userdata for one user (username waalaa)
+        returns a dictionary with all the user details
+        """
         userdb = {'username':username,**self.userdb[username]}
         try:
             userdb['roles'] = \
@@ -72,9 +72,10 @@ class login_Class:
     
     def home(self):
         """ 
-        Loging page you could say
+        login plus feed also
         """
         st.header(":green[Please Login to Continue]")
+        
         default_username = ''
         default_password = ''
         if self.bdvapp.userinfo:
@@ -88,12 +89,18 @@ class login_Class:
                                         value=default_password,
                                         key='password').strip()
         
+        
+        
+        
         ## Verify username and password
         if not input_user_name:
             st.warning("Please Enter Username")
+            
         elif not input_password:
             st.warning("Please Enter Password!!")
+            
         elif input_user_name in self.userdb.keys():
+            
             pswd = self.userdb[input_user_name]['password']
             if input_password == pswd:
                 

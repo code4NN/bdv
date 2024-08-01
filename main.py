@@ -1,17 +1,19 @@
 import streamlit as st
-
 from query_params_handler import process_query_parameters
 
+
 # Import various classes
+# available for all devotees
 from other_pages.loginpage import login_Class
-from other_pages.feed import feed_Class
 from other_pages.sadhana_card import sadhana_card_class
 from other_pages.settlement import settlement_Class
 from other_pages.accounts import account_Class
 from other_pages.hearing_tracker import hearing_Class
-from other_pages.lecture_notes import class_notes_Class
+
+# for personal usages
 from other_pages.thematic_encyclopaedia import sskkb
 from other_pages.song_shloka import memorize_song_shloka
+from other_pages.lecture_notes import class_notes_Class
 
 class myapp:
     def __init__(self):
@@ -21,20 +23,23 @@ class myapp:
 
         # register all the page
         self.page_map = {
+            # public
             'login':login_Class(),
-            'feed':feed_Class(),
             'sadhana_card':sadhana_card_class(),
             'settlement':settlement_Class(),
             'dpt_accounts': account_Class(),
             'heart_medicine': hearing_Class(),
+            
+            # private
             'revision': class_notes_Class(),
             'article_tag':sskkb(),
             'ssong':memorize_song_shloka(),
             }
+        
         # landing page
         self.current_page = 'login'
         
-        # query parameters
+        # query parameter handling flag
         self.handled_query_params = False
         
         # User related data
@@ -47,7 +52,7 @@ class myapp:
     def run(self):
                                     
         # custom global css
-        if not self.in_development:
+        if st.secrets['developer']['add_topheaderCSS']=='yes':
             st.markdown(
             """
             <style>
@@ -93,5 +98,3 @@ try:
 except Exception as e:
     st.error("Haribol!! Got some error")
     st.write(e)
-
-# st.markdown("[help improve!!](http://wa.me/917260869161?text=Hare%20Krishna%20some%20suggestion)")
