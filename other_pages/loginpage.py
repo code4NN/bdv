@@ -38,21 +38,15 @@ class login_Class:
         """
         if self._userdb_refresh:
             # refresh the data
-            try:
-                raw_data = download_data(db_id=1,range_name=self.USER_CREDENTIALS)[0][0]            
-                
-                # save
-                self._userdb = json.loads(raw_data)
-                # set refresh to false
-                self._userdb_refresh = False
-                # return
-                return self._userdb
+            raw_data = download_data(db_id=1,range_name=self.USER_CREDENTIALS)[0][0]            
             
-            except Exception as e:
-                if self.bdvapp.in_development:
-                    st.write(e)
-                else :
-                    st.error("some problem in fetching data")        
+            # save
+            self._userdb = json.loads(raw_data)
+            # set refresh to false
+            self._userdb_refresh = False
+            # return
+            return self._userdb
+            
         else :
             # refresh not required
             return self._userdb
