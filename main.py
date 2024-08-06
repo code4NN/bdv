@@ -8,7 +8,10 @@ from other_pages.feed import feed_Class
 from other_pages.sadhana_card import sadhana_card_class
 from other_pages.settlement import settlement_Class
 from other_pages.accounts import account_Class
-from other_pages.hearing_tracker import hearing_Class
+
+from other_pages.hearing_tracker import SP_hearing_Class
+from other_pages.hearing_tracker import VANI_hearing_class
+
 from other_pages.lecture_notes import class_notes_Class
 from other_pages.thematic_encyclopaedia import sskkb
 from other_pages.song_shloka import memorize_song_shloka
@@ -26,7 +29,11 @@ class myapp:
             'sadhana_card':sadhana_card_class(),
             'settlement':settlement_Class(),
             'dpt_accounts': account_Class(),
-            'heart_medicine': hearing_Class(),
+            
+            # hearing related projects
+            'sp_hearing': SP_hearing_Class(),
+            'vani_hearing':VANI_hearing_class(),
+            
             'revision': class_notes_Class(),
             'article_tag':sskkb(),
             'ssong':memorize_song_shloka(),

@@ -27,7 +27,7 @@ class feed_Class:
         left,middle,right = st.columns(3)
         left.button("Settlement 💸",on_click=go2page,args=['settlement'])
 
-        middle.button("Hearing 💊",on_click=go2page,args=['heart_medicine'])
+        middle.button("Hearing 💊",on_click=go2page,args=['sp_hearing'])
 
         right.button("Class revisions",on_click=go2page,args=['revision'])
     

@@ -8,11 +8,11 @@ import datetime
 
 from custom_module.mega.mega.mega import Mega
 
-# from other_pages.googleapi import download_data
-# from other_pages.googleapi import upload_data
+from other_pages.googleapi import download_data,download_sheet,upload_data
+from openpyxl.utils import get_column_letter
 from streamlit.components.v1 import html as display_html
 
-class hearing_Class:
+class SP_hearing_Class:
     def __init__(self):
         
         self.page_config = {'page_title': "Shravanam",
@@ -21,8 +21,7 @@ class hearing_Class:
         self.page_map = {
             'SP':self.sp_lectures,
             'SP_lec_player':self.hear_sp_now,
-            'Vani':self.vaani_syllabus,
-            'HHRNSM':self.HHRNSM_vaani
+            "user_registration":self.registration
             }
         self.current_page = 'SP'
         self.mega = Mega()
@@ -69,6 +68,38 @@ class hearing_Class:
         
         # for hear now
         self.play_now_info_dict = None
+        
+        # for user info etc-------------------------------
+        self._userdb = None
+        self.refresh_userdb = True
+        
+        self.userinfo = {"mode":"guest",
+                         "user":{}
+                         }
+        self.registrationinfo = {"source":'external',# bdv,external
+                                 'reg_status':None, # success after submission
+                                 'asked_to_reg':False
+                                }
+    
+    @property
+    def userdb(self):
+        """
+        dfself, dfall, dict
+        """
+        if self.refresh_userdb:
+            dbarray = download_sheet(1,'sp_sindhu_creds')
+            dbdf = pd.DataFrame(dbarray[1:],columns=dbarray[0])
+            
+            dbdict = {k:v for k,v in dict(zip(dbdf.mdata_key,
+                              dbdf.mdata_value)).items() if k not in ['3','']}
+            
+            self._userdb = {
+                'dfself':None,
+                'dfall':dbdf.drop(columns=['mdata_key','mdata_value']),
+                'dict':dbdict
+                }
+        return self._userdb
+    
     @property
     def bdvapp(self):
         return st.session_state['bdv_app']
@@ -487,8 +518,10 @@ class hearing_Class:
                 cols = st.columns(2)
                 cols[0].link_button("Hear in new tab",
                     url="https://bdv-voice-dev.streamlit.app/?target=hear-now"\
-                        +f"&mega-id={row['url'].replace('https://mega.co.nz/#!','')}"\
-                    +f"&sp-id={row['id']}&name={row['full_name']}")
+                        +f"&source=sp_sindhu"
+                        +f"&mode=guest"
+                        +f"&id={row['encrypt_id']}"
+                        )
                 cols[1].markdown(f"[download from mega]({row['url']})")
             
             if (_row+1)%15 ==0:
@@ -534,17 +567,110 @@ class hearing_Class:
         st.markdown("")
         st.audio(f"{destination}/{filename}",format="audio/wav",
                  start_time=foward_min*60)
-            
-        
-
-# ================ functions related to Vaani Syllabus
-
-    def vaani_syllabus(self):
-        pass
     
-    def HHRNSM_vaani(self):
-        pass
-
+    def switch_page(self,newpage):
+        self.current_page=newpage
+    def registration(self):
+        if self.registrationinfo['reg_status'] == 'success':
+            st.success("You have successfully submitted your form")
+            st.info("Upon verification your account will be created")
+            
+            st.button("Continue as guest for now",
+                      on_click=self.switch_page,
+                      args=['SP'])
+            
+        elif self.registrationinfo=='bdv':
+            st.success("Congratulations!!")
+            st.subheader(":rainbow[You are already part of BDV family]")
+            st.markdown("### :gray[Just enter your phone number to register]")
+            with st.popover("Why are we asking phone number"):
+                st.markdown("1\. To protect against robotic attacks")
+                st.markdown("2\. To have a unique id of user")
+                st.markdown("2\. To connect with you if any problems 🤝")
+            number = st.number_input("Please enter 10 digit phone number")
+            if number:
+                if len(str(number)) !=10:
+                    st.error("Please enter 10 digit number")
+                elif not all([i in '0123456789' for i in str(number)]):
+                    st.error("Only Numbers are allowed")
+                
+                elif str(number) in self.userdb['dict']['existing_userid_list'].split(','):
+                    st.error("A user already exists with this number")
+                else:
+                    # success
+                    def register_user(number):
+                        password = self.bdvapp.userinfo['password']
+                        name = f"{self.bdvapp.userinfo['name']} Pr"
+                        userinfo = {"creds":{'name':name,
+                                             'password':password,
+                                             'phone':number}}
+                        id_insert_col = int(self.userdb['dict']['insert_id_col_index'])
+                        upload_range = f"sp_sindhu_creds!{get_column_letter(id_insert_col)}1:{get_column_letter(id_insert_col)}2"
+                        upload_data(1,upload_range,
+                                    [[number],[json.dumps(userinfo)]])
+                        self.registrationinfo['reg_status'] = 'success'
+                        
+                    st.divider()
+                    st.button("Click to Register",
+                              on_click=register_user,
+                              args=[str(number)])
+        
+        else:
+            # external user
+            st.subheader(":rainbow[Welcome to the SP sindhu registration]")
+            st.markdown("### :gray[Just enter few details]")
+            with st.popover("Why are we asking phone number"):
+                st.markdown("1\. To protect against robotic attacks")
+                st.markdown("2\. To have a unique id of user")
+                st.markdown("2\. To connect with you if any problems 🤝")
+            
+            number = st.number_input("Please enter 10 digit phone number",step=1)
+            number_verified = False
+            if number:
+                if len(str(number)) !=10:
+                    st.error("Please enter 10 digit number")
+                elif not all([i in '0123456789' for i in str(number)]):
+                    st.error("Only Numbers are allowed")
+                
+                elif str(number) in self.userdb['dict']['existing_userid_list'].split(','):
+                    st.error("A user already exists with this number")
+                else:
+                    # success
+                    st.caption("Jai Haribol!!")
+                    number_verified = True
+            if not number_verified:
+                st.stop()
+            
+            name = st.text_input("Enter name (without any prefix like ys or your servant )",
+                                 max_chars=20)
+            password = st.text_input("Enter password",type='password',
+                                     max_chars=15)
+            if not name:
+                st.caption("Must write name")
+            elif not password:
+                st.caption("Must have a password")
+            else:
+                # verified
+                def register_user_ext(number,userinfo):
+                        password = userinfo['password']
+                        name = f"{userinfo['name']} Pr"
+                        userinfo = {"creds":{'name':name,
+                                             'password':password,
+                                             'phone':number}}
+                        id_insert_col = int(self.userdb['dict']['insert_id_col_index'])
+                        upload_range = f"sp_sindhu_creds!{get_column_letter(id_insert_col)}1:{get_column_letter(id_insert_col)}2"
+                        upload_data(1,upload_range,
+                                    [[number],[json.dumps(userinfo)]])
+                        self.registrationinfo['reg_status'] = 'success'
+                        
+                st.divider()
+                st.button("Click to Register",
+                            on_click=register_user_ext,
+                            args=[number,{"name":name,
+                                   "password":password,
+                                   'phone':number}])
+            
+    
     def run(self):
         st.markdown(
         """
@@ -558,31 +684,79 @@ class hearing_Class:
         """,
         unsafe_allow_html=True
         )
-        # display the available series in the sidebar
-        # Until one have completed Vaani syllabus
-        # Show vaani syllabus
-        # else show the other view
-        # with st.sidebar:
-        #     with st.expander("DD Series"):
-        #         pass
-        
-        # with st.sidebar:
-        #     with st.expander("Srila Prabhupada",expanded=True):
-        #         st.button("SB Lectures",on_click=self.change_page,args=['SP_SB'],
-        #                   type='primary' if self.current_page=='SP_SB' else 'secondary')
-                
-        #         st.button("Morning Walks",on_click=self.change_page,args=['SP_MW'],
-        #                   type='primary' if self.current_page=='SP_MW' else 'secondary')
-
-        #         st.button("Bhagwad Gita",on_click=self.change_page,args=['SP_BG'],
-        #                   type='primary' if self.current_page=='SP_BG' else 'secondary')
-        
-        # have a varible which is activated while playing a lecture
-        # and deactivated when pressed back button
+        if self.userinfo['mode'] == 'guest' and not self.registrationinfo['asked_to_reg']:
+            st.info("You have not created a account yet")
+            st.markdown(":gray[Register to keep track of what all you have heard]")
+            st.divider()
+            st.button("Click Here to register",on_click=self.switch_page,
+                      args=['user_registration'])
+            self.registrationinfo['asked_to_reg'] = True
+            st.divider()
         self.page_map[self.current_page]()
-# --------------- 
 
-# if 'app' not in st.session_state:
-#     st.session_state.app = hearing_Class()
-
-# st.session_state['app'].run()
+class VANI_hearing_class():
+    def __init__(self):
+        
+        self.page_config = {'page_title': "Hearing",
+                            'page_icon':'💌',
+                            'layout':'centered'}
+        self.page_map = {           
+            'dash':self.dash,
+            }
+        self.current_page = 'dash'
+        
+        # page data
+        self.user_selections = {'speaker':None,
+                                'semyear':None}
+    
+    
+    def dash(self):
+        st.header(":rainbow[Vaani Syllabus @BDV]")
+        st.markdown("")
+        st.markdown("")
+        speaker_dict = {0:['dd','DD Series'],
+                        1:['hgrsp','HG RSP'],
+                        2:['hhrnsm','HH RNSM'],
+                        3:['sp','Srila Prabhupada']}
+        
+        cols = st.columns(4,gap='small')        
+        for i in range(4):
+            skey,sname = speaker_dict[i]
+            is_selected = self.user_selections['speaker'] == skey
+            cols[i].button(label=sname,
+                           key=f"chosen_speaker_{skey}",
+                           on_click=lambda x: self.user_selections.__setitem__('speaker',x),
+                           args=[skey],
+                           type="primary" if is_selected else "secondary")                        
+        st.divider()
+        speaker = self.user_selections['speaker']
+        # based on speaker one should get the list of semester of year and button just like above
+        # for now let's define
+        
+        available_semester = [f"Sem {i}" for i in range(3,9)]
+        available_semester = [f"Year {i}" for i in range(2,5)]
+        cols = st.columns(len(available_semester),gap='small')
+        for i in range(len(cols)):
+            semester = available_semester[i]
+            is_selected = self.user_selections['semyear'] == semester
+            cols[i].button(label=semester,
+                           key=f"chosen_semester_{semester}",
+                           on_click=lambda x: self.user_selections.__setitem__('semyear',x),
+                           args=[semester],
+                           type="primary" if is_selected else "secondary")                                           
+        
+        
+    def run(self):
+        st.markdown(
+        """
+        <style>
+        .step-up,
+        .step-down {
+            display: none;
+        }
+        </style>
+        </style>
+        """,
+        unsafe_allow_html=True
+        )
+        self.page_map[self.current_page]()

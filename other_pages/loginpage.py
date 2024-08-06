@@ -80,19 +80,22 @@ class login_Class:
         """ 
         Loging page you could say
         """
-        st.header(":green[Please Login to Continue]")
-        default_username = ''
-        default_password = ''
-        if self.bdvapp.userinfo:
-            default_username = self.bdvapp.userinfo['username']
-            default_password = self.bdvapp.userinfo['password']
-        
-        input_user_name = st.text_input("Enter Username",key='username',value=default_username).strip()
-        
-        input_password = st.text_input("Enter Password",
+        login_container = st.empty()
+        with login_container.container():
+            st.header(":green[Please Login to Continue]")
+            default_username = ''
+            default_password = ''
+            if self.bdvapp.userinfo:
+                default_username = self.bdvapp.userinfo['username']
+                default_password = self.bdvapp.userinfo['password']
+            
+            input_user_name = st.text_input("Enter Username",key='username',value=default_username).strip()
+            
+            input_password = st.text_input("Enter Password",
                                         type='password',
                                         value=default_password,
                                         key='password').strip()
+        
         
         ## Verify username and password
         if not input_user_name:
@@ -103,6 +106,11 @@ class login_Class:
             pswd = self.userdb[input_user_name]['password']
             if input_password == pswd:
                 
+                # update the title
+                login_container.empty()
+                with login_container.container():
+                    st.header(":rainbow[Jai!! You have logged in]")
+                    st.image("./other_pages/images/SSNN_blue.png")
                 # get the user details
                 self.bdvapp.userinfo = self.parse_userinfo(input_user_name)
 
@@ -112,14 +120,14 @@ class login_Class:
                 
                 # for all devotees of HG PrGP
                 if 'hgprgp_councelle' in self.bdvapp.userinfo['group']:
-                    st.markdown('#### :green[Direct login to]')
+                    st.markdown('#### :green[Kindly Choose the seva]')
                     st.button("Sadhana Card",on_click=takemein,args=['sadhana_card'])
+                
+                
                 
                 # for voice Devotees
                 if 'bdv' in self.bdvapp.userinfo['group']:
-                    st.button("Login",on_click=takemein,args=['feed'],key='login_button_feed')                
-                    st.divider()
-                    st.markdown('#### :green[Direct login to]')
+                    st.markdown('#### :green[How may I serve you?]')
                     left,middle,right = st.columns(3)
                     with left:
                         st.button('Settlements 💸',on_click=takemein,args=['settlement'],key='direct_login_settlement')
@@ -133,12 +141,14 @@ class login_Class:
                         if 'acc_ic' in self.bdvapp.userinfo['roles']:
                             st.button("Accounts 📝",on_click=takemein,args=['dpt_accounts'],key='direct_login_accounts')
                 
+                
+                
                 # just for developer
                 if self.bdvapp.userinfo['username'] == 'Shiven':
-                    st.divider()
+                    st.markdown("#### :orange[Services in progress]")
                     st.button("Article_tagging",on_click=takemein,args=['article_tag'])
                     st.button("Shloka and Songs",on_click=takemein,args=['ssong'])
-                    st.button("Hearing Tracker",on_click=takemein,args=['heart_medicine'])
+                    st.button("Hearing Tracker",on_click=takemein,args=['sp_hearing'])
 
             else:
                 st.error("Incorrect Password!!")

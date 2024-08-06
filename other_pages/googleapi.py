@@ -50,6 +50,22 @@ def _get_wb(db_id):
 
     return st.session_state[f'spreadsheet{db_id}']
 
+def download_sheet(db_id,sheet_name):
+    """
+    * for sheet choose value from
+    1:db_primary,
+    2:db_sadhana_card,
+    3:db_article_tagging,
+    4:db_accounts,
+    5:db_hearing,
+    6:db_plan4krsna,
+    7:db_psadhana_encyclopaedia
+    sheet!range in A1 notation
+    """
+    workbook = _get_wb(db_id)
+    response = workbook.worksheet(sheet_name).get_all_values()
+    return response
+
 def download_data(db_id,range_name):
     """
     * for sheet choose value from
@@ -62,17 +78,12 @@ def download_data(db_id,range_name):
     7:db_psadhana_encyclopaedia
     sheet!range in A1 notation
     """
-    try:            
-        workbook = _get_wb(db_id)
-        if '!' in range_name:
-            sheetname, rangename = range_name.split("!")
-            response = workbook.worksheet(sheetname).get_values(rangename)        
-            return response
-        return -1
-
-    except Exception as e:
-        st.error("Something Went Wrong")
-        st.write(e)
+    workbook = _get_wb(db_id)
+    if '!' in range_name:
+        sheetname, rangename = range_name.split("!")
+        response = workbook.worksheet(sheetname).get_values(rangename)        
+        return response
+    return -1
 
 def upload_data(db_id,range_name,value):
     """
