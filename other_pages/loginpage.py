@@ -38,30 +38,24 @@ class login_Class:
         """
         if self._userdb_refresh:
             # refresh the data
-            try:
-                raw_data = download_data(db_id=1,range_name=self.USER_CREDENTIALS)[0][0]            
-                
-                # save
-                self._userdb = json.loads(raw_data)
-                # set refresh to false
-                self._userdb_refresh = False
-                # return
-                return self._userdb
+            raw_data = download_data(db_id=1,range_name=self.USER_CREDENTIALS)[0][0]            
             
-            except Exception as e:
-                if self.bdvapp.in_development:
-                    st.write(e)
-                else :
-                    st.error("some problem in fetching data")        
-        else :
-            # refresh not required
-            return self._userdb
+            # save
+            self._userdb = json.loads(raw_data)
+            # set refresh to false
+            self._userdb_refresh = False
+            
+        return self._userdb
 
     @property
     def bdvapp(self):
         return st.session_state.get("bdv_app",None)
     
     def parse_userinfo(self,username):
+        """
+        uses the userdb to parse userdata for one user (username waalaa)
+        returns a dictionary with all the user details
+        """
         userdb = {'username':username,**self.userdb[username]}
         try:
             userdb['roles'] = \
@@ -78,8 +72,9 @@ class login_Class:
     
     def home(self):
         """ 
-        Loging page you could say
+        login plus feed also
         """
+<<<<<<< HEAD
         login_container = st.empty()
         with login_container.container():
             st.header(":green[Please Login to Continue]")
@@ -92,17 +87,38 @@ class login_Class:
             input_user_name = st.text_input("Enter Username",key='username',value=default_username).strip()
             
             input_password = st.text_input("Enter Password",
+=======
+        st.header(":green[Please Login to Continue]")
+        
+        default_username = ''
+        default_password = ''
+        if self.bdvapp.userinfo:
+            default_username = self.bdvapp.userinfo['username']
+            default_password = self.bdvapp.userinfo['password']
+        
+        input_user_name = st.text_input("Enter Username",key='username',value=default_username).strip()
+        
+        input_password = st.text_input("Enter Password",
+>>>>>>> 3aa97b7fce5fcb0014a2aaf7e2cdc796188ce13d
                                         type='password',
                                         value=default_password,
                                         key='password').strip()
         
         
+<<<<<<< HEAD
+=======
+        
+        
+>>>>>>> 3aa97b7fce5fcb0014a2aaf7e2cdc796188ce13d
         ## Verify username and password
         if not input_user_name:
             st.warning("Please Enter Username")
+            
         elif not input_password:
             st.warning("Please Enter Password!!")
+            
         elif input_user_name in self.userdb.keys():
+            
             pswd = self.userdb[input_user_name]['password']
             if input_password == pswd:
                 
