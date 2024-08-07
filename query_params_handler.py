@@ -8,7 +8,8 @@ def process_query_parameters(app,qdict):
     
     app.handled_query_params = True if target !='dev' else False
     
-    # for development this would be the target
+    # for development this would be the target 
+    # ?target=dev&page=vani_hearing&subpage=dash&refresh=no
     if target == 'dev':
         page = qdict['page']
         subpage = qdict.get('subpage','blank')

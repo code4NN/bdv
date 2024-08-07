@@ -74,7 +74,6 @@ class login_Class:
         """ 
         login plus feed also
         """
-<<<<<<< HEAD
         login_container = st.empty()
         with login_container.container():
             st.header(":green[Please Login to Continue]")
@@ -84,32 +83,16 @@ class login_Class:
                 default_username = self.bdvapp.userinfo['username']
                 default_password = self.bdvapp.userinfo['password']
             
-            input_user_name = st.text_input("Enter Username",key='username',value=default_username).strip()
+            input_user_name = st.text_input("Enter Username",
+                                            key='username',
+                                            value=default_username).strip()
             
             input_password = st.text_input("Enter Password",
-=======
-        st.header(":green[Please Login to Continue]")
-        
-        default_username = ''
-        default_password = ''
-        if self.bdvapp.userinfo:
-            default_username = self.bdvapp.userinfo['username']
-            default_password = self.bdvapp.userinfo['password']
-        
-        input_user_name = st.text_input("Enter Username",key='username',value=default_username).strip()
-        
-        input_password = st.text_input("Enter Password",
->>>>>>> 3aa97b7fce5fcb0014a2aaf7e2cdc796188ce13d
-                                        type='password',
-                                        value=default_password,
-                                        key='password').strip()
+                                            type='password',
+                                            value=default_password,
+                                            key='password').strip()
         
         
-<<<<<<< HEAD
-=======
-        
-        
->>>>>>> 3aa97b7fce5fcb0014a2aaf7e2cdc796188ce13d
         ## Verify username and password
         if not input_user_name:
             st.warning("Please Enter Username")
@@ -123,6 +106,7 @@ class login_Class:
             if input_password == pswd:
                 
                 # update the title
+                login_container.empty()
                 login_container.empty()
                 with login_container.container():
                     st.header(":rainbow[Jai!! You have logged in]")

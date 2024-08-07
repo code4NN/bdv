@@ -700,7 +700,7 @@ class VANI_hearing_class():
         self.page_config = {'page_title': "Hearing",
                             'page_icon':'💌',
                             'layout':'centered'}
-        self.page_map = {           
+        self.page_map = {
             'dash':self.dash,
             }
         self.current_page = 'dash'
@@ -708,7 +708,6 @@ class VANI_hearing_class():
         # page data
         self.user_selections = {'speaker':None,
                                 'semyear':None}
-    
     
     def dash(self):
         st.header(":rainbow[Vaani Syllabus @BDV]")
