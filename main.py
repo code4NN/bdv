@@ -51,6 +51,20 @@ class myapp:
     def page_config(self):
         return self.page_map[self.current_page].page_config
 
+    
+    def scriptcial_login(self,username,password):
+        """
+        updates app.userinfo if the valid user is there
+        """
+        login_page = self.page_map['login']
+        userdb = login_page.userdb
+        if username in userdb.keys():
+            if password == userdb[username]['password']:
+                # success
+                self.userinfo = login_page.parse_userinfo(username)
+                return 1
+        return 0
+    
     def run(self):
                                     
         # custom global css

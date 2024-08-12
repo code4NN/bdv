@@ -73,14 +73,17 @@ class SP_hearing_Class:
         self._userdb = None
         self.refresh_userdb = True
         
+        # userdata from sp-sindhu table
         self.userinfo = {"mode":"guest",
                          "user":{}
                          }
         self.registrationinfo = {"source":'external',# bdv,external
                                  'reg_status':None, # success after submission
-                                 'asked_to_reg':False
                                 }
-    
+    @property
+    def user_exists(self):
+        return self.userinfo['mode'] == 'user'
+        
     @property
     def userdb(self):
         """
@@ -92,6 +95,7 @@ class SP_hearing_Class:
             
             dbdict = {k:v for k,v in dict(zip(dbdf.mdata_key,
                               dbdf.mdata_value)).items() if k not in ['3','']}
+            dbdict['existing_userid_list'] = dbdict['existing_userid_list'].split(",")
             
             self._userdb = {
                 'dfself':None,
@@ -199,7 +203,16 @@ class SP_hearing_Class:
             self._sp_single_choice_dfdict['update_post_month'] = True
             
     def sp_lectures(self):
+        
+        if self.bdvapp.userinfo:
+            if 'sp_vani_admin' in self.bdvapp.userinfo['roles']:
+                st.button("Pending Registrations",on_click=self.switch_page,
+                        args=['user_registration'])
+        
         st.header(":rainbow[Srila Prabhupada Ki Jai!!]")
+        if self.user_exists:
+            st.markdown(f"### :gray[Hare Krishna] :rainbow[{self.userinfo['user']['creds']['name']}]")
+        
         spdf = self.sp_sindhu_df.copy(deep=True) # load the lecture config file
         displayconfig = {
             'select':st.column_config.CheckboxColumn('pick'),
@@ -570,14 +583,11 @@ class SP_hearing_Class:
     
     def switch_page(self,newpage):
         self.current_page=newpage
+    
     def registration(self):
         if self.registrationinfo['reg_status'] == 'success':
             st.success("You have successfully submitted your form")
             st.info("Upon verification your account will be created")
-            
-            st.button("Continue as guest for now",
-                      on_click=self.switch_page,
-                      args=['SP'])
             
         elif self.registrationinfo=='bdv':
             st.success("Congratulations!!")
@@ -594,16 +604,19 @@ class SP_hearing_Class:
                 elif not all([i in '0123456789' for i in str(number)]):
                     st.error("Only Numbers are allowed")
                 
-                elif str(number) in self.userdb['dict']['existing_userid_list'].split(','):
+                elif str(number) in self.userdb['dict']['existing_userid_list']:
                     st.error("A user already exists with this number")
                 else:
                     # success
                     def register_user(number):
                         password = self.bdvapp.userinfo['password']
                         name = f"{self.bdvapp.userinfo['name']} Pr"
-                        userinfo = {"creds":{'name':name,
+                        userinfo = {
+                                    "account_is_active":'no',
+                                    "creds":{'name':name,
                                              'password':password,
-                                             'phone':number}}
+                                             'phone':number}
+                                    }
                         id_insert_col = int(self.userdb['dict']['insert_id_col_index'])
                         upload_range = f"sp_sindhu_creds!{get_column_letter(id_insert_col)}1:{get_column_letter(id_insert_col)}2"
                         upload_data(1,upload_range,
@@ -632,43 +645,72 @@ class SP_hearing_Class:
                 elif not all([i in '0123456789' for i in str(number)]):
                     st.error("Only Numbers are allowed")
                 
-                elif str(number) in self.userdb['dict']['existing_userid_list'].split(','):
+                elif str(number) in self.userdb['dict']['existing_userid_list']:
                     st.error("A user already exists with this number")
                 else:
                     # success
                     st.caption("Jai Haribol!!")
                     number_verified = True
-            if not number_verified:
-                st.stop()
-            
-            name = st.text_input("Enter name (without any prefix like ys or your servant )",
-                                 max_chars=20)
-            password = st.text_input("Enter password",type='password',
-                                     max_chars=15)
-            if not name:
-                st.caption("Must write name")
-            elif not password:
-                st.caption("Must have a password")
-            else:
-                # verified
-                def register_user_ext(number,userinfo):
-                        password = userinfo['password']
-                        name = f"{userinfo['name']} Pr"
-                        userinfo = {"creds":{'name':name,
-                                             'password':password,
-                                             'phone':number}}
-                        id_insert_col = int(self.userdb['dict']['insert_id_col_index'])
-                        upload_range = f"sp_sindhu_creds!{get_column_letter(id_insert_col)}1:{get_column_letter(id_insert_col)}2"
-                        upload_data(1,upload_range,
-                                    [[number],[json.dumps(userinfo)]])
-                        self.registrationinfo['reg_status'] = 'success'
-                        
-                st.divider()
-                st.button("Click to Register",
+            if  number_verified:
+                # move ahead only if number is verified
+                
+                name = st.text_input("Enter name (without any prefix like ys or your servant )",
+                                    max_chars=20)
+                password = st.text_input("Enter password",type='password',
+                                        max_chars=15)
+                if not name:
+                    st.caption("Must write name")
+                elif not password:
+                    st.caption("Must have a password")
+                else:
+                    # verified
+                    def register_user_ext(number,userinfo):
+                            password = userinfo['password']
+                            name = f"{userinfo['name']} Pr"
+                            userinfo = {
+                                        "account_is_active":'no',
+                                        "creds":{'name':name,
+                                                'password':password,
+                                                'phone':number}
+                                        }
+                            id_insert_col = int(self.userdb['dict']['insert_id_col_index'])
+                            upload_range = f"sp_sindhu_creds!{get_column_letter(id_insert_col)}1:{get_column_letter(id_insert_col)}2"
+                            upload_data(1,upload_range,
+                                        [[number],[json.dumps(userinfo)]])
+                            self.registrationinfo['reg_status'] = 'success'
+                            
+                    st.divider()
+                    st.button("Click to Register",
                             on_click=register_user_ext,
                             args=[number,{"name":name,
                                    "password":password,
                                    'phone':number}])
+        
+        st.button("Continue as guest for now",
+                      on_click=self.switch_page,
+                      args=['SP'])
+        if self.bdvapp.userinfo and 'sp_vani_admin' in self.bdvapp.userinfo['roles']:
+            # show the pending registrations
+            def activate_account(update_range,update_dict):
+                update_dict['account_is_active'] = 'yes'
+                update_json = json.dumps(update_dict)
+                upload_data(1,update_range,[[update_json]])
+                
+                self._sp_userdb_refresh = True
+            
+            alldf = self.userdb['dfall']
+            for one_user in self.userdb['dict']['existing_userid_list']:
+                userdict = json.loads(alldf.query("spid=='userinfo'")[one_user].tolist()[0])
+                spdb_col = json.loads(alldf.query("spid=='dbcol'")[one_user].tolist()[0])
+                spdb_row = 2
+                spdb_update_range = f"sp_sindhu_creds!{get_column_letter(spdb_col)}{spdb_row}"
+                if userdict['account_is_active'] == 'no':
+                    st.write(userdict)
+                    st.button(f"Activate `{userdict['creds']['name']}`",
+                              on_click=activate_account,
+                              args=[spdb_update_range,userdict],
+                              key="activation_"+one_user)
+                    st.divider()
             
     
     def run(self):
@@ -684,14 +726,40 @@ class SP_hearing_Class:
         """,
         unsafe_allow_html=True
         )
-        if self.userinfo['mode'] == 'guest' and not self.registrationinfo['asked_to_reg']:
-            st.info("You have not created a account yet")
-            st.markdown(":gray[Register to keep track of what all you have heard]")
-            st.divider()
-            st.button("Click Here to register",on_click=self.switch_page,
-                      args=['user_registration'])
-            self.registrationinfo['asked_to_reg'] = True
-            st.divider()
+        
+        if self.userinfo['mode'] == 'guest' and self.current_page !='user_registration':
+            # option to login
+            with st.sidebar:
+                st.info("You are not logged in")
+                st.markdown(":gray[Login to have a personalized experience]")
+                
+                def login_karo(userinfo):
+                    self.userinfo = {'mode':'user',
+                                    'user':userinfo}
+                    st.snow()
+                    
+                username = str(st.number_input("Enter username (10digit phone)",min_value=0,step=1))
+                password = st.text_input("Enter password",type='password')
+                if username:
+                    if username in self.userdb['dict']['existing_userid_list']:
+                        # verify password
+                        userinfo = json.loads(
+                            self.userdb['dfall'].query("spid=='userinfo'")[username].tolist()[0])
+                        if password == userinfo['creds']['password']:
+                            st.button("login",key='login',on_click=login_karo,
+                                    args=[userinfo],
+                                    type='primary')
+                        else:
+                            st.caption("incorrect password")
+                            
+                    else:
+                        st.caption("no user found")
+                
+                st.divider()
+                st.button("Click Here to register",type='primary',on_click=self.switch_page,
+                        args=['user_registration'])
+                
+        
         self.page_map[self.current_page]()
 
 class VANI_hearing_class():

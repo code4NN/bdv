@@ -9,11 +9,22 @@ def process_query_parameters(app,qdict):
     app.handled_query_params = True if target !='dev' else False
     
     # for development this would be the target 
-    # ?target=dev&page=vani_hearing&subpage=dash&refresh=no
+    # Vani syllabus: ?target=dev&page=vani_hearing&subpage=dash&refresh=no
+    # sp vani : ?target=dev&mode=user&page=sp_hearing&subpage=SP&refresh=no
+    
     if target == 'dev':
         page = qdict['page']
+        loginmode = qdict['mode'] # guest or user
         subpage = qdict.get('subpage','blank')
         refresh = qdict.get('refresh','yes')
+        
+        # login if login_mode is user
+        if loginmode == 'user':
+            username = qdict.get('username','Shiven')
+            password = qdict.get('pass','mindit')
+            
+            app.scriptcial_login(username,password)
+            
         
         # if refresh, create a fresh instance of the class
         if refresh == 'yes':
@@ -32,13 +43,8 @@ def process_query_parameters(app,qdict):
         # login page
         username = qdict.get('user',"nouser")
         password = qdict.get('pass','blank')
-        login_page = app.page_map['login']
-        userdb = login_page.userdb
         
-        if username in userdb.keys():
-            if password == userdb[username]['password']:
-                # success
-                app.userinfo = login_page.parse_userinfo(username)
+        app.scriptcial_login(username,password)
     
     elif target =='hear-now':
         source = qdict.get("source")
