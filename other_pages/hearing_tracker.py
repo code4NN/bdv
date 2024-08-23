@@ -12,6 +12,11 @@ from other_pages.googleapi import download_data,download_sheet,upload_data
 from openpyxl.utils import get_column_letter
 from streamlit.components.v1 import html as display_html
 
+# for getting cover image
+import eyed3
+from io import BytesIO
+from PIL import Image
+
 class SP_hearing_Class:
     def __init__(self):
         
@@ -30,6 +35,13 @@ class SP_hearing_Class:
         # for Prabhupada lectures------------------------------------------------------
         self.sp_sindhu_df = pd.read_csv("./local_data/SP_sindhu_config.csv")
         self.sp_sindhu_df.insert(0,"select",False)
+        
+        # creating the lec-url
+        rootURL = 'http://localhost:8501/'
+        # rootURL = 'http://localhost:8501/'        
+        self.sp_sindhu_df['lec_url'] = rootURL+'?target=hear-now&source=sp_sindhu&id='\
+            + self.sp_sindhu_df['encrypt_id']
+        
         self.sp_sindhu_df['name'] = np.where(self.sp_sindhu_df['category'].isin(['Bg','SB']),
                                              self.sp_sindhu_df['prefix'] + " "+self.sp_sindhu_df['name'],
                                              self.sp_sindhu_df['name'])
@@ -68,6 +80,12 @@ class SP_hearing_Class:
         
         # for hear now
         self.play_now_info_dict = None
+        # {
+        #     'encrypt_id':None,
+        #     'mega_id':None,
+        #     'sp_id':None,
+        #     'lecture_name':None,
+        # }
         
         # for user info etc-------------------------------
         self._userdb = None
@@ -219,12 +237,13 @@ class SP_hearing_Class:
             'category':st.column_config.TextColumn("type",width='small'),
             # 'prefix':st.column_config.TextColumn("id"),
             'name':st.column_config.TextColumn("title"),
-            'name_1':st.column_config.TextColumn("title"),
+            # 'name_1':st.column_config.TextColumn("title"),
             'url':st.column_config.LinkColumn("url",display_text="download"),
-            'duration':st.column_config.NumberColumn("⏳min"),
             'month_Eng':st.column_config.TextColumn("month"),
             'mmm_dd':st.column_config.TextColumn("day"),
-            'yy_mmm_dd':st.column_config.TextColumn("date")
+            'yy_mmm_dd':st.column_config.TextColumn("date"),
+            'lec_url':st.column_config.LinkColumn("link",display_text='hear'),
+            'duration':st.column_config.NumberColumn("⏳min")
         }
         
         # st.dataframe(spdf,column_config=displayconfig)
@@ -512,54 +531,64 @@ class SP_hearing_Class:
             #now display the list of filtered lectures
             # spdf
         
-        # now we have all the filters applied. Just display the filtered
-        st.divider()
-        st.caption(f"found {len(spdf)} records")
+        
+        # now we have all the filters applied. Just display the filtered data
+        
+        st.divider()        
+        st.dataframe(spdf)
+        
         sb_column_config = {k:v for k,v in displayconfig.items() if k in 
-                            ['select','prefix','name','yy_mmm_dd','duration']}
-        choice = st.checkbox("Pick ",value=True)
-        spdf['select'] = choice
-        response = st.data_editor(spdf,column_config=sb_column_config,
+                            ['name','lec_url','duration']
+                            # ['select','prefix','name','yy_mmm_dd','duration']
+                            }
+        search_query = st.text_input(":gray[Enter query]",max_chars=15)
+        if search_query:
+            spdf = spdf[spdf.name.str.lower().str.contains(search_query.strip().lower())]
+        st.caption(f"found {len(spdf)} records")
+        st.data_editor(spdf,column_config=sb_column_config,
                         column_order=list(sb_column_config.keys()),
                         hide_index=True,
                         disabled=list(set(sb_column_config.keys())-{'select'})).query("select==True")
         
-        for _row,row in response.reset_index(drop=True).iterrows():
-            with st.expander(
-            f"{_row+1}\. {row['full_name'][:-4]}  :violet[{row['duration']}min]",
-            expanded=False):
-                cols = st.columns(2)
-                cols[0].link_button("Hear in new tab",
-                    url="https://bdv-voice-dev.streamlit.app/?target=hear-now"\
-                        +f"&source=sp_sindhu"
-                        +f"&mode=guest"
-                        +f"&id={row['encrypt_id']}"
-                        )
-                cols[1].markdown(f"[download from mega]({row['url']})")
+        # for _row,row in response.reset_index(drop=True).iterrows():
+        #     with st.expander(
+        #     f"{_row+1}\. {row['full_name'][:-4]}  :violet[{row['duration']}min]",
+        #     expanded=False):
+        #         cols = st.columns(2)
+        #         cols[0].link_button("Hear in new tab",
+        #             url="https://bdv-voice-dev.streamlit.app/?target=hear-now"\
+        #                 +f"&source=sp_sindhu"
+        #                 +f"&mode=guest"
+        #                 +f"&id={row['encrypt_id']}"
+        #                 )
+        #         cols[1].markdown(f"[download from mega]({row['url']})")
             
-            if (_row+1)%15 ==0:
-                placeholder = st.empty()
-                if not placeholder.checkbox(f"Show {len(spdf)-1-_row} more",
-                                    key=f'showmore_{_row}',
-                                    value=False):
-                    break
-                else:
-                    placeholder.empty()
+        #     if (_row+1)%15 ==0:
+        #         placeholder = st.empty()
+        #         if not placeholder.checkbox(f"Show {len(spdf)-1-_row} more",
+        #                             key=f'showmore_{_row}',
+        #                             value=False):
+        #             break
+        #         else:
+        #             placeholder.empty()
 
     def hear_sp_now(self):
-        url = f"https://mega.co.nz/#!{self.play_now_info_dict['megaid']}"
+        url = f"https://mega.co.nz/#!{self.play_now_info_dict['mega_id']}"
         destination = './local_data/sp_storage'
-        filename = f"{self.play_now_info_dict['spid']}.mp3"
-        displayname = self.play_now_info_dict['name']
+        filename = f"{self.play_now_info_dict['sp_id']}.mp3"
+        image_file_name = f"{self.play_now_info_dict['sp_id']}.png"
+        displayname = self.play_now_info_dict['lecture_name']
+        
         available_files = os.listdir(destination)
         
         msgbox = st.empty()
         if filename not in available_files:
-            # keep the latest 10 files and delete the older ones
+            MAX_LEC_STORE = 30
+            # keep the latest MAX_LEC_STORE/2 files and delete the older ones
             # reverse = True sorted in decending order
             available_files = sorted(available_files,
                                      key=lambda x: os.path.getmtime(f"{destination}/{x}"),reverse=True)
-            for one_file in available_files[5:]:
+            for one_file in available_files[MAX_LEC_STORE:]:
                 os.remove(f"{destination}/{one_file}")
                 
             with msgbox.container():
@@ -571,6 +600,13 @@ class SP_hearing_Class:
                 
         msgbox.markdown(f"## :rainbow[{displayname}]")
         st.markdown("")
+        st.markdown("")
+        # display the image if the audio file have one
+        eye_file = eyed3.load(f"{destination}/{filename}")
+        if eye_file.tag.images:
+            cover_image = Image.open(BytesIO(eye_file.tag.images[0].image_data))
+            st.image(cover_image)
+            
         st.markdown("")
         st.markdown("")
         foward_min = st.number_input("forward (in min)",step=1,min_value=0)

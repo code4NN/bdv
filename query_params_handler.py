@@ -58,14 +58,23 @@ def process_query_parameters(app,qdict):
         if source == 'sp_sindhu':
             app.current_page = 'sp_hearing'
             player = app.page_map['sp_hearing']
-            player.page_config = {'page_title': fullname,
+            
+            # get lecture name
+            lec_info = player.sp_sindhu_df.query(f"encrypt_id == '{lecture_id}'")
+            lec_name = lec_info.name.tolist()[0]
+            full_name = lec_info.full_name.tolist()[0]
+            mega_id = lec_info.mega_id.tolist()[0]
+            sp_id = lec_info['id'].tolist()[0]
+            
+            player.page_config = {'page_title': lec_name,
                                 'page_icon':'🎧',
                                 'layout':'wide'}
             
             player.current_page = 'SP_lec_player'
-            player.play_now_info_dict = {'megaid':megaid,
-                                        'spid':spid,
-                                        'name':fullname}
+            player.play_now_info_dict = {'encrypt_id':lecture_id,
+                                         'mega_id':mega_id,
+                                         'sp_id':sp_id,
+                                         'lecture_name':lec_name}
             st.rerun()
     
     
