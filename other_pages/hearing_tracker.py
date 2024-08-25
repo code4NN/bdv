@@ -5,6 +5,7 @@ import streamlit as st
 import pandas as pd
 import json
 import datetime
+import pytz
 
 from custom_module.mega.mega.mega import Mega
 
@@ -95,9 +96,73 @@ class SP_hearing_Class:
         self.userinfo = {"mode":"guest",
                          "user":{}
                          }
+        
+        
         self.registrationinfo = {"source":'external',# bdv,external
                                  'reg_status':None, # success after submission
                                 }
+    def perform_login(self,username,password,callmode):
+        """
+        * perform following if callmode=submit
+        * update self.userinfo
+        * update self._userdb['dfself']
+        * update self.sp_sindhu_df
+        * if callmode = ask
+        * returns 1 if valid username and password
+        """
+        _user_is_valid = 0
+        _password_is_correct = 0
+        _userinfo = None
+        if username in self.userdb['dict']['existing_userid_list']:
+            _user_is_valid=1
+            
+            _userinfo = json.loads(
+                    self.userdb['dfall']\
+                    .query("spid=='userinfo'")[username].tolist()[0])
+            _user_dbcol = json.loads(
+                self.userdb['dfall']\
+                    .query("spid=='dbcol'")[username].tolist()[0])
+            
+            if password==_userinfo['creds']['password']:
+                _password_is_correct = 1
+        
+        if callmode=='ask':
+            # 0 if no valid user
+            # 1 if user is valid and password is incorrect
+            # 2 if valid user and correct password
+            return _user_is_valid + _password_is_correct
+        
+        elif callmode =='submit':
+            if _user_is_valid + _password_is_correct ==2:
+                # do all the tasks
+                
+                # initialize the userdb
+                _ = self.userdb
+                
+                # update self.userinfo
+                self.userinfo = {"mode":'user',
+                                 'user':_userinfo,
+                                 'dbcol':_user_dbcol}
+                # update self._userdb['dfself']
+                _columns = ['dbrow','spid',username]
+                self._userdb['dfself'] = self._userdb['dfall'][_columns].copy(deep=True)
+                
+                # update self.sp_sindhu_df
+                # convert id to numbers
+                dfself = self.userdb['dfself'].copy(deep=True)
+                dfself['spid'] = pd.to_numeric(dfself['spid'],errors='coerce')
+                dfself.dropna(subset='spid',inplace=True)
+                self.sp_sindhu_df = self.sp_sindhu_df.merge(dfself,left_on='id',
+                                        right_on='spid',
+                                        how='left',indicator=True)
+                # convert the lecture_status to dict                
+                # print(self.sp_sindhu_df[[username]].head()[username].tolist())
+                self.sp_sindhu_df[username] = self.sp_sindhu_df[username]\
+                    .apply(lambda x: {"status":'pending'} if x=='' else json.loads(x))
+                # print("while loggin on")
+                # print(self.sp_sindhu_df.columns)
+                st.snow()
+    
     @property
     def user_exists(self):
         return self.userinfo['mode'] == 'user'
@@ -120,6 +185,8 @@ class SP_hearing_Class:
                 'dfall':dbdf.drop(columns=['mdata_key','mdata_value']),
                 'dict':dbdict
                 }
+            self.refresh_userdb = False
+            
         return self._userdb
     
     @property
@@ -544,12 +611,33 @@ class SP_hearing_Class:
         search_query = st.text_input(":gray[Enter query]",max_chars=15)
         if search_query:
             spdf = spdf[spdf.name.str.lower().str.contains(search_query.strip().lower())]
-        st.caption(f"found {len(spdf)} records")
-        st.data_editor(spdf,column_config=sb_column_config,
-                        column_order=list(sb_column_config.keys()),
-                        hide_index=True,
-                        disabled=list(set(sb_column_config.keys())-{'select'})).query("select==True")
         
+        st.caption(f"found {len(spdf)} records")
+        # this is table view. Links doesn't work well in this on mobile
+        # st.data_editor(spdf,column_config=sb_column_config,
+        #                 column_order=list(sb_column_config.keys()),
+        #                 hide_index=True,
+        #                 disabled=list(set(sb_column_config.keys())-{'select'})).query("select==True")
+        for _row, row in spdf.reset_index(drop=True).iterrows():
+            lec_name = row['name']
+            duration = row['duration']
+            lec_url = row['lec_url']
+            download_url = row['url']
+            
+            with st.expander(f"{_row+1}\. {lec_name} ({duration})"):
+                st.markdown(f"[link to hear]({lec_url})")
+            if (_row+1) %20==0:
+                chb_placeholder= st.empty()
+                chb_response = chb_placeholder.checkbox(f":blue[Show `{len(spdf)-1-_row}` more]",
+                                    key=f'showmore_{_row}',
+                                    value=False)
+                if not chb_response:
+                    break
+                else:
+                    chb_placeholder.empty()
+                #     st.write(f"{_row}, {chb_response}")
+                
+                
         # for _row,row in response.reset_index(drop=True).iterrows():
         #     with st.expander(
         #     f"{_row+1}\. {row['full_name'][:-4]}  :violet[{row['duration']}min]",
@@ -576,15 +664,14 @@ class SP_hearing_Class:
         url = f"https://mega.co.nz/#!{self.play_now_info_dict['mega_id']}"
         destination = './local_data/sp_storage'
         filename = f"{self.play_now_info_dict['sp_id']}.mp3"
-        image_file_name = f"{self.play_now_info_dict['sp_id']}.png"
         displayname = self.play_now_info_dict['lecture_name']
         
         available_files = os.listdir(destination)
         
         msgbox = st.empty()
         if filename not in available_files:
-            MAX_LEC_STORE = 30
-            # keep the latest MAX_LEC_STORE/2 files and delete the older ones
+            MAX_LEC_STORE = 20
+            # keep the latest MAX_LEC_STORE files and delete the older ones
             # reverse = True sorted in decending order
             available_files = sorted(available_files,
                                      key=lambda x: os.path.getmtime(f"{destination}/{x}"),reverse=True)
@@ -603,6 +690,7 @@ class SP_hearing_Class:
         st.markdown("")
         # display the image if the audio file have one
         eye_file = eyed3.load(f"{destination}/{filename}")
+        file_duration_secs = eye_file.info.time_secs
         if eye_file.tag.images:
             cover_image = Image.open(BytesIO(eye_file.tag.images[0].image_data))
             st.image(cover_image)
@@ -616,7 +704,104 @@ class SP_hearing_Class:
         st.markdown("")
         st.audio(f"{destination}/{filename}",format="audio/wav",
                  start_time=foward_min*60)
-    
+
+        st.markdown(f"[Download this mega]({url})")
+        
+        if self.user_exists:
+            st.divider()
+            st.markdown(f"### :gray[Hare Krishna ] :rainbow[{self.userinfo['user']['creds']['name']}]")            
+            
+            hearing_status = self.sp_sindhu_df.query(f"spid == {self.play_now_info_dict['sp_id']}")\
+            [str(self.userinfo['user']['creds']['phone'])].tolist()[0]
+            if hearing_status['status'] == 'pending':
+                st.error("You have not heard this lecutre")
+            elif hearing_status['status'] == 'in_progress':
+                last_modification_time = datetime.datetime.strptime(hearing_status['last_modification_time'],"%Y%b%d%a %H%M%S")\
+                    .strftime("%d %b %Y @ %H:%M")
+                st.warning("### You have heard this lecture until")
+                st.markdown(f"#### `{hearing_status['heard_until']}` :gray[minutes]")
+                st.markdown(f"#### :gray[last heard on] {last_modification_time}")
+            else:
+                # have heard this lecture
+                last_modification_time = datetime.datetime.strptime(hearing_status['last_modification_time'],"%Y%b%d%a %H%M%S")\
+                    .strftime("%d %b %Y @ %H:%M")
+                st.success("### You have heard this lecture on ")
+                st.markdown(f"#### {last_modification_time}")
+                
+            spid = int(self.play_now_info_dict['sp_id'])
+            
+            dbrow = self.sp_sindhu_df[['spid','dbrow']].query(f"spid == {spid}")['dbrow'].tolist()[0]
+            dbcol = self.userinfo['dbcol']
+            dbsheet = 'sp_sindhu_creds'
+            
+            india_timezone = pytz.timezone('Asia/Kolkata')
+            timestamp = datetime.datetime.now(india_timezone).strftime("%Y%b%d%a %H%M%S")
+            
+            
+            def update_lecture_status(status_dict,dbrow,dbcol,dbname):
+                status_json = json.dumps(status_dict)
+                upload_data(db_id=1,
+                            range_name=f"{dbname}!{get_column_letter(dbcol)}{dbrow}",
+                            value=[[status_json]])
+                # update the local data
+                user_phone = str(self.userinfo['user']['creds']['phone'])
+                self.sp_sindhu_df[user_phone] = np.where(self.sp_sindhu_df['spid']==spid,
+                                                         status_dict,
+                                                         self.sp_sindhu_df['spid'])
+                
+            
+            new_status = st.radio(":gray[Update Status of Lecture]",
+                     options=['in progress','completed'],
+                     index=1 if hearing_status['status']=='completed' else 0,
+                     disabled= True if hearing_status['status']=='completed' else False)
+            
+            if new_status =='in progress':
+                duration = st.number_input("Heard until (in minute)",min_value=0,step=1)
+                
+                if duration:
+                    status_prog = {'status':'in_progress',
+                                   'heard_until':duration,
+                                   'lecture_notes':'',
+                                   'last_modification_time':timestamp
+                                   }
+                    st.button("Update status",on_click=update_lecture_status,
+                              args=[status_prog,dbrow,dbcol,dbsheet],
+                              type='primary')
+                    
+            elif new_status =='completed':
+                MIN_LINE = int(max(2,min(12,(5*file_duration_secs)/(30*60))))
+                MIN_WORD = int(max(10,min(80,(50*file_duration_secs)/(30*60))))
+                
+                lec_notes = st.text_area("Lecture Summary",
+                                         help=f"Must write at least {MIN_LINE} lines and minimum {MIN_WORD} words in order to mark as completed",
+                                         value="" if hearing_status['status']!='completed' else hearing_status['lecture_notes'],
+                                         max_chars=400)
+                n_lines, n_words = len(lec_notes.splitlines()),len(lec_notes.split())
+                st.caption(f"you have written {n_lines} lines {n_words} words")
+                if n_lines>MIN_LINE-1 and n_words>MIN_WORD-1:
+                                      
+                    status_compl = {'status':'completed',
+                                   'heard_until':-1,
+                                   'lecture_notes':lec_notes,
+                                   'last_modification_time':timestamp
+                                   }
+                    st.button("Update status",on_click=update_lecture_status,
+                              args=[status_compl,dbrow,dbcol,dbsheet],
+                              type='primary')
+                    
+                    
+                else:
+                    if n_lines <MIN_LINE:
+                        st.caption(f"{MIN_LINE-n_lines} more lines are needed")
+                    if n_words<MIN_WORD:
+                        st.caption(f"{MIN_WORD-n_words} more words are needed")
+                
+            
+            
+            
+            
+        
+        
     def switch_page(self,newpage):
         self.current_page=newpage
     
@@ -768,29 +953,19 @@ class SP_hearing_Class:
             with st.sidebar:
                 st.info("You are not logged in")
                 st.markdown(":gray[Login to have a personalized experience]")
-                
-                def login_karo(userinfo):
-                    self.userinfo = {'mode':'user',
-                                    'user':userinfo}
-                    st.snow()
                     
                 username = str(st.number_input("Enter username (10digit phone)",min_value=0,step=1))
                 password = st.text_input("Enter password",type='password')
                 if username:
-                    if username in self.userdb['dict']['existing_userid_list']:
-                        # verify password
-                        userinfo = json.loads(
-                            self.userdb['dfall'].query("spid=='userinfo'")[username].tolist()[0])
-                        if password == userinfo['creds']['password']:
-                            st.button("login",key='login',on_click=login_karo,
-                                    args=[userinfo],
-                                    type='primary')
-                        else:
-                            st.caption("incorrect password")
-                            
-                    else:
-                        st.caption("no user found")
-                
+                    login_response = self.perform_login(username,password,'ask')
+                    if login_response==0:
+                        st.caption("no user exists")
+                    elif login_response == 1:
+                        st.caption("incorrect password")
+                    elif login_response==2:
+                        st.button("login",on_click=self.perform_login,
+                                  key='sidebar_login_',
+                                  args=[username,password,'submit'])
                 st.divider()
                 st.button("Click Here to register",type='primary',on_click=self.switch_page,
                         args=['user_registration'])

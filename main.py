@@ -68,7 +68,8 @@ class myapp:
     def run(self):
                                     
         # custom global css
-        if not self.in_development:
+        # if not self.in_development:
+        if False:
             st.markdown(
             """
             <style>
