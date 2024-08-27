@@ -161,11 +161,26 @@ class SP_hearing_Class:
                     .apply(lambda x: {"status":'pending'} if x=='' else json.loads(x))
                 # print("while loggin on")
                 # print(self.sp_sindhu_df.columns)
+                
+                # update the dicts
+                self._refresh_single_choice_df_dict()
                 st.snow()
+    
+    def _refresh_single_choice_df_dict(self):
+        
+        self.update_sp_sindhu_finder("category == 'SB'",['canto','chapter','location'])
+        self.update_sp_sindhu_finder("category == 'Bg' ",['BG_chapter','BG_location'])
+        
+        self._sp_single_choice_dfdict['update_post_radio'] = True
+        self._sp_single_choice_dfdict['update_post_date'] = True
+        
     
     @property
     def user_exists(self):
-        return self.userinfo['mode'] == 'user'
+        if hasattr(self,'userinfo'):
+            return self.userinfo['mode'] == 'user'
+        else:
+            return False
         
     @property
     def userdb(self):
@@ -197,8 +212,40 @@ class SP_hearing_Class:
     def get_sp_sindhu_value_count(self,query,column_name,new_name):
         df = self.sp_sindhu_df.copy(deep=True)
         dfsummary = df.query(query)[column_name]\
-        .value_counts().reset_index().sort_values(column_name,ascending=True)
+        .value_counts().reset_index()
         dfsummary.columns = [new_name,'count']
+        final_col_type = 'str' if new_name in ['month','location'] else 'int'
+        dfsummary[new_name] = dfsummary[new_name].astype(final_col_type)
+        
+        if self.user_exists:
+            user_phn = str(self.userinfo['user']['creds']['phone'])
+            df2 = df[df[user_phn].apply(lambda x: x['status']=='completed')]
+            dfstatus_summary = df2.query(query)[column_name]\
+            .value_counts().reset_index()
+            dfstatus_summary.columns= [new_name,'done_count']
+            
+            # now merge with original
+            dfsummary = dfsummary.merge(dfstatus_summary,on=new_name,how='left')
+            dfsummary['done_count'] = dfsummary['done_count'].fillna(0)
+            dfsummary['done_count'] = dfsummary['done_count'].astype('int')
+            # st.dataframe(dfsummary)
+            
+            dfsummary['overall_count'] = dfsummary['done_count'].astype('str')\
+                                    +'/'+ dfsummary['count'].astype('str')
+            # st.dataframe(dfsummary)
+            
+            dfsummary = dfsummary[[new_name,'overall_count']]
+            dfsummary.columns = [new_name,'count']
+        
+        # sort the values
+        if new_name =='month':
+            monthmap = {'Jan':1,'Feb':2,'Mar':3,'Apr':4,'May':5,'Jun':6,'Jul':7,'Aug':8,'Sep':9,'Oct':10,'Nov':11,'Dec':12}
+            dfsummary['newcol'] = dfsummary['month'].apply(lambda x:monthmap[x])
+            dfsummary = dfsummary.sort_values(by='newcol',ascending=True)
+            dfsummary.drop(columns='newcol',inplace=True)
+        else:
+            dfsummary = dfsummary.sort_values(by=new_name,ascending=True)
+        
         dfsummary.insert(0,'select',False)
         return dfsummary.copy()
     
@@ -239,12 +286,7 @@ class SP_hearing_Class:
             self._sp_single_choice_dfdict['yeardf'] = self.get_sp_sindhu_value_count(query,'year','year')
         
         if 'monthdf' in update_list:
-            df = self.get_sp_sindhu_value_count(query,'month_Eng','month')
-            monthmap = {'Jan':1,'Feb':2,'Mar':3,'Apr':4,'May':5,'Jun':6,'Jul':7,'Aug':8,'Sep':9,'Oct':10,'Nov':11,'Dec':12}
-            df['newcol'] = df['month'].apply(lambda x:monthmap[x])
-            df = df.sort_values(by='newcol',ascending=True)
-            df = df.drop(columns='newcol')
-            self._sp_single_choice_dfdict['monthdf'] = df.copy()
+            self._sp_single_choice_dfdict['monthdf'] = self.get_sp_sindhu_value_count(query,'month_Eng','month')
         
         if 'locationdf' in update_list:
             self._sp_single_choice_dfdict['locationdf'] = self.get_sp_sindhu_value_count(query,'location','location')
@@ -299,20 +341,48 @@ class SP_hearing_Class:
             st.markdown(f"### :gray[Hare Krishna] :rainbow[{self.userinfo['user']['creds']['name']}]")
         
         spdf = self.sp_sindhu_df.copy(deep=True) # load the lecture config file
-        displayconfig = {
-            'select':st.column_config.CheckboxColumn('pick'),
-            'category':st.column_config.TextColumn("type",width='small'),
-            # 'prefix':st.column_config.TextColumn("id"),
-            'name':st.column_config.TextColumn("title"),
-            # 'name_1':st.column_config.TextColumn("title"),
-            'url':st.column_config.LinkColumn("url",display_text="download"),
-            'month_Eng':st.column_config.TextColumn("month"),
-            'mmm_dd':st.column_config.TextColumn("day"),
-            'yy_mmm_dd':st.column_config.TextColumn("date"),
-            'lec_url':st.column_config.LinkColumn("link",display_text='hear'),
-            'duration':st.column_config.NumberColumn("⏳min")
-        }
+        # displayconfig = {
+        #     'select':st.column_config.CheckboxColumn('pick'),
+        #     'category':st.column_config.TextColumn("type",width='small'),
+        #     # 'prefix':st.column_config.TextColumn("id"),
+        #     'name':st.column_config.TextColumn("title"),
+        #     # 'name_1':st.column_config.TextColumn("title"),
+        #     'url':st.column_config.LinkColumn("url",display_text="download"),
+        #     'month_Eng':st.column_config.TextColumn("month"),
+        #     'mmm_dd':st.column_config.TextColumn("day"),
+        #     'yy_mmm_dd':st.column_config.TextColumn("date"),
+        #     'lec_url':st.column_config.LinkColumn("link",display_text='hear'),
+        #     'duration':st.column_config.NumberColumn("⏳min")
+        # }
         
+        default_count_config = {"count":\
+                                st.column_config.TextColumn("#",width='small',
+                                                            help='heard/total',disabled=True) if self.user_exists else\
+                                st.column_config.NumberColumn("#",width='small',
+                                                            help='Total Count',disabled=True),
+                                'select':st.column_config.CheckboxColumn("☑",help='Check to filter',disabled=False)
+                                }
+        filter_config = {'canto':{
+            **default_count_config,
+            'canto':st.column_config.NumberColumn('c',help='canto',width='small',disabled=True)
+            },
+                        'chapter':{
+            **default_count_config,
+            'chapter':st.column_config.NumberColumn("ch",help='chapter',width='small',disabled=True)
+            },
+                        'location':{
+            **default_count_config,
+            'location':st.column_config.TextColumn("loc",help='Location',width='small',disabled=True)
+            },
+                        'year':{
+            **default_count_config,
+            'year':st.column_config.NumberColumn("yy",help='year',width='small',disabled=True,format='%d')
+            },
+                        'month':{
+            **default_count_config,
+            'month':st.column_config.TextColumn("mon",help='month',width='small',disabled=True)
+            },
+                        }
         # st.dataframe(spdf,column_config=displayconfig)
         
         subsubpage_dict = {1:'SB',
@@ -321,22 +391,15 @@ class SP_hearing_Class:
                            }
         def sectionradiohandler():
             self._sp_single_choice_dfdict['update_post_date'] = True
+            
         section_index = st.radio("Choose a Section",
-                              options=range(1,len(subsubpage_dict.keys())+1),
+                              options=[1,2,3],
                               index=0,
                               format_func=lambda x: subsubpage_dict[x],
                               horizontal=True,
-                              on_change=sectionradiohandler
+                              on_change=sectionradiohandler,
+                              key='sb_bg_other_radio'
                               )
-            # SB corner
-            # 1. first display as many tabs as bookmarks in the file (if logged in)
-            # 3. selector
-            #     -> Date (year, month and day)
-            #     -> Canto
-            #     -> Chapter
-            #     -> Location
-            # 2. Show a search-box for searching lectures plus a display of results
-            #    -> results in data frame
         
         if section_index==1:
             querysofar = ["category == 'SB'"]
@@ -375,17 +438,19 @@ class SP_hearing_Class:
         
         # -------------provision for date filter
         def checkbox_handler():
-            if not st.session_state['date_filter_checkbox']:
-                if section_index==1:
-                    self.update_sp_sindhu_finder("category == 'SB'",
-                                                ['canto','chapter','location'])
-                elif section_index == 2:
-                    self.update_sp_sindhu_finder("category == 'Bg' ",
-                                                 ['BG_chapter','BG_location'])
-                elif section_index ==3:
-                    self.update_sp_sindhu_finder(querysofar[0],
-                                                 ['yeardf','monthdf','locationdf'])
+            # if not st.session_state['date_filter_checkbox']:
+            if section_index==1:
+                self.update_sp_sindhu_finder("category == 'SB'",
+                                            ['canto','chapter','location'])
+            elif section_index == 2:
+                self.update_sp_sindhu_finder("category == 'Bg' ",
+                                                ['BG_chapter','BG_location'])
+            elif section_index ==3:
+                self.update_sp_sindhu_finder(querysofar[0],
+                                                ['yeardf','monthdf','locationdf'])
+        
         if section_index==3 and further_type=="Story":
+            # no date ilter for stories
             pass
         
         elif st.checkbox("Add date filter",
@@ -422,8 +487,6 @@ class SP_hearing_Class:
                     self.update_sp_sindhu_finder(" and ".join(querysofar),
                                                  ['yeardf','monthdf','locationdf'])
                 self._sp_single_choice_dfdict['update_post_date'] = False
-            st.caption(f"found {len(spdf)} records from 1849")
-        
         # date filter ends here
         
         if section_index == 1:
@@ -432,16 +495,14 @@ class SP_hearing_Class:
             left,middle,right = st.columns(3)
             with left:
                 st.markdown("Choose Canto")
-                list_chosen_canto = st.data_editor(self._sp_single_choice_dfdict['SB_canto'],
-                                                    hide_index=True,
-                                                    column_config={'select':st.column_config.CheckboxColumn("Select"),
-                                                                    'canto':st.column_config.NumberColumn('Canto')},
-                                                    key='sb_canto_selector',
-                                                    on_change=self.__single_select_chb_sp,
-                                                    args=['sb_canto_selector','SB_canto','select']
-                                                    ).query("select == True")['canto'].tolist()
-                # st.write(st.session_state['sb_canto_selector'])
-                # st.dataframe(self._sp_single_choice_dfdict['SB_canto'])
+                list_chosen_canto = st.data_editor(
+                    self._sp_single_choice_dfdict['SB_canto'],
+                    hide_index=True,
+                    column_config=filter_config['canto'],
+                    key='sb_canto_selector',
+                    on_change=self.__single_select_chb_sp,
+                    args=['sb_canto_selector','SB_canto','select']
+                    ).query("select == True")['canto'].tolist()
                 
                 if list_chosen_canto :
                     querysofar.append(f"sb_canto == {list_chosen_canto[0]}")
@@ -449,23 +510,20 @@ class SP_hearing_Class:
                     
                 # update only when canto is changed
                 if self._sp_single_choice_dfdict['update_post_canto']:
-                    # querylist = ["category == 'SB'",*date_filter]
-                    # if list_chosen_canto:
-                    #     querylist.append(cantoquery)
                     self.update_sp_sindhu_finder(' and '.join(querysofar),
                                                 ['chapter','location'])
                     self._sp_single_choice_dfdict['update_post_canto'] = False        
             
             with middle:
                 st.markdown("Choose Chapter")
-                list_chosen_chapter = st.data_editor(self._sp_single_choice_dfdict['SB_chapter'],
-                                                    hide_index=True,
-                                                    column_config={'select':st.column_config.CheckboxColumn("Select"),
-                                                                    'chapter':st.column_config.NumberColumn('Chapter')},
-                                                    key='sb_chapter_selector',
-                                                    on_change=self.__single_select_chb_sp,
-                                                    args=['sb_chapter_selector','SB_chapter','select']
-                                                    ).query("select == True")['chapter'].tolist()
+                list_chosen_chapter = st.data_editor(
+                    self._sp_single_choice_dfdict['SB_chapter'],
+                    hide_index=True,
+                    column_config=filter_config['chapter'],
+                    key='sb_chapter_selector',
+                    on_change=self.__single_select_chb_sp,
+                    args=['sb_chapter_selector','SB_chapter','select']
+                    ).query("select == True")['chapter'].tolist()
                 
                 if list_chosen_chapter:
                     querysofar.append(f" sb_ch == {list_chosen_chapter[0]}")
@@ -473,26 +531,21 @@ class SP_hearing_Class:
                 
                 # update only if chapter edited
                 if self._sp_single_choice_dfdict['update_post_chapter']:
-                    # querylist = ["category == 'SB' ",*date_filter]
-                    # if list_chosen_canto:
-                    #     querylist.append(cantoquery)
-                    # if list_chosen_chapter:
-                    #     querylist.append(chapterquery)
-                    # chapterquery = "" if not list_chosen_canto else f"{chapterquery}"
                     self.update_sp_sindhu_finder(' and '.join(querysofar),
                                                     update_list=['location'])
                     self._sp_single_choice_dfdict['update_post_chapter'] = False
                             
             with right:
                 st.markdown("Choose Location")
-                list_chosen_location = st.data_editor(self._sp_single_choice_dfdict['SB_location'],
-                                                    hide_index=True,
-                                                    column_config={'select':st.column_config.CheckboxColumn("Select"),
-                                                                    'location':st.column_config.TextColumn('Location')},
-                                                    key='sb_location_selector',
-                                                    on_change=self.__single_select_chb_sp,
-                                                    args=['sb_location_selector','SB_location','select']
-                                                    ).query("select == True")['location'].tolist()
+                list_chosen_location = st.data_editor(
+                    self._sp_single_choice_dfdict['SB_location'],
+                    hide_index=True,
+                    column_config=filter_config['location'],
+                    key='sb_location_selector',
+                    on_change=self.__single_select_chb_sp,
+                    args=['sb_location_selector','SB_location','select']
+                    ).query("select == True")['location'].tolist()
+                
                 if list_chosen_location:
                     spdf = spdf.query(f"location == '{list_chosen_location[0]}' ")            
         
@@ -505,8 +558,7 @@ class SP_hearing_Class:
                 list_chosen_chapter = st.data_editor(
                     data=self._sp_single_choice_dfdict['BG_chapter'],
                     hide_index=True,
-                    column_config={'select':st.column_config.CheckboxColumn("Select"),
-                                   'chapter':st.column_config.NumberColumn("Chapter")},
+                    column_config=filter_config['chapter'],
                     key='bg_chapter_picker',
                     on_change=self.__single_select_chb_sp,
                     args=['bg_chapter_picker','BG_chapter','select']
@@ -526,13 +578,14 @@ class SP_hearing_Class:
                 list_chosen_location = st.data_editor(
                     data=self._sp_single_choice_dfdict['BG_location'],
                     hide_index=True,
-                    column_config={'select':st.column_config.CheckboxColumn("Select"),
-                                   'location':st.column_config.TextColumn("location")},
-                    disabled=['location'],
+                    column_config=filter_config['location'],
                     on_change=self.__single_select_chb_sp,
                     key='bg_location_picker',
                     args=['bg_location_picker','BG_location','select']
-                )
+                ).query("select==True")['location'].tolist()
+                
+                if list_chosen_location:
+                    spdf = spdf.query(f"location == '{list_chosen_location[0]}' ")            
                 
         elif section_index == 3:
             # morning Waslk and Room Conversations
@@ -544,9 +597,7 @@ class SP_hearing_Class:
                     list_chosen_year = st.data_editor(
                         data=self._sp_single_choice_dfdict['yeardf'],
                         hide_index=True,
-                        column_config={'year':st.column_config.NumberColumn("year"),
-                                    'select':st.column_config.CheckboxColumn("Select")},
-                        disabled=['year'],
+                        column_config=filter_config['year'],
                         on_change=self.__single_select_chb_sp,
                         key='yeardf_picker',
                         args=['yeardf_picker','yeardf','select']
@@ -554,7 +605,7 @@ class SP_hearing_Class:
 
                     if list_chosen_year:
                         querysofar.append(f"year == {list_chosen_year[0]}")
-                        spdf.query(" and ".join(querysofar))
+                        spdf = spdf.query(" and ".join(querysofar))
                     
                     if self._sp_single_choice_dfdict['update_post_year']:
                         self.update_sp_sindhu_finder(" and ".join(querysofar),
@@ -566,9 +617,7 @@ class SP_hearing_Class:
                     list_chosen_month = st.data_editor(
                         data=self._sp_single_choice_dfdict['monthdf'],
                         hide_index=True,
-                        column_config={'month':st.column_config.TextColumn("Month"),
-                                    'select':st.column_config.CheckboxColumn("Select")},
-                        disabled=['month'],
+                        column_config=filter_config['month'],
                         on_change=self.__single_select_chb_sp,
                         key='monthdf_picker',
                         args=['monthdf_picker','monthdf','select']
@@ -576,7 +625,7 @@ class SP_hearing_Class:
                     
                     if list_chosen_month:
                         querysofar.append(f"month_Eng == '{list_chosen_month[0]}'")
-                        spdf.query(" and ".join(querysofar))
+                        spdf = spdf.query(" and ".join(querysofar))
                     
                     if self._sp_single_choice_dfdict['update_post_month']:
                         self.update_sp_sindhu_finder(" and ".join(querysofar),
@@ -588,26 +637,22 @@ class SP_hearing_Class:
                     list_chosen_location = st.data_editor(
                         data = self._sp_single_choice_dfdict['locationdf'],
                         hide_index=True,
-                        column_config={'select':st.column_config.CheckboxColumn("Select"),
-                                    'location':st.column_config.TextColumn("Location")},
-                        disabled=['location'],
+                        column_config=filter_config['location'],
                         key='locationdf_picker',
                         on_change=self.__single_select_chb_sp,
                         args=['locationdf_picker','locationdf','select']
-                    )
+                    ).query("select==True")['location'].tolist()
+
+                    if list_chosen_location:
+                        spdf = spdf.query(f"location == '{list_chosen_location[0]}' ")            
             #now display the list of filtered lectures
             # spdf
-        
         
         # now we have all the filters applied. Just display the filtered data
         
         st.divider()        
         st.dataframe(spdf)
         
-        sb_column_config = {k:v for k,v in displayconfig.items() if k in 
-                            ['name','lec_url','duration']
-                            # ['select','prefix','name','yy_mmm_dd','duration']
-                            }
         search_query = st.text_input(":gray[Enter query]",max_chars=15)
         if search_query:
             spdf = spdf[spdf.name.str.lower().str.contains(search_query.strip().lower())]
@@ -618,13 +663,21 @@ class SP_hearing_Class:
         #                 column_order=list(sb_column_config.keys()),
         #                 hide_index=True,
         #                 disabled=list(set(sb_column_config.keys())-{'select'})).query("select==True")
+        if self.user_exists:
+            user_phone_number = str(self.userinfo['user']['creds']['phone'])
         for _row, row in spdf.reset_index(drop=True).iterrows():
             lec_name = row['name']
             duration = row['duration']
             lec_url = row['lec_url']
             download_url = row['url']
+            status_color = 'gray'
+            if self.user_exists:
+                lecture_status = row[user_phone_number]['status']
+                status_color = {'pending':'red',
+                                'in_progress':'orange',
+                                'completed':'green'}[lecture_status]
             
-            with st.expander(f"{_row+1}\. {lec_name} ({duration})"):
+            with st.expander(f":gray[{_row+1}\.] :{status_color}[{lec_name} ({duration})]"):
                 st.markdown(f"[link to hear]({lec_url})")
             if (_row+1) %20==0:
                 chb_placeholder= st.empty()
