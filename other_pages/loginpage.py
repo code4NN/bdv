@@ -254,7 +254,7 @@ class login_Class:
         full_name = st.text_input("Enter first name (withour ys etc)",
                                   max_chars=10)
         if full_name:
-            
+            full_name = f"{full_name} Pr"
             user_name = st.text_input("Enter a unique Username",
                                       max_chars=10).strip()
             
@@ -324,6 +324,7 @@ class login_Class:
                         range_name=f"creds_v2!H{row_2_add}:R{row_2_add}",
                         value=upload_array)
             self.reg_helper['submission_status'] = 'done'
+            self._userdb_refresh = True
             
             
         if _valid_phone_number:
@@ -343,6 +344,11 @@ class login_Class:
                             }],
                     type="primary",
                     key='submit_button')
+            self._userdb_refresh = True
+        
+        
+        
+        
         
         
         st.divider()
@@ -352,28 +358,27 @@ class login_Class:
                 # 'admin' in self.bdvapp.userinfo['center_roles']:
             if 'admin' in self.bdvapp.userinfo['global_roles']:
                 pending_df = self.userdb['user_df'].query("verified=='no'")
-                if pending_df.shape[0]=0:
+                if pending_df.shape[0]==0:
                     st.success("All registrations are approved")
                 else:
                     st.header(f"{len(pending_df)} pending Registrations")
                     
+                    def approve_this(row_number):
+                        upload_data(db_id=1,
+                                    range_name=f"creds_v2!P{row_number}",
+                                    value=[['yes']])
+                        
                     for _, row in pending_df.iterrows():
                         st.markdown(f"## :green[{row['center_name']} -- :blue[{row['full_name']}]]")
                         with st.expander("show details"):
                             st.write(row.to_dict())
+                            st.divider()
                             st.button("Approve",
-                                    on_click=self.userdb['approve_user'],
-                                    args=[row['full_username']],
+                                    on_click=approve_this,
+                                    args=[row['db_row']],
                                     type="primary",
                                     key=f"approve_{row['full_username']}")
             
         
-        
-        
-        
-        
     def run(self):
-        """
-        main handler
-        """
-        self.page_map[self.current_page]()
+        self.page_map[self.page_map['active']]()
