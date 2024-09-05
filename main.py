@@ -46,6 +46,7 @@ class myapp:
         
         # User related data
         self.userinfo = None
+        self.user_exists = False
     
     @property
     def page_config(self):
