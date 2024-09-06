@@ -1033,49 +1033,230 @@ class VANI_hearing_class():
                             'page_icon':'💌',
                             'layout':'centered'}
         self.page_map = {
+            'active':'dash',
             'dash':self.dash,
+            'hearnow':self.hear_now,
+            'leaderboard':self.leaderboard,
             }
-        self.current_page = 'dash'
-        
+                
+        # Vani syllabus data
+        self.vani_syllabus_df = None
+        # user data
+        self._userdb = None
+        self._userdb_refresh = False
         # page data
+        self._series_display_summary = None
         self.user_selections = {'speaker':None,
                                 'semyear':None}
+        
+        # hear now
+        self.page_hearnow = {
+            'lecture_info_dict':{}
+        }
+    @property
+    def userdb(self):
+        """
+        * userdf, centerdf, alldf, mdict
+        """
+        pass
     
+    @property
+    def bdv(self):
+        pass
+    
+    def __single_select_chb(self,editor_key,checkbox_column):
+        """
+        * original_key = the df should be stored in st.session_state[original_key]
+        * checkbox_column = name of the checkbox column
+        * It must be the first column"""
+        edited_rows = st.session_state[editor_key]['edited_rows']
+        if len(edited_rows)==1:
+            row_num = list(edited_rows.keys())[0]
+            # df = st.session_state[original_key].copy(deep=True)
+            df = self._series_display_summary.copy()
+            
+            set_2_True = list(edited_rows.values())[0][checkbox_column]        
+            if set_2_True:
+                df[checkbox_column] = False
+                df.iloc[row_num,0] = True
+                self.__single_select_chb= df.copy()
+            else:
+                df[checkbox_column] = False
+                self.__single_select_chb= df.copy()
+                st.session_state[editor_key]['edited_rows'] = {}
+        
+        
     def dash(self):
+        # access management
+        if self.bdv.userinfo['vani_syllabus_status'] == '':
+            # do not have access
+            # give an option to raise request
+            pass
+        elif self.bdv.userinfo['vani_syllabus_status'] == 'pending':
+            # display the message that please wait
+            pass
+        elif 'admin' in self.bdv.userinfo['roles']:
+            # display options to approve
+            pass
+        
+        if self.bdv.userinfo['vani_syllabus_status'] != 'active':
+            return
+        
+        
+        
+        
         st.header(":rainbow[Vaani Syllabus @BDV]")
         st.markdown("")
         st.markdown("")
-        speaker_dict = {0:['dd','DD Series'],
-                        1:['hgrsp','HG RSP'],
-                        2:['hhrnsm','HH RNSM'],
-                        3:['sp','Srila Prabhupada']}
+        speaker_dict = {0:['nak','Nakula Group'],
+                        1:['dd','DD Series'],
+                        2:['hgrsp','HG RSP'],
+                        3:['hhrnsm','HH RNSM'],
+                        4:['sp','Srila Prabhupada']}
         
-        cols = st.columns(4,gap='small')        
-        for i in range(4):
+        cols = st.columns(5,gap='small')
+        
+        def update_series_display_summary(active_speaker):
+            self.user_selections.__setitem__('speaker',active_speaker)
+            
+            # based on speaker one should get the various series for that speaker
+            vanidf = self.vani_syllabus_df.copy(deep=True)
+            vanidf = vanidf.query(f"speaker == '{active_speaker}'").copy()
+            vanidf_grouped = vanidf.groupby(by='category').agg({'server_id':'count',
+                                                                'done_flag':'sum'}).reset_index()
+            vanidf_grouped.columns = ['category','total','done']
+            vanidf_grouped['display_order'] = vanidf_grouped['category'].apply(lambda x: int(x.split('.')[0]))
+            vanidf_grouped['display_category'] = vanidf_grouped['category'].apply(lambda x: x.split('.')[1].strip() )
+            
+            vanidf_grouped.sort_values(by='display_order',inplace=True)
+            vanidf_grouped.drop(columns='display_order', inplace=True)
+            vanidf_grouped['select'] = [True,*[False for _ in range(len(vanidf_grouped)-1)]]
+            vanidf_grouped.columns = ['category','total','done','display_category','select']
+            
+            self._series_display_summary = vanidf_grouped.copy()
+
+        
+        for i in range(len(cols)):
             skey,sname = speaker_dict[i]
             is_selected = self.user_selections['speaker'] == skey
             cols[i].button(label=sname,
                            key=f"chosen_speaker_{skey}",
-                           on_click=lambda x: self.user_selections.__setitem__('speaker',x),
+                           on_click=update_series_display_summary,
                            args=[skey],
                            type="primary" if is_selected else "secondary")                        
         st.divider()
-        speaker = self.user_selections['speaker']
-        # based on speaker one should get the list of semester of year and button just like above
-        # for now let's define
+        column_config = {'select':st.column_config.CheckboxColumn("☑",disabled=False),
+                         'display_category':st.column_config.TextColumn("series",disabled=True),
+                         'total':st.column_config.NumberColumn("total",disabled=True,help='Total available lectures'),
+                         'done':st.column_config.NumberColumn("done", disabled=True, help='Completed lectures')}
+        chosen_series_list = st.data_editor(self._series_display_summary,
+                            column_config=column_config,
+                            on_change=self.__single_select_chb,
+                            args=['series_display_summary','select'],
+                            key='series_display_summary',
+                            hide_index=True,
+                            use_container_width=False).query("select == True")['category'].tolist()
+        if not chosen_series_list:
+            st.info("Please Select a Series")
+        else:
+            chosen_series = chosen_series_list[0]
+            vanidf = self.vani_syllabus_df.copy(deep=True)
+            active_speaker = self.user_selections['speaker']
+            vanidf = vanidf.query(f"speaker == '{active_speaker}' and category == '{chosen_series}'").copy()
+            vanidf.reset_index(drop=True, inplace=True)
+            
+            # display the lectures which are in progress
+            
+            
+            # display the full lectures
+            for _row, row in vanidf.iterrows():
+                st.markdown(f"**{row['lecture_title']}**")
+                
+                if (_row+1) %10==0:
+                    chb_placeholder= st.empty()
+                    chb_response = chb_placeholder.checkbox(f":blue[Show `{len(vanidf)-1-_row}` more]",
+                                        key=f'showmore_{_row}',
+                                        value=False)
+                    if not chb_response:
+                        break
+                    else:
+                        chb_placeholder.empty()
         
-        available_semester = [f"Sem {i}" for i in range(3,9)]
-        available_semester = [f"Year {i}" for i in range(2,5)]
-        cols = st.columns(len(available_semester),gap='small')
-        for i in range(len(cols)):
-            semester = available_semester[i]
-            is_selected = self.user_selections['semyear'] == semester
-            cols[i].button(label=semester,
-                           key=f"chosen_semester_{semester}",
-                           on_click=lambda x: self.user_selections.__setitem__('semyear',x),
-                           args=[semester],
-                           type="primary" if is_selected else "secondary")                                           
+    def hear_now(self):
         
+        # get the lecture info
+        lecture_id = self.page_hearnow['lecture_info_dict']['server_id']
+
+        # download the lecture
+        
+        
+        
+        # note making etc
+        
+        def update_lecture_status():
+            pass
+        
+        st.divider()
+        userinfo = self.bdv.userinfo
+        st.markdown(f"### :gray[Hare Krishna ] :rainbow[{userinfo['full_name']}]")
+        
+        hearing_status = [] # get it filled
+        dbrow = ''
+        dbcol= ''
+        dbsheet = ''
+        file_duration_secs = None # get it filled
+        
+        new_status = st.radio(":gray[Update Status of Lecture]",
+                     options=['in progress','completed'],
+                     index=1 if hearing_status['status']=='completed' else 0,
+                     disabled= True if hearing_status['status']=='completed' else False)
+        
+        india_timezone = pytz.timezone('Asia/Kolkata')
+        timestamp = datetime.datetime.now(india_timezone).strftime("%Y%b%d%a %H%M%S")
+            
+        if new_status =='in progress':
+            duration = st.number_input("Heard until (in minute)",min_value=0,step=1)
+            
+            if duration:
+                status_prog = {'status':'in_progress',
+                                'heard_until':duration,
+                                'lecture_notes':'',
+                                'last_modification_time':timestamp
+                                }
+                st.button("Update status",on_click=update_lecture_status,
+                            args=[status_prog,dbrow,dbcol,dbsheet],
+                            type='primary')
+                
+        elif new_status =='completed':
+            MIN_LINE = int(max(2,min(12,(5*file_duration_secs)/(30*60))))
+            MIN_WORD = int(max(10,min(80,(50*file_duration_secs)/(30*60))))
+            
+            lec_notes = st.text_area("Lecture Summary",
+                                        help=f"Must write at least {MIN_LINE} lines and minimum {MIN_WORD} words in order to mark as completed",
+                                        value="" if hearing_status['status']!='completed' else hearing_status['lecture_notes'],
+                                        max_chars=400)
+            n_lines, n_words = len(lec_notes.splitlines()),len(lec_notes.split())
+            st.caption(f"you have written {n_lines} lines {n_words} words")
+            if n_lines>MIN_LINE-1 and n_words>MIN_WORD-1:
+                                    
+                status_compl = {'status':'completed',
+                                'heard_until':-1,
+                                'lecture_notes':lec_notes,
+                                'last_modification_time':timestamp
+                                }
+                st.button("Update status",on_click=update_lecture_status,
+                            args=[status_compl,dbrow,dbcol,dbsheet],
+                            type='primary')
+                
+                
+            else:
+                if n_lines <MIN_LINE:
+                    st.caption(f"{MIN_LINE-n_lines} more lines are needed")
+                if n_words<MIN_WORD:
+                    st.caption(f"{MIN_WORD-n_words} more words are needed")
+                    
+    def leaderboard(self):
+        pass
         
     def run(self):
         st.markdown(
@@ -1090,4 +1271,8 @@ class VANI_hearing_class():
         """,
         unsafe_allow_html=True
         )
-        self.page_map[self.current_page]()
+        if self.bdv.user_exists:
+            self.page_map[self.page_map['active']]()
+        else:
+            # ask to login
+            self.bdv.quick_login()

@@ -134,10 +134,11 @@ class login_Class:
         
         if callmode == 'ask':
             return _user_is_valid + _password_is_correct
-        elif callable =='submit':
+        elif callmode =='submit':
             # perform login action
             if _user_is_valid + _password_is_correct == 2:
-                self.bdvapp.userinfo = _userinfo                                        
+                self.bdvapp.userinfo = _userinfo
+                self.bdvapp.user_exists = True
     
     def home(self):
         
@@ -171,7 +172,7 @@ class login_Class:
             st.caption(":red[no user found 😐!!]")
             
         elif login_response == 0:
-            st.info("Your registration is pending!!")
+            st.info("Your approval is pending!!")
             
         elif login_response ==1:
             st.caption(":red[Incorrect Password!!]")
@@ -225,7 +226,40 @@ class login_Class:
                   args=['reg'],
                   type="primary",
                   key='new registration button')
+    
+    def quick_login(self):
         
+        st.button('Barasana Dhaam VOICE',
+                      on_click=lambda x: self.login_helper.__setitem__('group',x),
+                      args=['bdv'],
+                      type="primary" if self.login_helper['group'] == 'bdv' else "secondary",
+                      key='center_name_btn'
+            )
+            
+        input_user_name = st.text_input("Enter Username",
+                                        key='quick_username_input_text',
+                                        ).strip()
+        
+        input_user_name = f"{self.login_helper['center']}_{input_user_name}"
+        
+        input_password = st.text_input("Enter Password",
+                                        type='password',
+                                        key='quick_password_input_text').strip()
+    
+        ## Verify username and password
+        login_response = self.perform_login(input_user_name,input_password,'ask')
+        
+        if login_response==-1:
+            st.caption(":red[no user found 😐!!]")
+            
+        elif login_response == 0:
+            st.info("Your approval is pending!!")
+            
+        elif login_response ==1:
+            st.caption(":red[Incorrect Password!!]")
+        elif login_response ==2:
+            self.perform_login(input_user_name, input_password, 'submit')
+            st.balloons()
 
     def registration(self):
         
