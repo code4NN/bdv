@@ -1441,11 +1441,17 @@ class VANI_hearing_class:
             duration = st.number_input("Heard until (in minute)",min_value=0,step=1)
             
             if duration:
+                # st.write(lecinfo)
+                lec_notes = st.text_area("Lecture Summary",
+                                            value="" if hearing_status=='pending' else lecinfo['info']['lecture_notes'],
+                                            max_chars=400)
+                n_lines, n_words = len(lec_notes.splitlines()),len(lec_notes.split())
                 status_prog = {'status':'in_progress',
                                 'heard_until':duration,
-                                'lecture_notes':'',
+                                'lecture_notes':lec_notes,
                                 'last_modification_time':timestamp
                                 }
+                st.caption(f"you have written {n_lines} lines {n_words} words")
                 st.button("Update status",on_click=update_lecture_status,
                             args=[status_prog,dbrow,dbcol,dbsheet],
                             type='primary')
