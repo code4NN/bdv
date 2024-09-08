@@ -1258,7 +1258,7 @@ class VANI_hearing_class:
             base_url = st.secrets['prod']['site_url']
             userinfo = self.bdv.userinfo
             for _row, row in vanidf.iterrows():
-                color = {'done':':green',
+                color = {'completed':':green',
                          'in_progress':':orange',
                          'pending':':red'}[row['status']]
                 lecture_title = row['display_name']
@@ -1452,7 +1452,7 @@ class VANI_hearing_class:
                 
         elif new_status =='completed':
             MIN_LINE = int(max(2,min(12,(5*file_duration_secs)/(30*60))))
-            MIN_WORD = int(max(10,min(80,(50*file_duration_secs)/(30*60))))
+            MIN_WORD = int(max(10,min(80,(20*file_duration_secs)/(30*60))))
             
             lec_notes = st.text_area("Lecture Summary",
                                         help=f"Must write at least {MIN_LINE} lines and minimum {MIN_WORD} words in order to mark as completed",

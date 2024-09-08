@@ -71,7 +71,8 @@ class myapp:
                                     
         # custom global css
         # if not self.in_development:
-        if False:
+        # if False:
+        if True:
             st.markdown(
             """
             <style>
