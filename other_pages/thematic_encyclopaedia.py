@@ -28,7 +28,7 @@ class sskkb:
         
         self._n_article = 1
     
-    @st.cache
+    @st.cache_data
     def getcontent(self,url):
         try:
             response = requests.get(url)

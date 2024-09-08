@@ -1,13 +1,14 @@
 import os
-import random
 import numpy as np
 import streamlit as st
 import pandas as pd
 import json
 import datetime
 import pytz
+from urllib.parse import quote_plus
 
 from custom_module.mega.mega.mega import Mega
+import gdown
 
 from other_pages.googleapi import download_data,download_sheet,upload_data
 from openpyxl.utils import get_column_letter
@@ -688,30 +689,6 @@ class SP_hearing_Class:
                     break
                 else:
                     chb_placeholder.empty()
-                #     st.write(f"{_row}, {chb_response}")
-                
-                
-        # for _row,row in response.reset_index(drop=True).iterrows():
-        #     with st.expander(
-        #     f"{_row+1}\. {row['full_name'][:-4]}  :violet[{row['duration']}min]",
-        #     expanded=False):
-        #         cols = st.columns(2)
-        #         cols[0].link_button("Hear in new tab",
-        #             url="https://bdv-voice-dev.streamlit.app/?target=hear-now"\
-        #                 +f"&source=sp_sindhu"
-        #                 +f"&mode=guest"
-        #                 +f"&id={row['encrypt_id']}"
-        #                 )
-        #         cols[1].markdown(f"[download from mega]({row['url']})")
-            
-        #     if (_row+1)%15 ==0:
-        #         placeholder = st.empty()
-        #         if not placeholder.checkbox(f"Show {len(spdf)-1-_row} more",
-        #                             key=f'showmore_{_row}',
-        #                             value=False):
-        #             break
-        #         else:
-        #             placeholder.empty()
 
     def hear_sp_now(self):
         url = f"https://mega.co.nz/#!{self.play_now_info_dict['mega_id']}"
@@ -979,7 +956,6 @@ class SP_hearing_Class:
                 spdb_row = 2
                 spdb_update_range = f"sp_sindhu_creds!{get_column_letter(spdb_col)}{spdb_row}"
                 if userdict['account_is_active'] == 'no':
-                    st.write(userdict)
                     st.button(f"Activate `{userdict['creds']['name']}`",
                               on_click=activate_account,
                               args=[spdb_update_range,userdict],
@@ -1026,10 +1002,10 @@ class SP_hearing_Class:
         
         self.page_map[self.current_page]()
 
-class VANI_hearing_class():
+class VANI_hearing_class:
+    
     def __init__(self):
-        
-        self.page_config = {'page_title': "Hearing",
+        self.page_config = {'page_title': "VANI Syllabus",
                             'page_icon':'💌',
                             'layout':'centered'}
         self.page_map = {
@@ -1038,31 +1014,92 @@ class VANI_hearing_class():
             'hearnow':self.hear_now,
             'leaderboard':self.leaderboard,
             }
+        self.mega = Mega()
                 
         # Vani syllabus data
-        self.vani_syllabus_df = None
+        vani_syllabus_df = pd.read_csv("./local_data/vani_syllabus_config.csv")
+        vani_syllabus_df.insert(0,'select',False)
+        num_cols = ['sp_index','canto','chapter']
+        vani_syllabus_df[num_cols] = vani_syllabus_df[num_cols].fillna(int(0))
+        num_cols = ['vani_index',*num_cols]
+        vani_syllabus_df[num_cols] = vani_syllabus_df[num_cols].astype('int')
+        self.vani_syllabus_df = vani_syllabus_df
+        
         # user data
         self._userdb = None
-        self._userdb_refresh = False
+        self._userdb_refresh = True
+        
         # page data
         self._series_display_summary = None
-        self.user_selections = {'speaker':None,
-                                'semyear':None}
+        self.user_selections = {'speaker':'blank',
+                                'semyear':None
+                                }
         
         # hear now
         self.page_hearnow = {
+            'status':'',
+            'id':'',
             'lecture_info_dict':{}
         }
+        
     @property
     def userdb(self):
         """
-        * userdf, centerdf, alldf, mdict
+        * config (appended with user_df)
+        * alluser_df, center_df, user_df, mdict
         """
-        pass
+        if self._userdb_refresh:
+            raw_array = download_sheet(1,'vani_syllabus_creds')
+            raw_df = pd.DataFrame(raw_array[1:],columns=raw_array[0])
+            
+            key_valuedf = raw_df[['mdata_key','mdata_value']].copy(deep=True)
+            key_valuedf = raw_df.query("mdata_key!=''").copy()
+            alluser_df = raw_df.drop(columns=['mdata_key','mdata_value'])
+            
+            # process metadata dictionary
+            key_valuedict = {k:v for k,v in dict(zip(key_valuedf.mdata_key,
+                              key_valuedf.mdata_value)).items() if k[0]!='_'}
+            key_valuedict['dbcol_dict'] = json.loads(key_valuedict['dbcol_dict'])
+            
+            # process alluser_datadf 
+            cols = ['dbrow','vani_id']
+            alluser_df[cols] = alluser_df[cols].astype('int')
+            alluser_df = alluser_df.query("vani_id!=0").copy()
+            
+            # slice the data for the current user
+            def slice_userinfo(user_column_id):
+                columns = ['dbrow','vani_id',user_column_id]
+                user_df = alluser_df[columns].copy(deep=True)
+                user_df.columns = ['dbrow','vani_id','info']
+                user_df['info'] = user_df['info'].apply(lambda x: {'status':'pending'} if x=='' else json.loads(x))
+                user_df['status'] = user_df['info'].apply(lambda x: x['status']) # pending, in_progress, done
+                return user_df
+            
+            current_userinfo = self.bdv.userinfo
+            user_df = slice_userinfo(f"{current_userinfo['center_name']}_{current_userinfo['phone_number']}")
+            config_appended = pd.merge(self.vani_syllabus_df,user_df,
+                                       how='left',left_on='vani_index',right_on='vani_id')
+            # to verify the merge
+            # st.write(user_df.shape)
+            # st.write(self.vani_syllabus_df.shape)
+            # st.write(config_appended.shape)
+            
+            
+            self._userdb = {
+                # alluser_df, center_df, user_df, mdict
+                            'config':config_appended,
+                            'alluser_df':alluser_df,
+                            # 'center_df':,
+                            'user_df':user_df,
+                            'mdict':key_valuedict
+                            }
+            self._userdb_refresh = False
+        
+        return self._userdb
     
     @property
     def bdv(self):
-        pass
+        return st.session_state['bdv_app']
     
     def __single_select_chb(self,editor_key,checkbox_column):
         """
@@ -1079,33 +1116,73 @@ class VANI_hearing_class():
             if set_2_True:
                 df[checkbox_column] = False
                 df.iloc[row_num,0] = True
-                self.__single_select_chb= df.copy()
+                self._series_display_summary= df.copy()
             else:
                 df[checkbox_column] = False
-                self.__single_select_chb= df.copy()
+                self._series_display_summary= df.copy()
                 st.session_state[editor_key]['edited_rows'] = {}
         
         
     def dash(self):
+        st.header(":rainbow[Vaani Syllabus @BDV]")
+        
+        
         # access management
         if self.bdv.userinfo['vani_syllabus_status'] == '':
             # do not have access
             # give an option to raise request
-            pass
+            def request_access():
+                _row = self.bdv.userinfo['db_row']
+                upload_data(1,f'creds_v2!S{_row}',[['pending']])
+                self.bdv.reset_userdb_creds()
+                
+            st.button("Request access to VANI Syllabus",
+                      on_click=request_access,
+                      key="vani ask access")
         elif self.bdv.userinfo['vani_syllabus_status'] == 'pending':
             # display the message that please wait
-            pass
-        elif 'admin' in self.bdv.userinfo['roles']:
+            st.info("Your request to access is in progress")
+            st.info("upon approval you will be able to access")
+            
+        if 'admin' in self.bdv.userinfo['global_roles']:
             # display options to approve
-            pass
-        
+            login_class = self.bdv.page_map['login']
+            user_df = login_class.userdb['user_df']
+            pending_df = user_df.query("vani_syllabus_status=='pending'")
+            if st.checkbox(f"{len(pending_df)} Pending Requests"):
+                st.markdown("You are seeing this because you are an admin")
+                def approve_access_to_vani(row_db,user_column_id):
+                    upload_data(1,
+                                f'creds_v2!S{row_db}',
+                                [['active']])
+                    next_user_col = int(self.userdb['mdict']['next_user_col'])
+                    upload_data(1,
+                                f"vani_syllabus_creds!{get_column_letter(next_user_col)}1",
+                                [[user_column_id]])
+                    self.bdv.reset_userdb_creds()
+                
+                for _row,row in pending_df.iterrows():
+                    st.markdown(f"### :orange[{row['center_name']}] -- :gray[{row['full_name']}]")
+                    with st.expander('show details',False):
+                        st.write(row.to_dict())
+                        st.divider()
+                        _format_message = ''.join(["Hare Krishna ",f"{row['full_name']}\n",
+                                                "Your access for VANI syllabus has been approved!!\n",
+                                                "Hare Krishna"])
+                            
+                        st.markdown(f"[notify b4 approving](https://wa.me/91{row['phone_number']}?text={quote_plus(_format_message)})")
+                        st.button(f"Approve {row['full_name']}",
+                                on_click=approve_access_to_vani,
+                                args=[row['db_row'],f"{row['center_name']}_{row['phone_number']}"],
+                                )
+            
         if self.bdv.userinfo['vani_syllabus_status'] != 'active':
             return
+        st.subheader(f":gray[Hare Krishna ] :blue[{self.bdv.userinfo['full_name']}]")
         
         
         
         
-        st.header(":rainbow[Vaani Syllabus @BDV]")
         st.markdown("")
         st.markdown("")
         speaker_dict = {0:['nak','Nakula Group'],
@@ -1120,10 +1197,12 @@ class VANI_hearing_class():
             self.user_selections.__setitem__('speaker',active_speaker)
             
             # based on speaker one should get the various series for that speaker
-            vanidf = self.vani_syllabus_df.copy(deep=True)
+            vanidf = self.userdb['config']
             vanidf = vanidf.query(f"speaker == '{active_speaker}'").copy()
-            vanidf_grouped = vanidf.groupby(by='category').agg({'server_id':'count',
-                                                                'done_flag':'sum'}).reset_index()
+            vanidf['done_flag'] = vanidf['status'].apply(lambda x:1 if x=='done' else 0)
+            vanidf_grouped = vanidf.groupby(by='category').agg({'file_id':'count',
+                                                                'done_flag':'sum'
+                                                                }).reset_index()
             vanidf_grouped.columns = ['category','total','done']
             vanidf_grouped['display_order'] = vanidf_grouped['category'].apply(lambda x: int(x.split('.')[0]))
             vanidf_grouped['display_category'] = vanidf_grouped['category'].apply(lambda x: x.split('.')[1].strip() )
@@ -1132,6 +1211,7 @@ class VANI_hearing_class():
             vanidf_grouped.drop(columns='display_order', inplace=True)
             vanidf_grouped['select'] = [True,*[False for _ in range(len(vanidf_grouped)-1)]]
             vanidf_grouped.columns = ['category','total','done','display_category','select']
+            vanidf_grouped = vanidf_grouped[['select','category','display_category','total','done']]
             
             self._series_display_summary = vanidf_grouped.copy()
 
@@ -1145,32 +1225,47 @@ class VANI_hearing_class():
                            args=[skey],
                            type="primary" if is_selected else "secondary")                        
         st.divider()
+        if self.user_selections['speaker'] == 'blank':
+            st.info("Please select a speaker")
+            return
         column_config = {'select':st.column_config.CheckboxColumn("☑",disabled=False),
                          'display_category':st.column_config.TextColumn("series",disabled=True),
                          'total':st.column_config.NumberColumn("total",disabled=True,help='Total available lectures'),
                          'done':st.column_config.NumberColumn("done", disabled=True, help='Completed lectures')}
         chosen_series_list = st.data_editor(self._series_display_summary,
                             column_config=column_config,
+                            column_order=['select','display_category','total','done'],
                             on_change=self.__single_select_chb,
                             args=['series_display_summary','select'],
                             key='series_display_summary',
                             hide_index=True,
                             use_container_width=False).query("select == True")['category'].tolist()
+        # st.write(chosen_series_list)
         if not chosen_series_list:
             st.info("Please Select a Series")
         else:
             chosen_series = chosen_series_list[0]
-            vanidf = self.vani_syllabus_df.copy(deep=True)
+            # st.write(chosen_series)
+            vanidf = self.userdb['config'].copy(deep=True)
             active_speaker = self.user_selections['speaker']
             vanidf = vanidf.query(f"speaker == '{active_speaker}' and category == '{chosen_series}'").copy()
             vanidf.reset_index(drop=True, inplace=True)
-            
+            # st.dataframe(vanidf)
             # display the lectures which are in progress
             
             
             # display the full lectures
+            base_url = st.secrets['prod']['site_url']
+            userinfo = self.bdv.userinfo
             for _row, row in vanidf.iterrows():
-                st.markdown(f"**{row['lecture_title']}**")
+                color = {'done':':green',
+                         'in_progress':':orange',
+                         'pending':':red'}[row['status']]
+                lecture_title = row['display_name']
+                
+                url = f"{base_url}?target=hear_vani&id={row['encrypt_id']}&mode=user&user={userinfo['full_username']}&pass={userinfo['password']}"
+                final_title = f":gray[{_row+1}\.] {color}[{lecture_title}] :gray[--] [click to open]({url})"
+                st.markdown(final_title)
                 
                 if (_row+1) %10==0:
                     chb_placeholder= st.empty()
@@ -1181,35 +1276,163 @@ class VANI_hearing_class():
                         break
                     else:
                         chb_placeholder.empty()
-        
+        st.divider()
+        st.subheader(":rainbow[Keep Transcendental knowledge one click away]")
+        st.markdown("Just save following url as bookmark or shortcut")
+        app_url = st.secrets['prod']['site_url']
+        with st.popover("contains password"):
+            st.markdown(f"{app_url}?target=vani&mode=user&user={self.bdv.userinfo['full_username']}&pass={self.bdv.userinfo['password']}")
+            
     def hear_now(self):
         
-        # get the lecture info
-        lecture_id = self.page_hearnow['lecture_info_dict']['server_id']
+        if self.page_hearnow['status'] =='pending':
+            # locate the lecture
+            lecture_id = self.page_hearnow['id']
+            lecturedb = self.userdb['config']
+            lecture_df = lecturedb.query(f"encrypt_id == '{lecture_id}'").reset_index(drop=True)
+            lecture_dict = lecture_df.to_dict(orient='index')[0]
+            
+            # save this in the lecture_info_dict
+            self.page_hearnow['lecture_info_dict'] = lecture_dict
+            self.page_map['active'] = 'hearnow'
+            
+            self.page_config = {'page_title': lecture_dict['display_name'],
+                                    'page_icon':'🎧',
+                                    'layout':'centered'}
+            
+            self.page_map['status'] = 'done'
+            
+            
+        userinfo = self.bdv.userinfo
+        lecinfo = self.page_hearnow['lecture_info_dict']
 
-        # download the lecture
+        # st.write(self.page_hearnow['lecture_info_dict'])
+        st.markdown(f"## :rainbow[{lecinfo['display_name']}]")
         
+        # get the lecture info
+        server_type = lecinfo['server_type'] # mega, drive, ytube
+        file_id = lecinfo['file_id']
+
+        filename = f"{lecinfo['vani_index']}.mp3"
         
+        destination = './local_data/vani_storage'        
+        available_files = os.listdir(destination)
         
+        # download only if file not present
+        if filename not in available_files:
+            # storage management
+            MAX_LEC_STORE = 20
+            # keep the latest MAX_LEC_STORE files and delete the older ones
+            # reverse = True sorted in decending order
+            available_files = sorted(available_files,
+                                     key=lambda x: os.path.getmtime(f"{destination}/{x}"),reverse=True)
+            for one_file in available_files[MAX_LEC_STORE:]:
+                os.remove(f"{destination}/{one_file}")
+                
+        
+            msgbox = st.empty()
+            download_url = ''
+            if server_type == 'mega':
+                download_url = f"https://mega.co.nz/#!{file_id}"
+                with msgbox.container():
+                    st.markdown(f"downloading from mega ")
+                    st.caption("This may take a while please wait ...")
+                    self.mega.download_url(download_url,destination,dest_filename=filename)
+                    st.success("completed")
+                msgbox.empty()
+            
+            elif server_type =='drive':
+                download_url = f"https://drive.google.com/uc?id={file_id}&export=download"
+                url = f"https://drive.google.com/uc?id={file_id}"
+                with msgbox.container():
+                    st.markdown(f"downloading from drive ")
+                    st.caption("This may take a while please wait ...")
+                    gdown.download(url, f"{destination}/{filename}", quiet=False, fuzzy=True)
+                    st.success("done")
+                msgbox.empty()
+        else:
+            # define the download urls etc
+            if server_type =='mega':
+                download_url = download_url = f"https://mega.co.nz/#!{file_id}"
+            elif server_type =='drive':
+                download_url = f"https://drive.google.com/uc?id={file_id}&export=download"
+                url = f"https://drive.google.com/file/d/{file_id}/view"
+                
+        # now display the lecture        
+        st.markdown("")
+        st.markdown("")
+        
+        # display the image if the audio file have one
+        eye_file = eyed3.load(f"{destination}/{filename}")
+        file_duration_secs = eye_file.info.time_secs
+        if eye_file.tag and eye_file.tag.images:
+            cover_image = Image.open(BytesIO(eye_file.tag.images[0].image_data))
+            st.image(cover_image)
+            
+        st.markdown("")
+        st.markdown("")
+        foward_min = st.number_input("forward (in min)",step=1,min_value=0)        
+        st.markdown("")
+        st.markdown("")
+        st.markdown("")
+        st.audio(f"{destination}/{filename}",format="audio/wav",
+                 start_time=foward_min*60)
+        st.markdown("")
+        st.markdown("")
+        if server_type =='mega':
+            st.markdown(f"[download from mega]({download_url})")
+        elif server_type =='drive':
+            st.markdown(f"[download from drive]({download_url})")
+            st.markdown("")
+            st.markdown(f"[play on drive]({url})")
+
+
+
+
         # note making etc
         
-        def update_lecture_status():
-            pass
+        def update_lecture_status(status_dict,dbrow,dbcol,dbname):
+            status_json = json.dumps(status_dict)
+            upload_data(db_id=1,
+                        range_name=f"{dbname}!{get_column_letter(dbcol)}{dbrow}",
+                        value=[[status_json]])
+            self._userdb_refresh = True
         
         st.divider()
-        userinfo = self.bdv.userinfo
+                
         st.markdown(f"### :gray[Hare Krishna ] :rainbow[{userinfo['full_name']}]")
         
-        hearing_status = [] # get it filled
-        dbrow = ''
-        dbcol= ''
-        dbsheet = ''
-        file_duration_secs = None # get it filled
+        hearing_status = lecinfo['status']
+        dbrow = lecinfo['dbrow']
+        dbcol= self.userdb['mdict']['dbcol_dict'][f"{userinfo['center_name']}_{userinfo['phone_number']}"]
+        dbcol = int(dbcol)
+        dbsheet = 'vani_syllabus_creds'
+        
+        
+        if hearing_status == 'pending':
+            st.error("You have not heard this lecutre")
+            
+        elif hearing_status == 'in_progress':
+            last_modification_time = datetime.datetime.strptime(lecinfo['info']['last_modification_time'],"%Y%b%d%a %H%M%S")\
+                .strftime("%d %b %Y @ %H:%M")
+            st.warning("### You have heard this lecture until")
+            st.markdown(f"### `{lecinfo['info']['heard_until']}` :gray[minutes]")
+            st.markdown(f"#### :gray[last heard on] {last_modification_time}")
+        else:
+            # have heard this lecture
+            last_modification_time = datetime.datetime.strptime(lecinfo['info']['last_modification_time'],"%Y%b%d%a %H%M%S")\
+                .strftime("%d %b %Y @ %H:%M")
+            st.success("### You have heard this lecture on ")
+            st.markdown(f"#### {last_modification_time}")
+        
+        st.divider()
+        
+        
         
         new_status = st.radio(":gray[Update Status of Lecture]",
                      options=['in progress','completed'],
-                     index=1 if hearing_status['status']=='completed' else 0,
-                     disabled= True if hearing_status['status']=='completed' else False)
+                     index=1 if hearing_status=='completed' else 0,
+                     disabled= True if hearing_status=='completed' else False)
         
         india_timezone = pytz.timezone('Asia/Kolkata')
         timestamp = datetime.datetime.now(india_timezone).strftime("%Y%b%d%a %H%M%S")
@@ -1233,7 +1456,7 @@ class VANI_hearing_class():
             
             lec_notes = st.text_area("Lecture Summary",
                                         help=f"Must write at least {MIN_LINE} lines and minimum {MIN_WORD} words in order to mark as completed",
-                                        value="" if hearing_status['status']!='completed' else hearing_status['lecture_notes'],
+                                        value="" if hearing_status!='completed' else lecinfo['info']['lecture_notes'],
                                         max_chars=400)
             n_lines, n_words = len(lec_notes.splitlines()),len(lec_notes.split())
             st.caption(f"you have written {n_lines} lines {n_words} words")

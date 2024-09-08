@@ -8,5 +8,6 @@ streamlit-aggrid== 0.3.4.post3
 pandas==2.2.0
 pycryptodome==3.20.0
 eyed3==0.9.7
+gdown==5.2.0
 # google-auth-httplib2==0.1.0
 # google-auth-oauthlib==0.8.0

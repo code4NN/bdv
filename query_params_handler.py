@@ -11,7 +11,7 @@ def process_query_parameters(app,qdict):
     usertype = qdict.get('mode', 'guest')
     target = qdict.get("target",'login')
     
-    updated_qdict = qdict.copy()
+    updated_qdict = {k:v for k,v in qdict.items()}
     
     # for development this query params will keep processing
     # for production only once this function is called
@@ -25,12 +25,14 @@ def process_query_parameters(app,qdict):
         username = qdict.get('user')
         password = qdict.get('pass')
         login_class = app.page_map['login']
-        correct_credentials = 2 ==login_class.perform_login(username, password,'ask')
+        _login_response_code = login_class.perform_login(username, password,'ask')
+        correct_credentials = 2 == _login_response_code
         
-        if correct_credentials:            
+        if correct_credentials:
             login_class.perform_login(username, password, 'submit')
         updated_qdict.pop('user', None)
         updated_qdict.pop('pass', None)
+        updated_qdict.pop('mode', None)
 
     
     if target == 'dev':
@@ -67,43 +69,22 @@ def process_query_parameters(app,qdict):
         
     #     app.scriptcial_login(username,password)
     
-    elif target =='hear_now_vani':
-        if usertype =='guest':
-            app.current_page = 'login'
-        # source = qdict.get("source")
-        # lecture_id = qdict.get("id")
-        # redirect_mode = qdict.get("mode",'guest')
+    elif target =='hear_vani':
+        app.current_page = 'vani_hearing'
         
-        # if redirect_mode=='user':
-        #     username = qdict.get('user')
-        #     password = qdict.get('pass')
+        lecture_id = qdict.get("id")
+        
+        vani_class = app.page_map['vani_hearing']
+        vani_class.page_map['active'] = 'hearnow'
+        vani_class.page_hearnow['status'] = 'pending'
+        vani_class.page_hearnow['id'] = lecture_id
             
-        # if source == 'sp_sindhu':
-        #     app.current_page = 'sp_hearing'
-        #     player = app.page_map['sp_hearing']
-            
-        #     # get lecture name
-        #     lec_info = player.sp_sindhu_df.query(f"encrypt_id == '{lecture_id}'")
-        #     lec_name = lec_info.name.tolist()[0]
-        #     full_name = lec_info.full_name.tolist()[0]
-        #     mega_id = lec_info.mega_id.tolist()[0]
-        #     sp_id = lec_info['id'].tolist()[0]
-            
-        #     player.page_config = {'page_title': lec_name,
-        #                         'page_icon':'🎧',
-        #                         'layout':'wide'}
-            
-        #     player.current_page = 'SP_lec_player'
-        #     player.play_now_info_dict = {'encrypt_id':lecture_id,
-        #                                  'mega_id':mega_id,
-        #                                  'sp_id':sp_id,
-        #                                  'lecture_name':lec_name}
-        #     st.rerun()
     
-    
-    
-    
-    
+    elif target=='vani':
+        # user must have already logged in by the url
+        # if not they will be triggered by the vani app
+        app.current_page = 'vani_hearing'
+
     # for updating query parameters
     st.query_params.clear()
-    set.query_params.from_dict(updated_qdict)
+    st.query_params.from_dict(updated_qdict)

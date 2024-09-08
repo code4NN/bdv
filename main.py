@@ -59,6 +59,13 @@ class myapp:
         """
         login_page = self.page_map['login']
         login_page.quick_login()
+    
+    def reset_userdb_creds(self):
+        login_page = self.page_map['login']
+        login_page._creds_db_refresh = True
+        _ = login_page.userdb
+        user,password = self.userinfo['full_username'],self.userinfo['password']
+        login_page.perform_login(user,password,'submit')
         
     def run(self):
                                     
@@ -104,7 +111,10 @@ st.set_page_config(**main_app.page_config)
 
 try:
     if not main_app.handled_query_params:
-        process_query_parameters(main_app,st.query_params)
+        if st.query_params:
+            process_query_parameters(main_app,st.query_params)
+    # st.write(main_app.userinfo)
+    # st.write(main_app.current_page)
     main_app.run()
 
 except Exception as e:

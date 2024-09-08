@@ -2,9 +2,8 @@ import streamlit as st
 
 # talk to google
 from other_pages.googleapi import download_data,upload_data
-import json
 import pandas as pd
-import pandas as pd
+from urllib.parse import quote_plus
 
 
 class login_Class:
@@ -29,7 +28,7 @@ class login_Class:
 
 
         # Sheets related informations
-        self.USER_CREDENTIALS = 'creds_v2!A2:S'
+        self.USER_CREDENTIALS = 'creds_v2!A3:S'
 
         # User credentials
         self._creds_db = None
@@ -49,7 +48,8 @@ class login_Class:
             # this is 2D array
             raw_data = download_data(db_id=1,range_name=self.USER_CREDENTIALS)
             raw_df = pd.DataFrame(raw_data[1:], columns=raw_data[0])
-            
+            # print(raw_df)
+            # st.dataframe(raw_df)
             centre_columns = ['center_full_name',
                                 'center_short_name',
                                 'poc_name',
@@ -73,8 +73,8 @@ class login_Class:
             user_df = raw_df[user_columns].query("center_name!=''").copy(deep=True)
             verified_user_df = user_df.query("verified=='yes'").copy(deep=True)
             
-            voice_group_list = raw_df[['voice_group_list']].query("voice_group_list!=''")['voice_group'].tolist()
-            new_reg_row = raw_df[['new_registrations']].query("new_registrations!=''")['new_registrations'].tolist()[0]
+            voice_group_list = raw_df[['voice_group_list']].query("voice_group_list!=''")['voice_group_list'].tolist()
+            new_reg_row = raw_df[['new_registr_row']].query("new_registr_row!=''")['new_registr_row'].tolist()[0]
             
             # save
             self._creds_db = {
@@ -92,13 +92,13 @@ class login_Class:
                                        center_df['center_full_name']))
             }
             # set refresh to false
-            self._userdb_refresh = False
+            self._creds_db_refresh = False  
             
         return self._creds_db
 
     @property
     def bdvapp(self):
-        return st.session_state.get("bdv_app",None)
+        return st.session_state["bdv_app"]
     
     def perform_login(self,username,password,callmode):
         """
@@ -121,7 +121,7 @@ class login_Class:
         if username in self.userdb['user_pass_verified_dict'].keys():
             _user_is_valid = 1
             if password == self.userdb['user_pass_verified_dict'][username]:
-                _password_is_correct = 2
+                _password_is_correct = 1
                 # _userinfo = define the dictionary
                 _userinfo = self.userdb['user_df']\
                 .query(f"full_username =='{username}' ")\
@@ -137,7 +137,7 @@ class login_Class:
         elif callmode =='submit':
             # perform login action
             if _user_is_valid + _password_is_correct == 2:
-                self.bdvapp.userinfo = _userinfo
+                self.bdvapp.userinfo = _userinfo                
                 self.bdvapp.user_exists = True
     
     def home(self):
@@ -149,16 +149,18 @@ class login_Class:
             st.button('Barasana Dhaam VOICE',
                       on_click=lambda x: self.login_helper.__setitem__('group',x),
                       args=['bdv'],
-                      type="primary" if self.login_helper['group'] == 'bdv' else "secondary",
-                      key='center_name_btn'
+                      type="primary" if self.login_helper['center'] == 'bdv' else "secondary",
+                      key='center_name_btn',
+                      disabled=True
+                      
             )
             
             input_user_name = st.text_input("Enter Username",
                                             key='username_input_text',
                                             value=self.login_helper['username'],
                                             ).strip()
-            
-            input_user_name = f"{self.login_helper['center']}_{input_user_name}"
+            if input_user_name:
+                input_user_name = f"{self.login_helper['center']}_{input_user_name}"
             
             input_password = st.text_input("Enter Password",
                                             type='password',
@@ -167,25 +169,38 @@ class login_Class:
         
         ## Verify username and password
         login_response = self.perform_login(input_user_name,input_password,'ask')
-        
-        if login_response==-1:
+        if login_response==-1 and input_user_name:
             st.caption(":red[no user found 😐!!]")
             
         elif login_response == 0:
             st.info("Your approval is pending!!")
             
-        elif login_response ==1:
+        elif login_response ==1 :
             st.caption(":red[Incorrect Password!!]")
         elif login_response ==2:
             
                 login_container.empty()
-                with login_container.container():
-                    st.header(":rainbow[Jai!! You have logged in]")
+                if not self.bdvapp.user_exists:
+                    self.perform_login(input_user_name,input_password,'submit')
+                with st.container():
+                    st.header(f":rainbow[Hare Krishna] :gray[{self.bdvapp.userinfo['full_name']}]")
                     st.image("./other_pages/images/SSNN_blue.png")
+                    st.markdown("")
+                    st.markdown("")
                 
-                def switch_to_page(username,password,):
-                    self
+                def switch_to_page(page_name):
+                    self.bdvapp.current_page = page_name
                 
+                st.button("Vani Syllabus",
+                          on_click=switch_to_page,args=['vani_hearing'],
+                          key='vani_page')
+                
+                st.divider()
+                if 'admin' in self.bdvapp.userinfo['global_roles']:
+                    st.button("approve Pending registration",
+                              on_click=lambda x: self.page_map.__setitem__('active', x),
+                            args=['reg'],
+                            type="secondary")
                 # # for all devotees of HG PrGP
                 # if 'hgprgp_councelle' in self.bdvapp.userinfo['group']:
                 #     st.markdown('#### :green[Kindly Choose the seva]')
@@ -221,19 +236,26 @@ class login_Class:
         else :
             pass
         #----------------------------------------
-        st.button("New Registration",
-                  on_click=lambda x: self.login_helper.__setitem__('active', x),
+        if not self.bdvapp.user_exists:
+            st.divider()
+            st.markdown("")
+            st.markdown("")
+            st.markdown("")
+            st.markdown("")
+            st.markdown("")
+            st.button("New Registration",
+                  on_click=lambda x: self.page_map.__setitem__('active', x),
                   args=['reg'],
-                  type="primary",
+                  type="secondary",
                   key='new registration button')
     
     def quick_login(self):
-        
         st.button('Barasana Dhaam VOICE',
                       on_click=lambda x: self.login_helper.__setitem__('group',x),
                       args=['bdv'],
-                      type="primary" if self.login_helper['group'] == 'bdv' else "secondary",
-                      key='center_name_btn'
+                      type="primary" if self.login_helper['center'] == 'bdv' else "secondary",
+                      key='center_name_btn',
+                      disabled=True
             )
             
         input_user_name = st.text_input("Enter Username",
@@ -260,6 +282,7 @@ class login_Class:
         elif login_response ==2:
             self.perform_login(input_user_name, input_password, 'submit')
             st.balloons()
+            st.rerun()
 
     def registration(self):
         
@@ -358,9 +381,8 @@ class login_Class:
                         range_name=f"creds_v2!H{row_2_add}:R{row_2_add}",
                         value=upload_array)
             self.reg_helper['submission_status'] = 'done'
-            self._userdb_refresh = True
-            
-            
+            self._creds_db_refresh = True
+                        
         if _valid_phone_number:
             st.button("Submit",
                     on_click=reg_form_submit,
@@ -377,20 +399,18 @@ class login_Class:
                             'center_roles':'',
                             }],
                     type="primary",
-                    key='submit_button')
-            self._userdb_refresh = True
-        
+                    key='submit_button')        
         
         
         
         
         
         st.divider()
-        st.header("For the admins")
-        if self.bdvapp.user_exists:
+        if self.bdvapp.user_exists :
+            st.header("For the admins")
             # if 'admin' in self.bdvapp.userinfo['global_roles'] or \
                 # 'admin' in self.bdvapp.userinfo['center_roles']:
-            if 'admin' in self.bdvapp.userinfo['global_roles']:
+            if 'admin' in self.bdvapp.userinfo['global_roles'] :
                 pending_df = self.userdb['user_df'].query("verified=='no'")
                 if pending_df.shape[0]==0:
                     st.success("All registrations are approved")
@@ -401,12 +421,19 @@ class login_Class:
                         upload_data(db_id=1,
                                     range_name=f"creds_v2!P{row_number}",
                                     value=[['yes']])
+                        self._creds_db_refresh = True
                         
                     for _, row in pending_df.iterrows():
                         st.markdown(f"## :green[{row['center_name']} -- :blue[{row['full_name']}]]")
                         with st.expander("show details"):
                             st.write(row.to_dict())
                             st.divider()
+                            _format_message = ''.join(["Hare Krishna ",f"{row['full_name']}\n",
+                                                "Your account at bdv site has been approved!!\n",
+                                                "You can continue to login\n",
+                                                "Hare Krishna"])
+                            
+                            st.markdown(f"[validate whatsapp and notify b4 approving](https://wa.me/91{row['phone_number']}?text={quote_plus(_format_message)})")
                             st.button("Approve",
                                     on_click=approve_this,
                                     args=[row['db_row']],
