@@ -428,10 +428,12 @@ class login_Class:
                         with st.expander("show details"):
                             st.write(row.to_dict())
                             st.divider()
+                            link_for_login = f"{st.secrets['prod']['site_url']}"
                             _format_message = ''.join(["Hare Krishna ",f"{row['full_name']}\n",
                                                 "Your account at bdv site has been approved!!\n",
-                                                "You can continue to login\n",
-                                                "Hare Krishna"])
+                                                "You can continue to login on following URL\n",
+                                                f"{link_for_login}\n"
+                                                "Your Servant\nShivendra"])
                             
                             st.markdown(f"[validate whatsapp and notify b4 approving](https://wa.me/91{row['phone_number']}?text={quote_plus(_format_message)})")
                             st.button("Approve",
