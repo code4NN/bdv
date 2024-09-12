@@ -6,6 +6,7 @@ def process_query_parameters(app,qdict):
     """
     options for keys
     * mode(guest,user),user(username), pass(password)
+    * keepQuery (yes,no)
     * target
     """
     usertype = qdict.get('mode', 'guest')
@@ -21,7 +22,8 @@ def process_query_parameters(app,qdict):
     
     # login handler for all pages
     # regarless of anything else
-    if usertype == 'user':
+    # user : clears the mode, user, pass
+    if usertype =='user':
         username = qdict.get('user')
         password = qdict.get('pass')
         login_class = app.page_map['login']
@@ -61,13 +63,6 @@ def process_query_parameters(app,qdict):
         app.current_page = page
         app.in_development = True
     
-    # for productions we will have one of the following
-    # elif target =='login':
-    #     # login page
-    #     username = qdict.get('user',"")
-    #     password = qdict.get('pass','')
-        
-    #     app.scriptcial_login(username,password)
     
     elif target =='hear_vani':
         app.current_page = 'vani_hearing'
@@ -86,5 +81,7 @@ def process_query_parameters(app,qdict):
         app.current_page = 'vani_hearing'
 
     # for updating query parameters
-    st.query_params.clear()
-    st.query_params.from_dict(updated_qdict)
+    # update only if keepQuery parameter is either "no" or absent
+    if qdict.get("keepQuery",'no') == 'no':
+        st.query_params.clear()
+        st.query_params.from_dict(updated_qdict)

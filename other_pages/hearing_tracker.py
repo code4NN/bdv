@@ -1226,37 +1226,77 @@ class VANI_hearing_class:
                            type="primary" if is_selected else "secondary")                        
         st.divider()
         if self.user_selections['speaker'] == 'blank':
-            st.info("Please select a speaker")
-            return
-        column_config = {'select':st.column_config.CheckboxColumn("☑",disabled=False),
-                         'display_category':st.column_config.TextColumn("series",disabled=True),
-                         'total':st.column_config.NumberColumn("total",disabled=True,help='Total available lectures'),
-                         'done':st.column_config.NumberColumn("done", disabled=True, help='Completed lectures')}
-        chosen_series_list = st.data_editor(self._series_display_summary,
-                            column_config=column_config,
-                            column_order=['select','display_category','total','done'],
-                            on_change=self.__single_select_chb,
-                            args=['series_display_summary','select'],
-                            key='series_display_summary',
-                            hide_index=True,
-                            use_container_width=False).query("select == True")['category'].tolist()
-        # st.write(chosen_series_list)
-        if not chosen_series_list:
-            st.info("Please Select a Series")
+            st.caption("Please select a speaker to filter results")
+            st.info("currently viewing all speakers")
         else:
-            chosen_series = chosen_series_list[0]
-            # st.write(chosen_series)
+            # display series only if speaker is selected
+            
+            column_config = {'select':st.column_config.CheckboxColumn("☑",disabled=False),
+                            'display_category':st.column_config.TextColumn("series",disabled=True),
+                            'total':st.column_config.NumberColumn("total",disabled=True,help='Total available lectures'),
+                            'done':st.column_config.NumberColumn("done", disabled=True, help='Completed lectures')}
+            chosen_series_list = st.data_editor(self._series_display_summary,
+                                column_config=column_config,
+                                column_order=['select','display_category','total','done'],
+                                on_change=self.__single_select_chb,
+                                args=['series_display_summary','select'],
+                                key='series_display_summary',
+                                hide_index=True,
+                                use_container_width=False).query("select == True")['category'].tolist()
+            # st.write(chosen_series_list)
+        if not chosen_series_list:
+            st.caption("Please Select a Series to filter")
+            st.info("currently viewing all series")
+        else:
             vanidf = self.userdb['config'].copy(deep=True)
             active_speaker = self.user_selections['speaker']
-            vanidf = vanidf.query(f"speaker == '{active_speaker}' and category == '{chosen_series}'").copy()
+            
+            if active_speaker =='blank':
+                # no user selected
+                # apply no filter
+                pass
+            elif not chosen_series_list:
+                # no series selected
+                # apply no filter of series
+                vanidf = vanidf.query(f"speaker == '{active_speaker}' ").copy()
+            else:
+                # both are selected
+                # st.write(chosen_series)
+                chosen_series = chosen_series_list[0]
+                vanidf = vanidf.query(f"speaker == '{active_speaker}' and category == '{chosen_series}'").copy()
+
+            # display the lectures which are in progress
+            vani_progressdf = vanidf.query("status == 'in_progress' ").copy()
+            if vani_progressdf.shape[0]>0:
+                with st.expander(f":orange[{vani_progressdf.shape[0]}] lectures in progress", True):
+                    base_url = st.secrets['prod']['site_url']
+                    for _row, row in vani_progressdf.iterrows():
+                        # color = {'completed':':green',
+                        #         'in_progress':':orange',
+                        #         'pending':':red'}[row['status']]
+                        color = ':orange'
+                        lecture_title = row['display_name']
+
+                        url = f"{base_url}?target=hear_vani&id={row['encrypt_id']}&mode=user&user={userinfo['full_username']}&pass={userinfo['password']}"
+                        final_title = f":gray[{lecture_title}] :gray[--] [click to open]({url})"
+                        st.markdown(final_title)
+            
+            
+            
+            # to filter out results
+            search_query = st.text_input(":gray[Enter query to filter]",max_chars=15)
+            if search_query:
+                vanidf = vanidf[vanidf.display_name.str.lower().str.contains(search_query.strip().lower())]
+            
+            
             vanidf.reset_index(drop=True, inplace=True)
             # st.dataframe(vanidf)
-            # display the lectures which are in progress
-            
-            
+
             # display the full lectures
             base_url = st.secrets['prod']['site_url']
             userinfo = self.bdv.userinfo
+            st.caption(f":gray[{len(vanidf)} records found]")
+            
             for _row, row in vanidf.iterrows():
                 color = {'completed':':green',
                          'in_progress':':orange',
@@ -1276,12 +1316,14 @@ class VANI_hearing_class:
                         break
                     else:
                         chb_placeholder.empty()
+       
+       
         st.divider()
         st.subheader(":rainbow[Keep Transcendental knowledge one click away]")
         st.markdown("Just save following url as bookmark or shortcut")
         app_url = st.secrets['prod']['site_url']
         with st.popover("contains password"):
-            st.markdown(f"{app_url}?target=vani&mode=user&user={self.bdv.userinfo['full_username']}&pass={self.bdv.userinfo['password']}")
+            st.markdown(f"{app_url}?target=vani&mode=user&user={self.bdv.userinfo['full_username']}&pass={self.bdv.userinfo['password']}&keepQuery=yes")
             
     def hear_now(self):
         
@@ -1371,7 +1413,8 @@ class VANI_hearing_class:
             
         st.markdown("")
         st.markdown("")
-        foward_min = st.number_input("forward (in min)",step=1,min_value=0)        
+        foward_min = st.number_input("forward (in min)",step=1,min_value=0,
+                                     value=0 if lecinfo['status']!='in_progress' else max(1,int(lecinfo['info']['heard_until'])-1))
         st.markdown("")
         st.markdown("")
         st.markdown("")
