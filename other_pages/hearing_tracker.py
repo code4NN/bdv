@@ -1186,7 +1186,24 @@ class VANI_hearing_class:
         userinfo = self.bdv.userinfo
         st.subheader(f":gray[Hare Krishna ] :blue[{userinfo['full_name']}]")
         
-        
+        st.caption("You have following lectures which are in progress")
+        # display the lectures which are in progress
+        vani_progressdf = self.userdb['config'].query("status == 'in_progress' ").copy()
+        if vani_progressdf.shape[0]>0:
+            with st.expander(f":orange[{vani_progressdf.shape[0]}] lectures in progress", True):
+                base_url = st.secrets['prod']['site_url']
+                for _row, row in vani_progressdf.iterrows():
+                    # color = {'completed':':green',
+                    #         'in_progress':':orange',
+                    #         'pending':':red'}[row['status']]
+                    color = ':orange'
+                    lecture_title = row['display_name']
+
+                    url = f"{base_url}?target=hear_vani&id={row['encrypt_id']}&mode=user&user={userinfo['full_username']}&pass={userinfo['password']}"
+                    final_title = f":gray[{lecture_title}] :gray[--] [click to open]({url})"
+                    st.markdown(final_title)
+                    
+        st.divider()
         
         
         st.markdown("")
@@ -1200,6 +1217,11 @@ class VANI_hearing_class:
         cols = st.columns(5,gap='small')
         
         def update_series_display_summary(active_speaker):
+            if self.user_selections['speaker'] == active_speaker:
+                # de-select the active speaker
+                self.user_selections.__setitem__('speaker','blank')
+                return
+                        
             self.user_selections.__setitem__('speaker',active_speaker)
             
             # based on speaker one should get the various series for that speaker
@@ -1230,6 +1252,7 @@ class VANI_hearing_class:
                            on_click=update_series_display_summary,
                            args=[skey],
                            type="primary" if is_selected else "secondary")                        
+                
         st.divider()
         if self.user_selections['speaker'] == 'blank':
             st.caption("Please select a speaker to filter results")
@@ -1269,28 +1292,12 @@ class VANI_hearing_class:
             # both are selected
             # st.write(chosen_series)
             chosen_series = chosen_series_list[0]
-            vanidf = vanidf.query(f"speaker == '{active_speaker}' and category == '{chosen_series}'").copy()
-
-        # display the lectures which are in progress
-        vani_progressdf = vanidf.query("status == 'in_progress' ").copy()
-        if vani_progressdf.shape[0]>0:
-            with st.expander(f":orange[{vani_progressdf.shape[0]}] lectures in progress", True):
-                base_url = st.secrets['prod']['site_url']
-                for _row, row in vani_progressdf.iterrows():
-                    # color = {'completed':':green',
-                    #         'in_progress':':orange',
-                    #         'pending':':red'}[row['status']]
-                    color = ':orange'
-                    lecture_title = row['display_name']
-
-                    url = f"{base_url}?target=hear_vani&id={row['encrypt_id']}&mode=user&user={userinfo['full_username']}&pass={userinfo['password']}"
-                    final_title = f":gray[{lecture_title}] :gray[--] [click to open]({url})"
-                    st.markdown(final_title)
+            vanidf = vanidf.query(f"speaker == '{active_speaker}' and category == '{chosen_series}'").copy()        
         
         
         
         # to filter out results
-        search_query = st.text_input(":gray[Enter query to filter]",max_chars=15)
+        search_query = st.text_input(":gray[Enter query to filter]",max_chars=15).strip()
         st.divider()
         if search_query:
             vanidf = vanidf[vanidf.display_name.str.lower().str.contains(search_query.strip().lower())]
