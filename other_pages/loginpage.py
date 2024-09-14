@@ -22,7 +22,8 @@ class login_Class:
                 
         self.login_helper = {'center':'bdv',
                             'username':'',
-                            'password':''}
+                            'password':''
+                                }
         self.reg_helper = {'submission_status':'pending',#done
                            }
 
@@ -145,6 +146,10 @@ class login_Class:
         login_container = st.empty()
         with login_container.container():
             st.header(":green[Please Login to Continue]")
+            
+            if self.bdvapp.user_exists:
+                self.login_helper['username'] = self.bdvapp.userinfo['username']
+                self.login_helper['password'] = self.bdvapp.userinfo['password']
             
             st.button('Barasana Dhaam VOICE',
                       on_click=lambda x: self.login_helper.__setitem__('group',x),
@@ -289,6 +294,14 @@ class login_Class:
         st.markdown(":rainbow[Hare Krishna]")
         if self.reg_helper['submission_status']=='done':
             st.success("You have successfully registered")
+            st.subheader("Kindly click on following link to speed up registration")
+            _format_message = ''.join([
+                'Hare Krishna Pr\n',
+                'I have registered on the bdv website\n',
+                'Could you quickly approve my request\n',
+                'ys\n',
+            ])
+            st.markdown(f"[message on whatsapp](https://wa.me/917260869161?text={quote_plus(_format_message)})")
             return
         # steps. 1. fill the form, 2. center admin approves, 3. success
         center_name = st.radio("Select Center",
@@ -428,10 +441,11 @@ class login_Class:
                         with st.expander("show details"):
                             st.write(row.to_dict())
                             st.divider()
-                            link_for_login = f"{st.secrets['prod']['site_url']}"
+                            link_for_login = f"{st.secrets['prod']['site_url']}?mode=user&user={row['full_username']}&pass={row['password']}"
                             _format_message = ''.join(["Hare Krishna ",f"{row['full_name']}\n",
                                                 "Your account at bdv site has been approved!!\n",
-                                                "You can continue to login on following URL\n",
+                                                "You can continue login directly using following URL\n",
+                                                "This has your username and password embedded in it\n",
                                                 f"{link_for_login}\n"
                                                 "Your Servant\nShivendra"])
                             

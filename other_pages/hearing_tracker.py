@@ -1143,6 +1143,16 @@ class VANI_hearing_class:
         elif self.bdv.userinfo['vani_syllabus_status'] == 'pending':
             # display the message that please wait
             st.info("Your request to access is in progress")
+            _format_message = '\n'.join([
+                'Hare Krishna Pr',
+                'I have raised request for access to Vani Syllabus',
+                'could you please process it fast',
+                'I am very eager to hear the transcendental sound vibrations and perfect my life',
+                'ys',
+                f"{self.bdv.userinfo['full_name'][:-3]}",
+            ])
+            st.markdown(f"[message to speed up approval](https://wa.me/917260869161?text={quote_plus(_format_message)})")
+            st.markdown("")
             st.info("upon approval you will be able to access")
             
         if 'admin' in self.bdv.userinfo['global_roles']:
@@ -1167,10 +1177,10 @@ class VANI_hearing_class:
                     with st.expander('show details',False):
                         st.write(row.to_dict())
                         st.divider()
-                        link_for_vani = f"{st.secrets['prod']['site_url']}?target=vani"
+                        link_for_vani = f"{st.secrets['prod']['site_url']}?target=vani&mode=user&user={row['full_username']}&pass={row['password']}&keepQuery=yes"
                         _format_message = ''.join(["Hare Krishna ",f"{row['full_name']}\n",
                                                 "Your access for VANI syllabus has been approved!!\n",
-                                                "Please visit following website to access\n",
+                                                "You can directly vani page with your credentials using following link\n",
                                                 f"{link_for_vani}\n",
                                                 "Your servant\nshivendra"])
                             
@@ -1200,7 +1210,7 @@ class VANI_hearing_class:
                     lecture_title = row['display_name']
 
                     url = f"{base_url}?target=hear_vani&id={row['encrypt_id']}&mode=user&user={userinfo['full_username']}&pass={userinfo['password']}"
-                    final_title = f":gray[{lecture_title}] :gray[--] [click to open]({url})"
+                    final_title = f":gray[{lecture_title}] :gray[--] [Resume from {row['info']['heard_until']} mins]({url})"
                     st.markdown(final_title)
                     
         st.divider()
@@ -1227,7 +1237,7 @@ class VANI_hearing_class:
             # based on speaker one should get the various series for that speaker
             vanidf = self.userdb['config']
             vanidf = vanidf.query(f"speaker == '{active_speaker}'").copy()
-            vanidf['done_flag'] = vanidf['status'].apply(lambda x:1 if x=='done' else 0)
+            vanidf['done_flag'] = vanidf['status'].apply(lambda x:1 if x=='completed' else 0)
             vanidf_grouped = vanidf.groupby(by='category').agg({'file_id':'count',
                                                                 'done_flag':'sum'
                                                                 }).reset_index()
@@ -1317,7 +1327,7 @@ class VANI_hearing_class:
             lecture_title = row['display_name']
             
             url = f"{base_url}?target=hear_vani&id={row['encrypt_id']}&mode=user&user={userinfo['full_username']}&pass={userinfo['password']}"
-            final_title = f":gray[{_row+1}\.] {color}[{lecture_title}] :gray[--] [click to open]({url})"
+            final_title = f":gray[{_row+1}\.] {color}[{lecture_title}] :gray[--] [click to hear]({url})"
             if search_query:
                 # final_title = final_title.replace(search_query,f":orange[{search_query}]")
                 if color ==':orange':
@@ -1437,8 +1447,9 @@ class VANI_hearing_class:
             
         st.markdown("")
         st.markdown("")
+        seek_mins = 0 if lecinfo['status']!='in_progress' else max(1,int(lecinfo['info']['heard_until'])-1)
         foward_min = st.number_input("forward (in min)",step=1,min_value=0,
-                                     value=0 if lecinfo['status']!='in_progress' else max(1,int(lecinfo['info']['heard_until'])-1))
+                                     value=seek_mins)
         st.markdown("")
         st.markdown("")
         st.markdown("")
@@ -1505,7 +1516,8 @@ class VANI_hearing_class:
         timestamp = datetime.datetime.now(india_timezone).strftime("%Y%b%d%a %H%M%S")
             
         if new_status =='in progress':
-            duration = st.number_input("Heard until (in minute)",min_value=0,step=1)
+            duration = st.number_input("Heard until (in minute)",min_value=0,step=1,
+                                       value=seek_mins+2)
             
             if duration:
                 # st.write(lecinfo)
@@ -1529,7 +1541,7 @@ class VANI_hearing_class:
             
             lec_notes = st.text_area("Lecture Summary",
                                         help=f"Must write at least {MIN_LINE} lines and minimum {MIN_WORD} words in order to mark as completed",
-                                        value="" if hearing_status!='completed' else lecinfo['info']['lecture_notes'],
+                                        value="" if hearing_status=='pending' else lecinfo['info']['lecture_notes'],
                                         max_chars=400)
             n_lines, n_words = len(lec_notes.splitlines()),len(lec_notes.split())
             st.caption(f"you have written {n_lines} lines {n_words} words")
