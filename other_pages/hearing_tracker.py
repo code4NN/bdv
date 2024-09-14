@@ -1180,8 +1180,9 @@ class VANI_hearing_class:
                         link_for_vani = f"{st.secrets['prod']['site_url']}?target=vani&mode=user&user={row['full_username']}&pass={row['password']}&keepQuery=yes"
                         _format_message = ''.join(["Hare Krishna ",f"{row['full_name']}\n",
                                                 "Your access for VANI syllabus has been approved!!\n",
-                                                "You can directly vani page with your credentials using following link\n",
-                                                f"{link_for_vani}\n",
+                                                "You can directly vani page with your credentials using following link\n\n",
+                                                f"{link_for_vani}\n\n",
+                                                f"Please bookmark this URL for accesing quicly and (or) add to home screen\n",
                                                 "Your servant\nshivendra"])
                             
                         st.markdown(f"[notify b4 approving](https://wa.me/91{row['phone_number']}?text={quote_plus(_format_message)})")
