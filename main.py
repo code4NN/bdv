@@ -40,6 +40,20 @@ class myapp:
         
         # User related data
         self.userinfo = None
+        # db_row
+        # center_name
+        # username
+        # full_username
+        # password
+        # full_name
+        # phone_number
+        # voice_group
+        # councellor_name
+        # verified
+        # global_roles
+        # center_roles
+        # vani_syllabus_status
+        
         self.user_exists = False
     
     @property
