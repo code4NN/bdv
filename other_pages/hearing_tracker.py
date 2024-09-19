@@ -5,6 +5,7 @@ import pandas as pd
 import json
 import datetime
 import pytz
+import re
 from urllib.parse import quote_plus
 
 from custom_module.mega.mega.mega import Mega
@@ -1142,6 +1143,16 @@ class VANI_hearing_class:
         elif self.bdv.userinfo['vani_syllabus_status'] == 'pending':
             # display the message that please wait
             st.info("Your request to access is in progress")
+            _format_message = '\n'.join([
+                'Hare Krishna Pr',
+                'I have raised request for access to Vani Syllabus',
+                'could you please process it fast',
+                'I am very eager to hear the transcendental sound vibrations and perfect my life',
+                'ys',
+                f"{self.bdv.userinfo['full_name'][:-3]}",
+            ])
+            st.markdown(f"[message to speed up approval](https://wa.me/917260869161?text={quote_plus(_format_message)})")
+            st.markdown("")
             st.info("upon approval you will be able to access")
             
         if 'admin' in self.bdv.userinfo['global_roles']:
@@ -1166,9 +1177,13 @@ class VANI_hearing_class:
                     with st.expander('show details',False):
                         st.write(row.to_dict())
                         st.divider()
+                        link_for_vani = f"{st.secrets['prod']['site_url']}?target=vani&mode=user&user={row['full_username']}&pass={row['password']}&keepQuery=yes"
                         _format_message = ''.join(["Hare Krishna ",f"{row['full_name']}\n",
                                                 "Your access for VANI syllabus has been approved!!\n",
-                                                "Hare Krishna"])
+                                                "You can directly vani page with your credentials using following link\n\n",
+                                                f"{link_for_vani}\n\n",
+                                                f"Please bookmark this URL for accesing quicly and (or) add to home screen\n",
+                                                "Your servant\nshivendra"])
                             
                         st.markdown(f"[notify b4 approving](https://wa.me/91{row['phone_number']}?text={quote_plus(_format_message)})")
                         st.button(f"Approve {row['full_name']}",
@@ -1178,9 +1193,28 @@ class VANI_hearing_class:
             
         if self.bdv.userinfo['vani_syllabus_status'] != 'active':
             return
-        st.subheader(f":gray[Hare Krishna ] :blue[{self.bdv.userinfo['full_name']}]")
         
+        userinfo = self.bdv.userinfo
+        st.subheader(f":gray[Hare Krishna ] :blue[{userinfo['full_name']}]")
         
+        st.caption("You have following lectures which are in progress")
+        # display the lectures which are in progress
+        vani_progressdf = self.userdb['config'].query("status == 'in_progress' ").copy()
+        if vani_progressdf.shape[0]>0:
+            with st.expander(f":orange[{vani_progressdf.shape[0]}] lectures in progress", True):
+                base_url = st.secrets['prod']['site_url']
+                for _row, row in vani_progressdf.iterrows():
+                    # color = {'completed':':green',
+                    #         'in_progress':':orange',
+                    #         'pending':':red'}[row['status']]
+                    color = ':orange'
+                    lecture_title = row['display_name']
+
+                    url = f"{base_url}?target=hear_vani&id={row['encrypt_id']}&mode=user&user={userinfo['full_username']}&pass={userinfo['password']}"
+                    final_title = f":gray[{lecture_title}] :gray[--] [Resume from {row['info']['heard_until']} mins]({url})"
+                    st.markdown(final_title)
+                    
+        st.divider()
         
         
         st.markdown("")
@@ -1194,12 +1228,17 @@ class VANI_hearing_class:
         cols = st.columns(5,gap='small')
         
         def update_series_display_summary(active_speaker):
+            if self.user_selections['speaker'] == active_speaker:
+                # de-select the active speaker
+                self.user_selections.__setitem__('speaker','blank')
+                return
+                        
             self.user_selections.__setitem__('speaker',active_speaker)
             
             # based on speaker one should get the various series for that speaker
             vanidf = self.userdb['config']
             vanidf = vanidf.query(f"speaker == '{active_speaker}'").copy()
-            vanidf['done_flag'] = vanidf['status'].apply(lambda x:1 if x=='done' else 0)
+            vanidf['done_flag'] = vanidf['status'].apply(lambda x:1 if x=='completed' else 0)
             vanidf_grouped = vanidf.groupby(by='category').agg({'file_id':'count',
                                                                 'done_flag':'sum'
                                                                 }).reset_index()
@@ -1224,6 +1263,7 @@ class VANI_hearing_class:
                            on_click=update_series_display_summary,
                            args=[skey],
                            type="primary" if is_selected else "secondary")                        
+                
         st.divider()
         if self.user_selections['speaker'] == 'blank':
             st.caption("Please select a speaker to filter results")
@@ -1244,80 +1284,75 @@ class VANI_hearing_class:
                                 hide_index=True,
                                 use_container_width=False).query("select == True")['category'].tolist()
             # st.write(chosen_series_list)
-        if not chosen_series_list:
-            st.caption("Please Select a Series to filter")
-            st.info("currently viewing all series")
+            if not chosen_series_list:
+                st.caption("Please Select a Series to filter")
+                st.info("currently viewing all series")
+
+        vanidf = self.userdb['config'].copy(deep=True)
+        active_speaker = self.user_selections['speaker']
+        
+        if active_speaker =='blank':
+            # no user selected
+            # apply no filter
+            pass
+        elif not chosen_series_list:
+            # no series selected
+            # apply no filter of series
+            vanidf = vanidf.query(f"speaker == '{active_speaker}' ").copy()
         else:
-            vanidf = self.userdb['config'].copy(deep=True)
-            active_speaker = self.user_selections['speaker']
-            
-            if active_speaker =='blank':
-                # no user selected
-                # apply no filter
-                pass
-            elif not chosen_series_list:
-                # no series selected
-                # apply no filter of series
-                vanidf = vanidf.query(f"speaker == '{active_speaker}' ").copy()
-            else:
-                # both are selected
-                # st.write(chosen_series)
-                chosen_series = chosen_series_list[0]
-                vanidf = vanidf.query(f"speaker == '{active_speaker}' and category == '{chosen_series}'").copy()
+            # both are selected
+            # st.write(chosen_series)
+            chosen_series = chosen_series_list[0]
+            vanidf = vanidf.query(f"speaker == '{active_speaker}' and category == '{chosen_series}'").copy()        
+        
+        
+        
+        # to filter out results
+        search_query = st.text_input(":gray[Enter query to filter]",max_chars=15).strip()
+        st.divider()
+        if search_query:
+            vanidf = vanidf[vanidf.display_name.str.lower().str.contains(search_query.strip().lower())]
+        
+        
+        vanidf.reset_index(drop=True, inplace=True)
+        # st.dataframe(vanidf)
 
-            # display the lectures which are in progress
-            vani_progressdf = vanidf.query("status == 'in_progress' ").copy()
-            if vani_progressdf.shape[0]>0:
-                with st.expander(f":orange[{vani_progressdf.shape[0]}] lectures in progress", True):
-                    base_url = st.secrets['prod']['site_url']
-                    for _row, row in vani_progressdf.iterrows():
-                        # color = {'completed':':green',
-                        #         'in_progress':':orange',
-                        #         'pending':':red'}[row['status']]
-                        color = ':orange'
-                        lecture_title = row['display_name']
-
-                        url = f"{base_url}?target=hear_vani&id={row['encrypt_id']}&mode=user&user={userinfo['full_username']}&pass={userinfo['password']}"
-                        final_title = f":gray[{lecture_title}] :gray[--] [click to open]({url})"
-                        st.markdown(final_title)
+        # display the full lectures
+        base_url = st.secrets['prod']['site_url']
+        st.caption(f":gray[{len(vanidf)} records found]")
+        
+        for _row, row in vanidf.iterrows():
+            color = {'completed':':green',
+                        'in_progress':':orange',
+                        'pending':':red'}[row['status']]
+            lecture_title = row['display_name']
             
-            
-            
-            # to filter out results
-            search_query = st.text_input(":gray[Enter query to filter]",max_chars=15)
+            url = f"{base_url}?target=hear_vani&id={row['encrypt_id']}&mode=user&user={userinfo['full_username']}&pass={userinfo['password']}"
+            final_title = f":gray[{_row+1}\.] {color}[{lecture_title}] :gray[--] [click to hear]({url})"
             if search_query:
-                vanidf = vanidf[vanidf.display_name.str.lower().str.contains(search_query.strip().lower())]
+                # final_title = final_title.replace(search_query,f":orange[{search_query}]")
+                if color ==':orange':
+                    final_title = re.sub(re.escape(search_query), f":blue[{search_query}]", final_title, flags=re.IGNORECASE)
+                else:
+                    final_title = re.sub(re.escape(search_query), f":orange[{search_query}]", final_title, flags=re.IGNORECASE)
+                    
+            st.markdown(final_title)
             
-            
-            vanidf.reset_index(drop=True, inplace=True)
-            # st.dataframe(vanidf)
-
-            # display the full lectures
-            base_url = st.secrets['prod']['site_url']
-            userinfo = self.bdv.userinfo
-            st.caption(f":gray[{len(vanidf)} records found]")
-            
-            for _row, row in vanidf.iterrows():
-                color = {'completed':':green',
-                         'in_progress':':orange',
-                         'pending':':red'}[row['status']]
-                lecture_title = row['display_name']
-                
-                url = f"{base_url}?target=hear_vani&id={row['encrypt_id']}&mode=user&user={userinfo['full_username']}&pass={userinfo['password']}"
-                final_title = f":gray[{_row+1}\.] {color}[{lecture_title}] :gray[--] [click to open]({url})"
-                st.markdown(final_title)
-                
-                if (_row+1) %10==0:
-                    chb_placeholder= st.empty()
-                    chb_response = chb_placeholder.checkbox(f":blue[Show `{len(vanidf)-1-_row}` more]",
-                                        key=f'showmore_{_row}',
-                                        value=False)
-                    if not chb_response:
-                        break
-                    else:
-                        chb_placeholder.empty()
+            if (_row+1) %10==0:
+                chb_placeholder= st.empty()
+                chb_response = chb_placeholder.checkbox(f":blue[Show `{len(vanidf)-1-_row}` more]",
+                                    key=f'showmore_{_row}',
+                                    value=False)
+                if not chb_response:
+                    break
+                else:
+                    chb_placeholder.empty()
        
-       
+        st.markdown("")
+        st.markdown("")
+        st.markdown("")
+        st.markdown("")
+        st.markdown("")
         st.divider()
         st.subheader(":rainbow[Keep Transcendental knowledge one click away]")
         st.markdown("Just save following url as bookmark or shortcut")
@@ -1413,8 +1448,9 @@ class VANI_hearing_class:
             
         st.markdown("")
         st.markdown("")
+        seek_mins = 0 if lecinfo['status']!='in_progress' else max(1,int(lecinfo['info']['heard_until'])-1)
         foward_min = st.number_input("forward (in min)",step=1,min_value=0,
-                                     value=0 if lecinfo['status']!='in_progress' else max(1,int(lecinfo['info']['heard_until'])-1))
+                                     value=seek_mins)
         st.markdown("")
         st.markdown("")
         st.markdown("")
@@ -1481,7 +1517,8 @@ class VANI_hearing_class:
         timestamp = datetime.datetime.now(india_timezone).strftime("%Y%b%d%a %H%M%S")
             
         if new_status =='in progress':
-            duration = st.number_input("Heard until (in minute)",min_value=0,step=1)
+            duration = st.number_input("Heard until (in minute)",min_value=0,step=1,
+                                       value=seek_mins+2)
             
             if duration:
                 # st.write(lecinfo)
@@ -1505,7 +1542,7 @@ class VANI_hearing_class:
             
             lec_notes = st.text_area("Lecture Summary",
                                         help=f"Must write at least {MIN_LINE} lines and minimum {MIN_WORD} words in order to mark as completed",
-                                        value="" if hearing_status!='completed' else lecinfo['info']['lecture_notes'],
+                                        value="" if hearing_status=='pending' else lecinfo['info']['lecture_notes'],
                                         max_chars=400)
             n_lines, n_words = len(lec_notes.splitlines()),len(lec_notes.split())
             st.caption(f"you have written {n_lines} lines {n_words} words")
@@ -1526,7 +1563,7 @@ class VANI_hearing_class:
                     st.caption(f"{MIN_LINE-n_lines} more lines are needed")
                 if n_words<MIN_WORD:
                     st.caption(f"{MIN_WORD-n_words} more words are needed")
-                    
+    
     def leaderboard(self):
         pass
         
