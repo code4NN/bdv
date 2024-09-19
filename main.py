@@ -5,9 +5,6 @@ from query_params_handler import process_query_parameters
 # Import various classes
 from other_pages.loginpage import login_Class
 from other_pages.feed import feed_Class
-from other_pages.sadhana_card import sadhana_card_class
-from other_pages.settlement import settlement_Class
-from other_pages.accounts import account_Class
 
 from other_pages.hearing_tracker import SP_hearing_Class
 from other_pages.hearing_tracker import VANI_hearing_class
@@ -26,9 +23,6 @@ class myapp:
         self.page_map = {
             'login':login_Class(),
             'feed':feed_Class(),
-            'sadhana_card':sadhana_card_class(),
-            'settlement':settlement_Class(),
-            'dpt_accounts': account_Class(),
             
             # hearing related projects
             'sp_hearing': SP_hearing_Class(),

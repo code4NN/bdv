@@ -4,11 +4,8 @@ import datetime
 import json
 import pandas as pd
 import calendar
-from st_aggrid import AgGrid, GridOptionsBuilder
-from streamlit.components.v1 import html as HTML
 
 from other_pages.googleapi import download_data
-from other_pages.googleapi import upload_data
 from other_pages.googleapi import append_data
 
 class settlement_Class:
@@ -664,3 +661,86 @@ class settlement_Class:
         unsafe_allow_html=True
         )
         self.page_map[self.current_page]()
+        
+
+class settlement_class_new:
+    def __init__(self):
+        
+        self.page_config = {'page_title': "Accounts",
+                            'page_icon':'💸',
+                            'layout':'centered'}
+        self.page_dict = {
+            'active':'settlement_form',
+            'settlement_form':self.request_settlement,
+            'do_settlement':self.process_settlement,
+        }
+        
+        # database
+        self._bookdb = None
+        self._refresh_book = True
+    
+    @property
+    def bookdb(self):
+        if self._refresh_book:
+            dbarray = download_data(1,'bdv_settlement!A1:G')
+            dbdf = pd.DataFrame(dbarray[1:], columns=dbarray[0])
+            
+            # convert the column types
+            dbdf['amount'] = pd.to_numeric(dbdf['amount'])
+            dbdf['timestamp'] = pd.to_datetime(dbdf['timestamp'],format="%Y%b%d %H%M%S")
+            dbdf['paymnt_date'] = pd.to_datetime(dbdf['paymnt_date'],format="on %Y%B%d")
+            
+            def summarize_dev_data(phone_number_id):
+                relevant_data = dbdf.query(f" phone_number == '{phone_number_id}' ").copy(deep=True)
+                relevant_data.sort_values(by='paymnt_date',ascending=True,inplace=True)
+                relevant_data['acc balance'] = relevant_data['amount'].cumsum()
+                
+                last_settlement_date = relevant_data.query("is_settlement == 'yes' ")['paymnt_date'].max()
+                active_book = relevant_data
+                
+                return {'book':relevant_data,
+                        'last_settlement_date':last_settlement_date,
+                        }
+                
+                
+                
+                
+            
+            unique_ids = dbdf['phone_number'].unique().tolist()
+            if unique_ids:
+                dev_dict = {pid:summarize_dev_data(pid) for pid in unique_ids}
+                
+                
+            
+            
+            self._refresh_book = False
+            
+        return self._bookdb
+    
+    @property
+    def bdv(self):
+        return st.session_state['bdv_app']
+        
+    def request_settlement(self):
+        pass
+    def process_settlement(self):
+        pass
+    
+    def run(self):
+        st.markdown(
+        """
+        <style>
+        .step-up,
+        .step-down {
+            display: none;
+        }
+        </style>
+        </style>
+        """,
+        unsafe_allow_html=True
+        )
+        if self.bdv.user_exists:
+            self.page_map[self.page_map['active']]()
+        else:
+            # ask to login
+            self.bdv.quick_login()
