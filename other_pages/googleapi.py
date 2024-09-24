@@ -41,7 +41,7 @@ def _get_wb(db_id):
     if f'spreadsheet{db_id}' not in st.session_state:
             if db_id ==2:
                 gc = gspread.authorize(ServiceAccountCredentials.from_json_keyfile_dict(sc_credentialinfo,SCOPE))
-            else:    
+            else:
                 gc = gspread.authorize(ServiceAccountCredentials.from_json_keyfile_dict(credentials_info,SCOPE))
 
             workbook = gc.open_by_key(db_list[db_id])
@@ -121,3 +121,90 @@ def append_data(db_id,range_name,value):
     except Exception as e:
         st.error("Something went Wrong")
         st.write(e)
+
+# class google_api_connector:
+    # def __init__(self):
+    #     self.account_list = [
+    #         'bdv_central',
+    #         'bdv_nimai',
+    #         'bdv_nitai',
+    #         'bdv_gopinathji',
+    #         'bdv_gopalji'
+    #         ]
+    #     self.service_account_dict = {
+    #         k:st.secrets[k] for k in self.account_list
+    #     }
+    #     self.active_service_account = 0
+        
+    #     self.workbook_dict = {
+    #         'central_db':{
+    #             'id':st.secrets['sheet_id_dict']['central_db'],
+    #             'connections':{}
+    #             # 'service_account_name':gspread instance
+    #         }
+    #     }
+        
+    # @property
+    # def get_workbook(self,workbook_name):
+        
+    #     # get active service account to be used
+    #     # change the active account after use
+    #     active_account_name  = self.account_list[self.active_service_account]
+    #     active_account_instance = self.service_account_dict[active_account_name]
+        
+    #     available_connections = self.workbook_dict[workbook_name]['connections']
+        
+    #     if active_account_name in available_connections.keys():
+    #         # connection from the active service account already exits
+    #         connection = available_connections[active_account_name]
+    #     else:
+    #         # create new connection
+    #         connection = (gspread
+    #               .authorize(ServiceAccountCredentials
+    #                          .from_json_keyfile_dict(active_account_instance,
+    #                                                  SCOPE)
+    #                          )
+    #               )
+    #         connection = connection.open_by_key(self.workbook_dict[workbook_name]['id'])
+            
+    #         self.workbook_dict[workbook_name]['connections'][active_account_name] = connection
+        
+    #     # change the active service account
+    #     # essentially round robin
+    #     if self.active_service_account < len(self.account_list)-1:
+    #         self.active_service_account += 1
+    #     else :
+    #         self.active_service_account = 0
+
+    #     return connection
+        
+    # def download_sheet(self,workbook_name, sheet_name):
+    #     workbook = self.get_workbook(workbook_name)
+    #     response = workbook.worksheet(sheet_name).get_all_values()
+    #     return response
+    
+    # def download_data(self,workbook_name,range_name):
+        
+    #     workbook = self.get_workbook(workbook_name)
+        
+    #     sheetname, rangename = range_name.split("!")
+    #     response = workbook.worksheet(sheetname).get_values(rangename)        
+    #     return response
+    
+    # def upload_data(self,workbook_name,range_name,upload_data):
+    #     workbook = self.get_workbook(workbook_name)
+        
+    #     sheetname, rangename = range_name.split("!")
+    #     response = workbook.worksheet(sheetname).update(rangename,
+    #                                 upload_data,
+    #                                 value_input_option='USER_ENTERED')
+    #     return response
+    
+    # def append_data(self,workbook_name,range_name,upload_data):
+        
+    #     workbook = self.get_workbook(workbook_name)
+    #     sheetname, rangename = range_name.split("!")
+    #     response = workbook.worksheet(sheetname).append_rows(values=upload_data,
+    #                                         value_input_option='USER_ENTERED',
+    #                                         table_range=rangename)
+    #     return response
