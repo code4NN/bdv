@@ -24,7 +24,7 @@ class settlement_class_new:
         # database
         self._bookdb = None
         self._refresh_book = True
-        self._format_datetime = {'timestamp':"%Y%b%d %H%M%S",
+        self._format_datetime = {'timestamp':"at %Y%b%d %H%M%S",
                                  'paymnt_date':"on %Y%B%d"}
     
     @property
