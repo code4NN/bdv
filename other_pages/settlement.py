@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import json
 
 import pytz
 import datetime
@@ -16,10 +17,14 @@ class settlement_class_new:
                             'page_icon':'💸',
                             'layout':'centered'}
         self.page_dict = {
-            'active':'settlement_form',
-            'settlement_form':self.request_settlement,
-            'do_settlement':self.process_settlement,
+            'active':'request',
+            'request':self.request_settlement,
+            'statement': self.bank_statement,
+            'settle':self.process_settlement,
         }
+        
+        # page related data
+        self._count_request = 1
         
         # database
         self._bookdb = None
@@ -33,15 +38,44 @@ class settlement_class_new:
             dbarray = download_data(1,'bdv_settlement!A1:G')
             dbdf = pd.DataFrame(dbarray[1:], columns=dbarray[0])
             
-            # convert the column types
-            dbdf['amount'] = pd.to_numeric(dbdf['amount'])
+            # flatten the data
+            # current columns ['timestamp',
+            #                   'user_phone_id',
+            #                   'full_name',
+            #                    'details', 'status'
+            #                   ]
+            # details will be expanded to [paymnt_date, amount, department, agenda]
+            dbdf['details'] = dbdf['details'].apply(lambda x: json.loads(x))
+            dbdf['paymnt_date'] = pd.to_datetime(
+                                    dbdf['details'].map(lambda x: x['paymnt_date']),
+                                    format=self._format_datetime['paymnt_date']
+                                                  )
+            dbdf['amount'] = pd.to_numeric(dbdf['details'].map(lambda x: x['amount']),
+                                           downcast='integer')
+            dbdf['department'] = dbdf['details'].map(lambda x: x['department'])
+            dbdf['agenda'] = dbdf['details'].map(lambda x: x['agenda'])
+            dbdf.drop(columns='details', inplace=True)
+            
+            dbdf = dbdf[[
+                'timestamp',
+                'user_phone_id',
+                'full_name',
+                'paymnt_date',
+                'amount',
+                'department',
+                'agenda',
+                'is_settlement',
+                'status'
+            ]].copy()
+            
+            
+            # convert the column timestamp to time
             dbdf['timestamp'] = pd.to_datetime(dbdf['timestamp'],format=self._format_datetime['timestamp'])
-            dbdf['paymnt_date'] = pd.to_datetime(dbdf['paymnt_date'],format=self._format_datetime['paymnt_date'])
             
             
-            def summarize_dev_data(user_phone_id_id):
+            def summarize_dev_data(user_phone_id):
                 # get the data for the user and sort it
-                relevant_data = dbdf.query(f" user_phone_id == '{user_phone_id_id}' ").copy(deep=True)
+                relevant_data = dbdf.query(f" user_phone_id == '{user_phone_id}' ").copy(deep=True)
                 relevant_data.sort_values(by='paymnt_date',ascending=True,inplace=True)
                 relevant_data.reset_index(drop=True, inplace=True)
                 
@@ -94,35 +128,79 @@ class settlement_class_new:
         st.markdown(f"### :rainbow[Hare Krishna] :gray[{userinfo.full_name}] ")
         
         # show the last amount that user have filled
+        
         # form filling
         india_timezone = pytz.timezone('Asia/Kolkata')
-        def _take_one_entry_():
+        all_request = {}
+        all_request['timestamp'] = (datetime.datetime
+                                .now(india_timezone)
+                                .strftime(self._format_datetime['timestamp'])
+                                )
+        all_request['is_settlement'] = 'no'
+        all_request['user_phone_id'] = f"sid_{userinfo['phone_number']}"
+        all_request['full_name'] = userinfo['full_name']
+        all_request['details'] = []
+        all_request['status'] = 'requested' # noted
+        
+        def _take_one_entry_(prefix):
+            """
+            * paymnt_date, amount, department, agenda
+            """
+            valid_input = 1
             request = {}
-            request['timestamp'] = datetime.datetime.now(india_timezone).strftime(self._format_datetime['timestamp'])
-            request['is_settlement'] = 'no'
-            request['user_phone_id'] = f"sid_{userinfo['phone_number']}"
-            request['full_name'] = userinfo['full_name']
             left,right = st.columns(2)
             with left:
                 request['paymnt_date'] = st.date_input("Payment Date",
                                                     value=datetime.date.today(),
                                                     format="YYYY-MMM-DD",
+                                                    key=f"date_input_{prefix}"
                                                     #    min_value=
                                                     )
             with right:
-                request['amount'] = st.number_input("Amount",step=1)
+                request['amount'] = st.number_input("Amount",step=1,
+                                                    key=f"amount_input_{prefix}")
+                if not request['amount']:
+                    st.caption(":red[Please enter amount]")
+                    valid_input = 0
+                
             left,right = st.columns(2)
             with left:
-                st.radio("Department")
+                request['department'] = st.radio(label="chose department",key=f"department_input_{prefix}",
+                                                 options=[
+                                                     
+                                                 ])
+                if request['department'] =='other':
+                    another_department = st.text_input("which one",key=f"department_other_input_{prefix}").strip()
+                    if another_department:
+                        request['department'] = another_department
             with right:
-                st.text_input("Agenda")
+                request['agenda'] = st.text_input("Agenda",key=f"agenda_input_{prefix}")
+                if not request['agenda']:
+                    st.caption(":red[Please enter agenda]")
+                    valid_input = 0
+                    
+            return valid_input, request
+        
+        all_valid_input = 1
+        for i in range(self._count_request):
+            prefix = f"request_{i}"
+            valid_input, request = _take_one_entry_(prefix)
+            all_request['details'].append(request)
+            all_valid_input = all_valid_input * valid_input
+        if all_valid_input==1:
+            st.success("All fields have been filled properly")
+        else:
+            st.error("Please fill all the fields")
+        
+        
             
-            return request
+                
         
         # show active settlements
         # show historical settlements
         
-    
+    def bank_statement(self):
+        pass
     
     
     def process_settlement(self):
