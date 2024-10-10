@@ -11,13 +11,10 @@ from other_pages.hearing_tracker import VANI_hearing_class
 
 from other_pages.lecture_notes import class_notes_Class
 from other_pages.thematic_encyclopaedia import sskkb
-from other_pages.song_shloka import memorize_song_shloka
+from other_pages.song_shloka import shlokaloka
 
 class myapp:
     def __init__(self):
-
-        # Global parameters
-        self.in_development = False
 
         # register all the page
         self.page_map = {
@@ -30,7 +27,7 @@ class myapp:
             
             'revision': class_notes_Class(),
             'article_tag':sskkb(),
-            'ssong':memorize_song_shloka(),
+            'shloka':shlokaloka(),
             }
         # landing page
         self.current_page = 'login'
@@ -78,7 +75,6 @@ class myapp:
     def run(self):
                                     
         # custom global css
-        # if not self.in_development:
         # if False:
         if True:
             st.markdown(
