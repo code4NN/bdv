@@ -1393,33 +1393,41 @@ class VANI_hearing_class:
         filename = f"{lecinfo['vani_index']}.mp3"
         
         destination = './local_data/vani_storage'        
-        available_files = os.listdir(destination)
+        available_file_raw = os.listdir(destination)
+        available_files = [i.split("^")[1] for i in available_file_raw]
         
-        if 'admin' in self.bdv.userinfo['global_roles']:
-            with st.expander("see all available files", expanded=False):
-                # timestamp = .strftime("%Y%b%d%a %H%M%S")
-                available_dict = {f:
-                    (datetime.date.fromtimestamp(
-                        os.path.getmtime(f"{destination}/{f}"))
-                     .strftime("%Y%b%d%a %H%M%S"))
+        # if 'admin' in self.bdv.userinfo['global_roles']:
+        #     with st.expander("see all available files", expanded=False):
+        #         # timestamp = .strftime("%Y%b%d%a %H%M%S")
+        #         available_dict = {f:
+        #             (datetime.date.fromtimestamp(
+        #                 os.path.getmtime(f"{destination}/{f}"))
+        #              .strftime("%Y%b%d%a %H%M%S"))
                     
-                    for f in available_files}
-                st.write(available_dict)
+        #             for f in available_files}
+        #         st.write(available_dict)
         
         # download only if file not present
         if filename not in available_files:
             # storage management
-            MAX_LEC_STORE = 10
+            MAX_LEC_STORE = 6
             # keep the latest MAX_LEC_STORE files and delete the older ones
             # reverse = True sorted in decending order
-            available_files = sorted(available_files,
-                                     key=lambda x: os.path.getmtime(f"{destination}/{x}"),reverse=True)
-            for one_file in available_files[MAX_LEC_STORE:]:
+            sorted_available_files = sorted(available_file_raw,
+                                     key=lambda x: x.split('^')[0],
+                                     reverse=True)
+            for one_file in sorted_available_files[MAX_LEC_STORE:]:
+                # st.write(f"deleting {one_file}")
                 os.remove(f"{destination}/{one_file}")
                 
         
             msgbox = st.empty()
             download_url = ''
+            india_timezone = pytz.timezone('Asia/Kolkata')
+            file_prefix = (datetime.datetime.now(india_timezone)
+                     .strftime("%d%H%M%S"))
+            filename = f"{file_prefix}^{filename}"
+            
             if server_type == 'mega':
                 download_url = f"https://mega.co.nz/#!{file_id}"
                 with msgbox.container():
@@ -1439,6 +1447,10 @@ class VANI_hearing_class:
                     st.success("done")
                 msgbox.empty()
         else:
+            # change the filename so that it points to existing file
+            existing_file = [i for i in available_file_raw if i.split("^")[1] == filename]
+            filename = existing_file[0]
+            
             # define the download urls etc
             if server_type =='mega':
                 download_url = download_url = f"https://mega.co.nz/#!{file_id}"
