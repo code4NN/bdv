@@ -1397,7 +1397,8 @@ class VANI_hearing_class:
         
         if 'admin' in self.bdv.userinfo['global_roles']:
             with st.expander("see all available files", expanded=False):
-                st.write(available_files)
+                available_dict = {f:os.path.getmtime(f"{destination}/{f}") for f in available_files}
+                st.write(available_dict)
         
         # download only if file not present
         if filename not in available_files:
