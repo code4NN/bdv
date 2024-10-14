@@ -1397,7 +1397,13 @@ class VANI_hearing_class:
         
         if 'admin' in self.bdv.userinfo['global_roles']:
             with st.expander("see all available files", expanded=False):
-                available_dict = {f:os.path.getmtime(f"{destination}/{f}") for f in available_files}
+                # timestamp = .strftime("%Y%b%d%a %H%M%S")
+                available_dict = {f:
+                    (datetime.date.fromtimestamp(
+                        os.path.getmtime(f"{destination}/{f}"))
+                     .strftime("%Y%b%d%a %H%M%S"))
+                    
+                    for f in available_files}
                 st.write(available_dict)
         
         # download only if file not present
