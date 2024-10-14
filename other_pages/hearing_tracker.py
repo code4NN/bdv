@@ -1395,10 +1395,14 @@ class VANI_hearing_class:
         destination = './local_data/vani_storage'        
         available_files = os.listdir(destination)
         
+        if 'admin' in self.bdv.userinfo['global_roles']:
+            with st.expander("see all available files", expanded=False):
+                st.write(available_files)
+        
         # download only if file not present
         if filename not in available_files:
             # storage management
-            MAX_LEC_STORE = 20
+            MAX_LEC_STORE = 10
             # keep the latest MAX_LEC_STORE files and delete the older ones
             # reverse = True sorted in decending order
             available_files = sorted(available_files,
