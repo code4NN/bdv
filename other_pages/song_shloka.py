@@ -1,3 +1,4 @@
+
 import random
 import streamlit as st
 import pandas as pd
@@ -6,6 +7,7 @@ from other_pages.googleapi import download_data, upload_data
 # for vedabase shloka etc
 import requests
 from bs4 import BeautifulSoup
+
 def url_fetch(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
@@ -337,3 +339,121 @@ class memorize_song_shloka:
         
     def run(self):
         self.page_dict[self.current_page]()
+
+class shlokaloka:
+    def __init__(self) -> None:
+        self.page_config = {
+            "page_title":"shloka-loka",
+            "page_icon":"💉",
+            "layout":'centered'
+        }
+        
+        self.page_map = {
+            "active":"dash",
+            "dash":self.dash
+        }
+        
+        # 
+        self.url_fetcher = {
+            # "URL": response json
+        }
+    
+    def fetch_url(self,url,ftype):
+        if url in self.url_fetcher.keys():
+            return self.url_fetcher[url]
+        elif ftype=='multi':
+            
+            response = requests.get(url)
+            self.url_fetcher[url] = response
+            soup = BeautifulSoup(response.content, 'html.parser')
+            book = url.replace("https://vedabase.io/en/library","").split("/")[1].upper()
+            if book == "BG":
+                chapter = url.replace("https://vedabase.io/en/library","").split("/")[2]
+                book = f"{book} {chapter}."
+            elif book =='SB':
+                canto = url.replace("https://vedabase.io/en/library","").split("/")[2]
+                chapter = url.replace("https://vedabase.io/en/library","").split("/")[3]
+                book = f"{book} {canto}.{chapter}."
+            else:
+                book = ''
+                
+            alltext = {(book+a_match.find_all("a")[0]
+                        .text.lower().replace("text ",'')
+                        .replace("texts ",'')): a_match 
+                       for a_match in soup.find_all(class_='bb r-verse')}
+            
+            resultdict = {}
+            for key,a_match in alltext.items():
+                # get the text number
+                verse_index = key
+                
+                # get the devnagri
+                devnagri = (a_match
+                            .find_next_sibling(class_='wrapper-devanagari')
+                            .find("div",class_='r r-devanagari')
+                            .getText(separator='\n'))
+                
+                # get english
+                eng = ('\n'
+                       .join([i.getText(separator='\n') for i in a_match
+                              .find_next_sibling(class_='wrapper-verse-text')
+                              .findAll('div',class_='r r-lang-en r-verse-text')
+                              ]
+                             )
+                       )
+                
+                # get translation
+                translation = (a_match
+                               .find_next_sibling(class_='wrapper-translation')
+                               .find("div",class_='r r-lang-en r-translation')
+                               .getText())
+                
+                # now store
+                resultdict[verse_index] = {'verse_index':verse_index,
+                                           "verse_dev":devnagri,
+                                           'verse_eng':eng,
+                                           'verse_translation':translation}
+            return resultdict
+        
+        elif ftype =='single':
+            response = requests.get(url)
+            self.url_fetcher[url] = response
+            soup = BeautifulSoup(response.content, 'html.parser')
+            
+            verse_index = soup.find(class_ = "r r-title r-verse").getText().strip()
+            verse_dev = soup.find("div",class_ = "r r-devanagari").getText(separator='\n')
+            verse_eng = ('\n'
+                       .join([i.getText(separator='\n') for i in soup
+                              .find("div",class_='wrapper-verse-text')
+                              .findAll('div',class_='r r-lang-en r-verse-text')
+                              ]
+                             )
+                       )
+            verse_trnslation = (soup
+                               .find("div",class_='wrapper-translation')
+                               .find("div",class_='r r-lang-en r-translation')
+                               .getText())
+            
+            return {'verse_index':verse_index,
+                    "verse_dev":verse_dev,
+                    "verse_eng":verse_eng,
+                    "verse_translation":verse_trnslation}
+            
+    def dash(self):
+        
+        st.header(":rainbow[Welcome to Shloka Loka]")
+        entry_option = st.radio("Choose type of entry",
+                 options=['one verse','multiple verses'],
+                 horizontal=True)
+        
+        url = st.text_input("Enter vedabase URL")
+        if url:
+            response = self.fetch_url(url=url,
+                                      ftype='multi' if entry_option =="multiple verses" else 'single')
+            st.write(response)
+        # if entry_option =="one verse":
+            
+        
+        
+    def run(self):
+        self.page_map[self.page_map['active']]()

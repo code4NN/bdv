@@ -138,7 +138,7 @@ class login_Class:
         elif callmode =='submit':
             # perform login action
             if _user_is_valid + _password_is_correct == 2:
-                self.bdvapp.userinfo = _userinfo                
+                self.bdvapp.userinfo = _userinfo
                 self.bdvapp.user_exists = True
     
     def home(self):
