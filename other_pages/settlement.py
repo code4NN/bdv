@@ -349,8 +349,9 @@ class settlement_Class:
             if requestform['error']:
                 st.button("Submit 👍",disabled=True,key='submit_button')
             else:
-                st.button("Submit 👍",on_click=request_form_submit,key='submit_button',
-                        args=[requestform])
+                st.warning("The settlement platform is in progress")
+                # st.button("Submit 👍",on_click=request_form_submit,key='submit_button',
+                #         args=[requestform])
             
             if self.request_upload_response != 'none':
                 status = self.request_upload_response
