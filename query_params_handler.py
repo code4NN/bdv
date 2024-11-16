@@ -1,6 +1,7 @@
 import streamlit as st
 # from other_pages.hearing_tracker import VANI_hearing_class as class_under_development
-from other_pages.song_shloka import shlokaloka as class_under_development
+# from other_pages.song_shloka import shlokaloka as class_under_development
+from other_pages.settlement import settlement_class_new as class_under_development
 
 def process_query_parameters(app,qdict):
     """
@@ -27,9 +28,10 @@ def process_query_parameters(app,qdict):
         username = qdict.get('user')
         password = qdict.get('pass')
         login_class = app.page_map['login']
+        # st.write(login_class.userdb)
         _login_response_code = login_class.perform_login(username, password,'ask')
         correct_credentials = 2 == _login_response_code
-        
+        # st.write(f"{username}, {password}, {correct_credentials} {_login_response_code}")
         if correct_credentials:
             login_class.perform_login(username, password, 'submit')
         updated_qdict.pop('user', None)
@@ -46,7 +48,8 @@ def process_query_parameters(app,qdict):
         if refresh == 'yes':
             newpage = class_under_development()
             # update subpage if available
-            app.page_map[page] = newpage
+            if subpage !='blank':
+                app.page_map['active'] = subpage
         
         # update the bdv app
         app.current_page = page

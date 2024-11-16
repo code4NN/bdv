@@ -13,6 +13,8 @@ from other_pages.lecture_notes import class_notes_Class
 from other_pages.thematic_encyclopaedia import sskkb
 from other_pages.song_shloka import shlokaloka
 
+from other_pages.settlement import settlement_class_new
+
 class myapp:
     def __init__(self):
 
@@ -25,6 +27,8 @@ class myapp:
             'sp_hearing': SP_hearing_Class(),
             'vani_hearing':VANI_hearing_class(),
             
+            # voice settlements
+            'settlement': settlement_class_new(),
             'revision': class_notes_Class(),
             'article_tag':sskkb(),
             'shloka':shlokaloka(),

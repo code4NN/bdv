@@ -196,9 +196,15 @@ class login_Class:
                 def switch_to_page(page_name):
                     self.bdvapp.current_page = page_name
                 
-                st.button("Vani Syllabus",
-                          on_click=switch_to_page,args=['vani_hearing'],
-                          key='vani_page')
+                left,middle, right = st.columns(3)
+                with left:
+                    st.button("Vani Syllabus",
+                            on_click=switch_to_page,args=['vani_hearing'],
+                            key='vani_page')
+                with middle:
+                    st.button("Settlements",
+                            on_click=switch_to_page,args=['settlement'],
+                            key='settlement ko chalo')
                 
                 st.divider()
                 if 'admin' in self.bdvapp.userinfo['global_roles']:
